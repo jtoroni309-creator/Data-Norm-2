@@ -83,11 +83,17 @@ class TestAS1215_AuditDocumentation:
         engagement_id = uuid4()
         db = AsyncMock()
 
-        # Mock: All procedures have workpapers
+        # Mock database response: 10 procedures, 0 without workpapers
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (10, 0)  # total_procedures, procedures_without_workpapers
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
         assert result["passed"] is True
         assert "evidence" in result
+        assert result["evidence"]["total_procedures"] == 10
+        assert result["evidence"]["documented_procedures"] == 10
         assert result["remediation"] == ""
 
     @pytest.mark.asyncio
@@ -97,17 +103,17 @@ class TestAS1215_AuditDocumentation:
         engagement_id = uuid4()
         db = AsyncMock()
 
-        # In real implementation, this would query database
-        # For now, the policy always passes (no real DB queries yet)
+        # Mock database response: 10 procedures, 3 without workpapers
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (10, 3)  # total_procedures, procedures_without_workpapers
+        db.execute = AsyncMock(return_value=mock_result)
 
         result = await policy.evaluate(engagement_id, db)
 
-        # With current implementation, it passes
-        # When DB integration added, modify this test to fail appropriately
-        assert "passed" in result
-        assert "details" in result
-        assert "remediation" in result
-        assert "evidence" in result
+        assert result["passed"] is False
+        assert "3 procedure(s) lack supporting workpapers" in result["details"]
+        assert "PCAOB AS 1215" in result["remediation"]
+        assert result["evidence"]["procedures_without_workpapers"] == 3
 
 
 class TestSAS142_AuditEvidence:
@@ -130,6 +136,11 @@ class TestSAS142_AuditEvidence:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock database response: materiality_threshold, material_accounts_total, accounts_without_evidence, total_evidence_links
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (100000.0, 5, 0, 15)
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
         assert "passed" in result
@@ -139,6 +150,42 @@ class TestSAS142_AuditEvidence:
         assert "remediation" in result
         assert "evidence" in result
         assert isinstance(result["evidence"], dict)
+
+    @pytest.mark.asyncio
+    async def test_evaluate_passes_with_evidence(self):
+        """Test policy passes when all material accounts have evidence"""
+        policy = SAS142_AuditEvidence()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: 100k materiality, 5 material accounts, 0 without evidence, 15 evidence links
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (100000.0, 5, 0, 15)
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is True
+        assert result["evidence"]["material_accounts_checked"] == 5
+        assert result["evidence"]["evidence_links_total"] == 15
+
+    @pytest.mark.asyncio
+    async def test_evaluate_fails_without_evidence(self):
+        """Test policy fails when material accounts lack evidence"""
+        policy = SAS142_AuditEvidence()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: 100k materiality, 5 material accounts, 2 without evidence, 10 evidence links
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (100000.0, 5, 2, 10)
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is False
+        assert "2 of 5 material account(s) lack" in result["details"]
+        assert result["evidence"]["material_accounts_without_evidence"] == 2
 
 
 class TestSAS145_RiskAssessment:
@@ -160,11 +207,16 @@ class TestSAS145_RiskAssessment:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock: 8 total risks, 0 without procedures, 2 fraud risks, 15 procedures linked
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (8, 0, 2, 15)
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
-        # Should check for risks without procedures
-        assert "passed" in result
-        assert "evidence" in result
+        assert result["passed"] is True
+        assert result["evidence"]["total_risks"] == 8
+        assert result["evidence"]["fraud_risks"] == 2
 
     @pytest.mark.asyncio
     async def test_evaluate_checks_fraud_risks(self):
@@ -173,12 +225,33 @@ class TestSAS145_RiskAssessment:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock: 5 risks, 0 without procedures, but 0 fraud risks documented
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (5, 0, 0, 10)
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
-        # Result should mention fraud risks in evidence or details
-        result_str = str(result).lower()
-        # Fraud is checked in the policy logic
-        assert "evidence" in result
+        assert result["passed"] is False
+        assert "fraud risk" in result["details"].lower()
+        assert result["evidence"]["fraud_risks_documented"] == 0
+
+    @pytest.mark.asyncio
+    async def test_evaluate_fails_when_risks_lack_procedures(self):
+        """Test policy fails when risks lack procedures"""
+        policy = SAS145_RiskAssessment()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: 8 risks, 2 without procedures, 1 fraud risk, 10 procedures
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (8, 2, 1, 10)
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is False
+        assert "2 risk(s) lack responsive audit procedures" in result["details"]
 
 
 class TestPartnerSignOffPolicy:
@@ -200,12 +273,42 @@ class TestPartnerSignOffPolicy:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock: No signature found (None result)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
-        # Currently mocked to fail (no signature)
         assert result["passed"] is False
         assert "sign-off" in result["details"].lower()
         assert len(result["remediation"]) > 0
+        assert result["evidence"]["signature_exists"] is False
+
+    @pytest.mark.asyncio
+    async def test_evaluate_passes_with_signature(self):
+        """Test policy passes when partner has signed"""
+        from datetime import datetime
+        policy = PartnerSignOffPolicy()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: Partner signature found (id, signed_at, cert_fingerprint, partner_name, role)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (
+            uuid4(),
+            datetime(2024, 1, 15, 10, 30),
+            "SHA256:abc123...",
+            "Jane Partner, CPA",
+            "partner"
+        )
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is True
+        assert "Jane Partner, CPA" in result["details"]
+        assert result["evidence"]["partner"] == "Jane Partner, CPA"
 
     @pytest.mark.asyncio
     async def test_remediation_explains_requirements(self):
@@ -213,6 +316,11 @@ class TestPartnerSignOffPolicy:
         policy = PartnerSignOffPolicy()
         engagement_id = uuid4()
         db = AsyncMock()
+
+        # Mock: No signature
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
 
         result = await policy.evaluate(engagement_id, db)
 
@@ -239,12 +347,35 @@ class TestReviewNotesPolicy:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock: total_notes, open_blocking_notes, total_open_notes, resolved_notes
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (10, 0, 0, 10)
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
-        # Currently mocked to pass (no open blocking notes)
         assert result["passed"] is True
         assert "evidence" in result
         assert result["evidence"]["open_blocking_notes"] == 0
+        assert result["evidence"]["total_notes"] == 10
+
+    @pytest.mark.asyncio
+    async def test_evaluate_fails_with_open_blocking_notes(self):
+        """Test policy fails when blocking notes remain open"""
+        policy = ReviewNotesPolicy()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: 15 total notes, 3 open blocking notes, 4 total open, 11 resolved
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (15, 3, 4, 11)
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is False
+        assert "3 blocking review note(s) remain open" in result["details"]
+        assert result["evidence"]["open_blocking_notes"] == 3
 
 
 class TestMaterialAccountsCoveragePolicy:
@@ -265,10 +396,34 @@ class TestMaterialAccountsCoveragePolicy:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock: materiality_threshold, material_accounts_total, untested_accounts, total_procedures
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (75000.0, 8, 0, 20)
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
-        # Evidence should reference materiality
+        assert result["passed"] is True
         assert "evidence" in result
+        assert result["evidence"]["materiality_threshold"] == 75000.0
+
+    @pytest.mark.asyncio
+    async def test_evaluate_fails_with_untested_accounts(self):
+        """Test policy fails when material accounts lack procedures"""
+        policy = MaterialAccountsCoveragePolicy()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: 75k materiality, 8 material accounts, 2 untested, 15 procedures
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (75000.0, 8, 2, 15)
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is False
+        assert "2 of 8 material account(s) lack audit procedures" in result["details"]
+        assert result["evidence"]["untested_accounts"] == 2
 
 
 class TestSubsequentEventsPolicy:
@@ -297,12 +452,36 @@ class TestSubsequentEventsPolicy:
         engagement_id = uuid4()
         db = AsyncMock()
 
+        # Mock: No subsequent events workpapers/procedures found
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (0, 0, None)
+        db.execute = AsyncMock(return_value=mock_result)
+
         result = await policy.evaluate(engagement_id, db)
 
-        if not result["passed"]:
-            remediation = result["remediation"].lower()
-            # Should mention key subsequent events procedures
-            assert any(keyword in remediation for keyword in ["minutes", "inquire", "legal", "interim"])
+        assert result["passed"] is False
+        remediation = result["remediation"].lower()
+        # Should mention key subsequent events procedures
+        assert any(keyword in remediation for keyword in ["minutes", "inquire", "legal", "interim"])
+
+    @pytest.mark.asyncio
+    async def test_evaluate_passes_with_documentation(self):
+        """Test policy passes when subsequent events documented"""
+        from datetime import datetime
+        policy = SubsequentEventsPolicy()
+        engagement_id = uuid4()
+        db = AsyncMock()
+
+        # Mock: workpaper_count, procedure_count, latest_completion
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (1, 2, datetime(2024, 2, 15, 14, 30))
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await policy.evaluate(engagement_id, db)
+
+        assert result["passed"] is True
+        assert result["evidence"]["workpaper_count"] == 1
+        assert result["evidence"]["procedure_count"] == 2
 
 
 class TestPolicyEvaluationErrorHandling:
@@ -320,15 +499,28 @@ class TestPolicyEvaluationErrorHandling:
 
         result = await policy.evaluate(engagement_id, db)
 
-        # Should return failed result, not raise exception
-        assert result["passed"] is True  # Current implementation doesn't hit DB yet
-        # When DB integration added, test should verify graceful error handling
+        # Should return failed result with error details, not raise exception
+        assert result["passed"] is False
+        assert "error" in result["details"].lower()
+        assert "evidence" in result
+        assert "error" in result["evidence"]
 
     @pytest.mark.asyncio
     async def test_evaluation_includes_error_in_evidence(self):
         """Test errors are captured in evidence"""
-        # This will be more relevant when real DB queries are implemented
-        pass
+        policy = SAS142_AuditEvidence()
+        engagement_id = uuid4()
+
+        # Mock database that raises exception
+        db = AsyncMock()
+        db.execute.side_effect = Exception("Query timeout")
+
+        result = await policy.evaluate(engagement_id, db)
+
+        # Error should be in evidence
+        assert result["passed"] is False
+        assert "error" in result["evidence"]
+        assert "Query timeout" in result["evidence"]["error"]
 
 
 class TestComplianceStandards:

@@ -106,14 +106,37 @@ class AS1215_AuditDocumentation(BasePolicy):
         """Evaluate audit documentation completeness"""
 
         try:
-            # Query to find procedures without workpapers
-            # Note: This is a simplified check. In production, you'd query actual tables.
+            # Count total procedures for the engagement
+            total_procedures_query = select(func.count()).select_from(
+                select(1).select_from(
+                    func.unnest(func.array([1]))
+                ).alias("procedures")
+            ).where(False)  # This will be replaced with actual table
 
-            # For demonstration, we'll simulate the check
-            # In production: SELECT COUNT(*) FROM procedures WHERE engagement_id = ? AND workpaper_count = 0
+            # Query procedures without linked workpapers
+            # A procedure has workpapers if evidence_links exist that reference it
+            from sqlalchemy import text
 
-            # Simulate: No procedures without workpapers
-            procedures_without_workpapers = 0
+            query = text("""
+                SELECT
+                    COUNT(DISTINCT p.id) as total_procedures,
+                    COUNT(DISTINCT CASE
+                        WHEN wp.id IS NULL THEN p.id
+                        ELSE NULL
+                    END) as procedures_without_workpapers
+                FROM atlas.procedures p
+                LEFT JOIN atlas.evidence_links el ON el.procedure_id = p.id
+                LEFT JOIN atlas.workpapers wp ON wp.id = el.workpaper_id
+                    AND wp.prepared_at IS NOT NULL
+                WHERE p.engagement_id = :engagement_id
+                    AND p.status IN ('completed', 'reviewed')
+            """)
+
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            total_procedures = row[0] if row else 0
+            procedures_without_workpapers = row[1] if row else 0
 
             if procedures_without_workpapers > 0:
                 return {
@@ -127,6 +150,7 @@ class AS1215_AuditDocumentation(BasePolicy):
                     ),
                     "evidence": {
                         "procedures_without_workpapers": procedures_without_workpapers,
+                        "total_procedures": total_procedures,
                         "standard": "PCAOB AS 1215.06-.08"
                     }
                 }
@@ -136,8 +160,8 @@ class AS1215_AuditDocumentation(BasePolicy):
                 "details": "All audit procedures have supporting workpapers",
                 "remediation": "",
                 "evidence": {
-                    "total_procedures": 0,  # Would be actual count
-                    "documented_procedures": 0,
+                    "total_procedures": total_procedures,
+                    "documented_procedures": total_procedures - procedures_without_workpapers,
                     "standard": "PCAOB AS 1215"
                 }
             }
@@ -183,19 +207,79 @@ class SAS142_AuditEvidence(BasePolicy):
         """Evaluate audit evidence sufficiency"""
 
         try:
-            # Check material accounts have evidence
-            # In production: Query trial_balance_lines with materiality threshold
-            # and verify evidence_links exist
+            from sqlalchemy import text
 
-            # Simulate: All material accounts have evidence
-            material_accounts_without_evidence = 0
+            # Calculate materiality as 5% of total assets or 0.5% of revenue (simplified)
+            # Then check if material accounts have evidence
+            query = text("""
+                WITH materiality AS (
+                    SELECT GREATEST(
+                        0.05 * COALESCE(SUM(CASE
+                            WHEN coa.account_type = 'asset' THEN tb.balance_amount
+                            ELSE 0
+                        END), 0),
+                        0.005 * COALESCE(SUM(CASE
+                            WHEN coa.account_type = 'revenue' THEN ABS(tb.balance_amount)
+                            ELSE 0
+                        END), 0),
+                        50000  -- Minimum materiality threshold
+                    ) as threshold
+                    FROM atlas.trial_balance_lines tb
+                    JOIN atlas.trial_balances tbal ON tbal.id = tb.trial_balance_id
+                    LEFT JOIN atlas.chart_of_accounts coa ON coa.id = tb.mapped_account_id
+                    WHERE tbal.engagement_id = :engagement_id
+                ),
+                material_accounts AS (
+                    SELECT
+                        tb.id,
+                        tb.account_code,
+                        tb.account_name,
+                        tb.balance_amount,
+                        COUNT(DISTINCT el.id) as evidence_count
+                    FROM atlas.trial_balance_lines tb
+                    JOIN atlas.trial_balances tbal ON tbal.id = tb.trial_balance_id
+                    LEFT JOIN atlas.evidence_links el ON el.source_type = 'tb_line'
+                        AND el.source_reference = tb.id::text
+                    CROSS JOIN materiality m
+                    WHERE tbal.engagement_id = :engagement_id
+                        AND ABS(tb.balance_amount) > m.threshold
+                    GROUP BY tb.id, tb.account_code, tb.account_name, tb.balance_amount
+                )
+                SELECT
+                    (SELECT threshold FROM materiality) as materiality_threshold,
+                    COUNT(*) as material_accounts_total,
+                    COUNT(CASE WHEN evidence_count = 0 THEN 1 END) as accounts_without_evidence,
+                    SUM(evidence_count) as total_evidence_links
+                FROM material_accounts
+            """)
+
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            if not row or row[1] == 0:
+                # No material accounts found (engagement might be too early)
+                return {
+                    "passed": True,
+                    "details": "No material accounts identified yet (trial balance may not be loaded)",
+                    "remediation": "",
+                    "evidence": {
+                        "material_accounts_checked": 0,
+                        "evidence_links_total": 0,
+                        "standard": "AICPA SAS 142"
+                    }
+                }
+
+            materiality_threshold = float(row[0]) if row[0] else 0
+            material_accounts_total = row[1]
+            material_accounts_without_evidence = row[2]
+            total_evidence_links = row[3]
 
             if material_accounts_without_evidence > 0:
                 return {
                     "passed": False,
                     "details": (
-                        f"{material_accounts_without_evidence} material account(s) lack "
-                        f"sufficient appropriate audit evidence"
+                        f"{material_accounts_without_evidence} of {material_accounts_total} material "
+                        f"account(s) lack sufficient appropriate audit evidence"
                     ),
                     "remediation": (
                         "Obtain and document audit evidence for all material accounts. "
@@ -205,7 +289,8 @@ class SAS142_AuditEvidence(BasePolicy):
                     ),
                     "evidence": {
                         "material_accounts_without_evidence": material_accounts_without_evidence,
-                        "materiality_threshold": 0,  # Would be calculated
+                        "material_accounts_total": material_accounts_total,
+                        "materiality_threshold": round(materiality_threshold, 2),
                         "standard": "AICPA SAS 142.07-.08"
                     }
                 }
@@ -215,8 +300,9 @@ class SAS142_AuditEvidence(BasePolicy):
                 "details": "Sufficient appropriate audit evidence obtained for all material accounts",
                 "remediation": "",
                 "evidence": {
-                    "material_accounts_checked": 0,
-                    "evidence_links_total": 0,
+                    "material_accounts_checked": material_accounts_total,
+                    "evidence_links_total": total_evidence_links,
+                    "materiality_threshold": round(materiality_threshold, 2),
                     "standard": "AICPA SAS 142"
                 }
             }
@@ -263,12 +349,50 @@ class SAS145_RiskAssessment(BasePolicy):
         """Evaluate risk assessment documentation"""
 
         try:
-            # Check risks have procedures
-            # In production: SELECT COUNT(*) FROM risks WHERE engagement_id = ? AND procedure_count = 0
+            from sqlalchemy import text
 
-            risks_without_procedures = 0
-            fraud_risks_documented = 0  # Must be > 0
+            # Check that all risks have linked procedures and that fraud risks are documented
+            query = text("""
+                SELECT
+                    COUNT(*) as total_risks,
+                    COUNT(DISTINCT CASE
+                        WHEN p.id IS NULL THEN r.id
+                        ELSE NULL
+                    END) as risks_without_procedures,
+                    COUNT(CASE WHEN r.fraud_risk = TRUE THEN 1 END) as fraud_risks_documented,
+                    COUNT(DISTINCT p.id) as total_procedures_linked
+                FROM atlas.risks r
+                LEFT JOIN atlas.procedures p ON p.risk_id = r.id
+                    AND p.status IN ('in_progress', 'completed', 'reviewed')
+                WHERE r.engagement_id = :engagement_id
+            """)
 
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            if not row or row[0] == 0:
+                # No risks documented yet
+                return {
+                    "passed": False,
+                    "details": "No risks documented for this engagement",
+                    "remediation": (
+                        "Perform and document risk assessment per SAS 145. "
+                        "Identify and assess risks of material misstatement. "
+                        "Document fraud risks including revenue recognition and management override."
+                    ),
+                    "evidence": {
+                        "total_risks": 0,
+                        "fraud_risks_documented": 0,
+                        "standard": "AICPA SAS 145"
+                    }
+                }
+
+            total_risks = row[0]
+            risks_without_procedures = row[1]
+            fraud_risks_documented = row[2]
+            total_procedures_linked = row[3]
+
+            # Check 1: Risks must have procedures
             if risks_without_procedures > 0:
                 return {
                     "passed": False,
@@ -281,11 +405,13 @@ class SAS145_RiskAssessment(BasePolicy):
                     ),
                     "evidence": {
                         "risks_without_procedures": risks_without_procedures,
+                        "total_risks": total_risks,
                         "fraud_risks_documented": fraud_risks_documented,
                         "standard": "AICPA SAS 145.18-.19"
                     }
                 }
 
+            # Check 2: Fraud risks must be documented
             if fraud_risks_documented == 0:
                 return {
                     "passed": False,
@@ -294,10 +420,11 @@ class SAS145_RiskAssessment(BasePolicy):
                         "Document fraud risk assessment per SAS 145.27-28. "
                         "Consider: revenue recognition, management override of controls, "
                         "and entity-specific fraud risks. "
-                        "Discuss with engagement team."
+                        "Discuss with engagement team and document conclusions."
                     ),
                     "evidence": {
                         "fraud_risks_documented": 0,
+                        "total_risks": total_risks,
                         "standard": "AICPA SAS 145.27-.28"
                     }
                 }
@@ -307,9 +434,10 @@ class SAS145_RiskAssessment(BasePolicy):
                 "details": "Risk assessment documented and procedures linked to all risks",
                 "remediation": "",
                 "evidence": {
-                    "total_risks": 0,
-                    "risks_with_procedures": 0,
+                    "total_risks": total_risks,
+                    "risks_with_procedures": total_risks - risks_without_procedures,
                     "fraud_risks": fraud_risks_documented,
+                    "procedures_linked": total_procedures_linked,
                     "standard": "AICPA SAS 145"
                 }
             }
@@ -352,14 +480,29 @@ class PartnerSignOffPolicy(BasePolicy):
         """Check partner sign-off exists"""
 
         try:
-            # Query signatures table for partner signature
-            # In production: SELECT * FROM signatures WHERE engagement_id = ? AND signature_type = 'partner_approval'
+            from sqlalchemy import text
 
-            # Simulate: No partner signature yet
-            partner_signature_exists = False
-            partner_name = None
+            # Query for partner signature
+            query = text("""
+                SELECT
+                    s.id,
+                    s.signed_at,
+                    s.certificate_fingerprint,
+                    u.full_name as partner_name,
+                    u.role
+                FROM atlas.signatures s
+                JOIN atlas.users u ON u.id = s.user_id
+                WHERE s.engagement_id = :engagement_id
+                    AND s.signature_type = 'partner_approval'
+                    AND u.role = 'partner'
+                ORDER BY s.signed_at DESC
+                LIMIT 1
+            """)
 
-            if not partner_signature_exists:
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            if not row:
                 return {
                     "passed": False,
                     "details": "Partner sign-off not obtained",
@@ -376,14 +519,18 @@ class PartnerSignOffPolicy(BasePolicy):
                     }
                 }
 
+            partner_name = row[3]
+            signed_at = row[1].isoformat() if row[1] else None
+            certificate_fingerprint = row[2]
+
             return {
                 "passed": True,
                 "details": f"Partner approval obtained: {partner_name}",
                 "remediation": "",
                 "evidence": {
                     "partner": partner_name,
-                    "signed_at": None,  # Would be actual timestamp
-                    "certificate_fingerprint": None
+                    "signed_at": signed_at,
+                    "certificate_fingerprint": certificate_fingerprint
                 }
             }
 
@@ -423,10 +570,36 @@ class ReviewNotesPolicy(BasePolicy):
         """Check all review notes are cleared"""
 
         try:
-            # Query review_notes table
-            # In production: SELECT COUNT(*) FROM review_notes WHERE engagement_id = ? AND is_blocking = TRUE AND status = 'open'
+            from sqlalchemy import text
 
-            open_blocking_notes = 0
+            # Query review notes - need to join through workpapers and procedures to engagement
+            query = text("""
+                SELECT
+                    COUNT(*) as total_notes,
+                    COUNT(CASE WHEN is_blocking = TRUE AND status = 'open' THEN 1 END) as open_blocking_notes,
+                    COUNT(CASE WHEN status = 'open' THEN 1 END) as total_open_notes,
+                    COUNT(CASE WHEN status IN ('addressed', 'cleared') THEN 1 END) as resolved_notes
+                FROM atlas.review_notes rn
+                WHERE (
+                    rn.workpaper_id IN (
+                        SELECT w.id FROM atlas.workpapers w
+                        JOIN atlas.binder_nodes bn ON bn.id = w.binder_node_id
+                        WHERE bn.engagement_id = :engagement_id
+                    )
+                    OR rn.procedure_id IN (
+                        SELECT p.id FROM atlas.procedures p
+                        WHERE p.engagement_id = :engagement_id
+                    )
+                )
+            """)
+
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            total_notes = row[0] if row else 0
+            open_blocking_notes = row[1] if row else 0
+            total_open_notes = row[2] if row else 0
+            resolved_notes = row[3] if row else 0
 
             if open_blocking_notes > 0:
                 return {
@@ -440,7 +613,9 @@ class ReviewNotesPolicy(BasePolicy):
                     ),
                     "evidence": {
                         "open_blocking_notes": open_blocking_notes,
-                        "total_notes": 0
+                        "total_open_notes": total_open_notes,
+                        "total_notes": total_notes,
+                        "resolved_notes": resolved_notes
                     }
                 }
 
@@ -450,7 +625,8 @@ class ReviewNotesPolicy(BasePolicy):
                 "remediation": "",
                 "evidence": {
                     "open_blocking_notes": 0,
-                    "total_notes": 0
+                    "total_notes": total_notes,
+                    "resolved_notes": resolved_notes
                 }
             }
 
@@ -490,18 +666,77 @@ class MaterialAccountsCoveragePolicy(BasePolicy):
         """Check material accounts have procedures"""
 
         try:
-            # Calculate materiality and check coverage
-            # In production:
-            # 1. Get engagement materiality
-            # 2. Find TB lines > materiality
-            # 3. Check each has procedures with results
+            from sqlalchemy import text
 
-            untested_material_accounts = 0
+            # Calculate materiality and check that material accounts have procedures
+            # Similar to SAS142 but focuses on procedures rather than evidence links
+            query = text("""
+                WITH materiality AS (
+                    SELECT GREATEST(
+                        0.05 * COALESCE(SUM(CASE
+                            WHEN coa.account_type = 'asset' THEN tb.balance_amount
+                            ELSE 0
+                        END), 0),
+                        0.005 * COALESCE(SUM(CASE
+                            WHEN coa.account_type = 'revenue' THEN ABS(tb.balance_amount)
+                            ELSE 0
+                        END), 0),
+                        50000
+                    ) as threshold
+                    FROM atlas.trial_balance_lines tb
+                    JOIN atlas.trial_balances tbal ON tbal.id = tb.trial_balance_id
+                    LEFT JOIN atlas.chart_of_accounts coa ON coa.id = tb.mapped_account_id
+                    WHERE tbal.engagement_id = :engagement_id
+                ),
+                material_accounts AS (
+                    SELECT
+                        tb.id,
+                        tb.account_code,
+                        tb.account_name,
+                        tb.balance_amount,
+                        tb.mapped_account_id,
+                        COUNT(DISTINCT p.id) FILTER (
+                            WHERE p.status IN ('completed', 'reviewed')
+                        ) as completed_procedures_count
+                    FROM atlas.trial_balance_lines tb
+                    JOIN atlas.trial_balances tbal ON tbal.id = tb.trial_balance_id
+                    LEFT JOIN atlas.procedures p ON p.engagement_id = tbal.engagement_id
+                    CROSS JOIN materiality m
+                    WHERE tbal.engagement_id = :engagement_id
+                        AND ABS(tb.balance_amount) > m.threshold
+                    GROUP BY tb.id, tb.account_code, tb.account_name, tb.balance_amount, tb.mapped_account_id
+                )
+                SELECT
+                    (SELECT threshold FROM materiality) as materiality_threshold,
+                    COUNT(*) as material_accounts_total,
+                    COUNT(CASE WHEN completed_procedures_count = 0 THEN 1 END) as untested_accounts,
+                    SUM(completed_procedures_count) as total_procedures
+                FROM material_accounts
+            """)
 
-            if untested_material_accounts > 0:
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            if not row or row[1] == 0:
+                return {
+                    "passed": True,
+                    "details": "No material accounts identified yet (trial balance may not be loaded)",
+                    "remediation": "",
+                    "evidence": {
+                        "material_accounts": 0,
+                        "tested_accounts": 0
+                    }
+                }
+
+            materiality_threshold = float(row[0]) if row[0] else 0
+            material_accounts_total = row[1]
+            untested_accounts = row[2]
+            total_procedures = row[3]
+
+            if untested_accounts > 0:
                 return {
                     "passed": False,
-                    "details": f"{untested_material_accounts} material account(s) lack audit procedures",
+                    "details": f"{untested_accounts} of {material_accounts_total} material account(s) lack audit procedures",
                     "remediation": (
                         "Perform audit procedures for all material accounts. "
                         "Consider: analytical procedures, substantive tests of details, "
@@ -509,8 +744,9 @@ class MaterialAccountsCoveragePolicy(BasePolicy):
                         "Document results and conclusions."
                     ),
                     "evidence": {
-                        "untested_accounts": untested_material_accounts,
-                        "materiality_threshold": 0
+                        "untested_accounts": untested_accounts,
+                        "material_accounts_total": material_accounts_total,
+                        "materiality_threshold": round(materiality_threshold, 2)
                     }
                 }
 
@@ -519,8 +755,10 @@ class MaterialAccountsCoveragePolicy(BasePolicy):
                 "details": "All material accounts have audit procedures with documented results",
                 "remediation": "",
                 "evidence": {
-                    "material_accounts": 0,
-                    "tested_accounts": 0
+                    "material_accounts": material_accounts_total,
+                    "tested_accounts": material_accounts_total - untested_accounts,
+                    "total_procedures": total_procedures,
+                    "materiality_threshold": round(materiality_threshold, 2)
                 }
             }
 
@@ -563,10 +801,38 @@ class SubsequentEventsPolicy(BasePolicy):
         """Check subsequent events procedures performed"""
 
         try:
-            # Check for subsequent events documentation
-            # In production: Look for workpaper with code 'SUBSEQUENT_EVENTS'
+            from sqlalchemy import text
 
-            subsequent_events_documented = False
+            # Look for workpapers or procedures related to subsequent events
+            query = text("""
+                SELECT
+                    COUNT(DISTINCT bn.id) as workpaper_count,
+                    COUNT(DISTINCT p.id) as procedure_count,
+                    MAX(p.completed_at) as latest_completion
+                FROM atlas.binder_nodes bn
+                LEFT JOIN atlas.procedures p ON p.engagement_id = bn.engagement_id
+                    AND (
+                        p.procedure_code ILIKE '%SUBSEQUENT%'
+                        OR p.procedure_description ILIKE '%subsequent events%'
+                    )
+                WHERE bn.engagement_id = :engagement_id
+                    AND (
+                        bn.node_code ILIKE '%SUBSEQUENT%'
+                        OR bn.title ILIKE '%subsequent events%'
+                        OR bn.title ILIKE '%Type 1%'
+                        OR bn.title ILIKE '%Type 2%'
+                    )
+                    AND bn.node_type = 'workpaper'
+            """)
+
+            result = await db.execute(query, {"engagement_id": engagement_id})
+            row = result.fetchone()
+
+            workpaper_count = row[0] if row else 0
+            procedure_count = row[1] if row else 0
+            latest_completion = row[2]
+
+            subsequent_events_documented = (workpaper_count > 0 or procedure_count > 0)
 
             if not subsequent_events_documented:
                 return {
@@ -581,6 +847,8 @@ class SubsequentEventsPolicy(BasePolicy):
                     ),
                     "evidence": {
                         "documented": False,
+                        "workpaper_count": 0,
+                        "procedure_count": 0,
                         "standard": "AICPA SAS 560"
                     }
                 }
@@ -590,8 +858,11 @@ class SubsequentEventsPolicy(BasePolicy):
                 "details": "Subsequent events review performed and documented",
                 "remediation": "",
                 "evidence": {
-                    "review_through_date": None,
-                    "events_identified": 0
+                    "documented": True,
+                    "workpaper_count": workpaper_count,
+                    "procedure_count": procedure_count,
+                    "review_through_date": latest_completion.isoformat() if latest_completion else None,
+                    "standard": "AICPA SAS 560"
                 }
             }
 
