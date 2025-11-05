@@ -410,7 +410,7 @@ async def add_team_member(
 # Binder Tree
 # ========================================
 
-@app.get("/engagements/{engagement_id}/binder/tree", response_model=BinderTreeResponse)
+@app.get("/engagements/{engagement_id}/binder/tree")
 async def get_binder_tree(
     engagement_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -430,24 +430,26 @@ async def get_binder_tree(
     )
     nodes = result.scalars().all()
 
+    if not nodes:
+        return []
+
     # Build tree structure
-    node_map = {node.id: BinderNodeResponse.model_validate(node) for node in nodes}
+    node_map = {}
+    for node in nodes:
+        node_dict = BinderNodeResponse.model_validate(node).model_dump()
+        node_dict['children'] = []
+        node_map[node.id] = node_dict
+
+    # Build hierarchy
     tree_nodes = []
-
-    for node_id, node in node_map.items():
-        if node.parent_id:
-            parent = node_map.get(node.parent_id)
-            if parent:
-                if not hasattr(parent, 'children'):
-                    parent.children = []
-                parent.children.append(node)
+    for node_id, node_data in node_map.items():
+        parent_id = node_data.get('parent_id')
+        if parent_id and parent_id in node_map:
+            node_map[parent_id]['children'].append(node_data)
         else:
-            tree_nodes.append(node)
+            tree_nodes.append(node_data)
 
-    return BinderTreeResponse(
-        engagement_id=engagement_id,
-        nodes=tree_nodes
-    )
+    return tree_nodes
 
 
 @app.post("/engagements/{engagement_id}/binder/nodes", response_model=BinderNodeResponse)
