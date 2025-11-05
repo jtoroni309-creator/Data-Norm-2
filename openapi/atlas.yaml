@@ -1,0 +1,892 @@
+openapi: 3.1.0
+info:
+  title: Aura Audit AI (Project Atlas) API
+  description: |
+    Enterprise-grade audit platform API for CPA firms.
+
+    **Compliance**: PCAOB AS 1000/1215, AICPA SAS 142/145, SEC 17 CFR 210.2-06
+
+    **Security**: OIDC/OAuth2 authentication, RBAC authorization, engagement-level RLS
+
+    **Key Features**:
+    - EDGAR/XBRL ingestion and normalization
+    - Trial balance import and mapping
+    - Journal entry testing and anomaly detection
+    - AI-powered disclosure drafting with citations
+    - Cloud binder with immutable versioning
+    - QC gates and partner e-signature
+    - WORM storage with 7-year retention
+  version: 1.0.0
+  contact:
+    name: Aura Audit AI Support
+    email: support@aura-audit.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api-dev.aura-audit.ai
+    description: Development environment
+  - url: https://api.aura-audit.ai
+    description: Production
+
+security:
+  - bearerAuth: []
+  - oauth2: [read, write]
+
+tags:
+  - name: Ingestion
+    description: EDGAR/XBRL fetching and PBC uploads
+  - name: Normalization
+    description: Taxonomy mapping and COA alignment
+  - name: Analytics
+    description: Journal entry testing and anomaly detection
+  - name: Disclosures
+    description: AI-powered disclosure drafting
+  - name: Engagement
+    description: Engagement management and binder operations
+  - name: Reporting
+    description: Report assembly and e-signature
+  - name: QC
+    description: Quality control gates and policy checks
+  - name: Identity
+    description: Authentication and authorization
+  - name: Connectors
+    description: ERP and payroll integrations
+
+paths:
+  # ========================================
+  # Ingestion Service
+  # ========================================
+
+  /ingestion/edgar/company-facts:
+    get:
+      tags: [Ingestion]
+      summary: Fetch EDGAR company facts
+      description: |
+        Retrieves normalized XBRL facts from SEC EDGAR database.
+
+        **Compliance**: Data sourced from public SEC filings (fair use)
+      parameters:
+        - name: cik
+          in: query
+          schema:
+            type: string
+          description: Company CIK (Central Index Key)
+        - name: ticker
+          in: query
+          schema:
+            type: string
+          description: Stock ticker symbol
+        - name: form
+          in: query
+          schema:
+            type: string
+            enum: [10-K, 10-Q, 20-F, 40-F, 6-K, 8-K]
+          description: Filing form type
+        - name: filing_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Specific filing date
+        - name: concepts
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: XBRL concepts to filter (e.g., us-gaap:Assets)
+      responses:
+        '200':
+          description: Company facts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgarFactsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          description: EDGAR API unavailable
+
+  /ingestion/pbc/upload:
+    post:
+      tags: [Ingestion]
+      summary: Upload PBC document
+      description: |
+        Upload a document provided by client (PBC).
+
+        **Security**: Files scanned for malware before storage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - engagement_id
+                - file
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+                file:
+                  type: string
+                  format: binary
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PBCUploadResponse'
+
+  /ingestion/trial-balance/import:
+    post:
+      tags: [Ingestion]
+      summary: Import trial balance
+      description: Import trial balance from Excel or CSV file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - engagement_id
+                - file
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+                file:
+                  type: string
+                  format: binary
+                period_end_date:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Trial balance imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrialBalanceImportResponse'
+
+  # ========================================
+  # Normalization Service
+  # ========================================
+
+  /normalize/tb/map:
+    post:
+      tags: [Normalization]
+      summary: Map trial balance to taxonomy
+      description: |
+        Auto-map TB account codes to US-GAAP taxonomy concepts.
+
+        **Method**: ML-based similarity + firm COA mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trial_balance_id:
+                  type: string
+                  format: uuid
+                confidence_threshold:
+                  type: number
+                  format: float
+                  default: 0.7
+      responses:
+        '200':
+          description: Mapping complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mapped_lines:
+                    type: integer
+                  auto_mapped:
+                    type: integer
+                  manual_review_required:
+                    type: integer
+
+  # ========================================
+  # Analytics Service
+  # ========================================
+
+  /analytics/je/test:
+    post:
+      tags: [Analytics]
+      summary: Run journal entry tests
+      description: |
+        Execute analytics rules on journal entries:
+        - Round-dollar detection
+        - Weekend/holiday posting
+        - Period-end spikes
+        - Rare users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+                rules:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsResults'
+
+  # ========================================
+  # Disclosures Service
+  # ========================================
+
+  /disclosures/draft:
+    post:
+      tags: [Disclosures]
+      summary: Generate disclosure note draft
+      description: |
+        AI-powered disclosure drafting with RAG.
+
+        **Output**: Schema-constrained JSON with citations, confidence, contradictions
+
+        **Compliance**:
+        - PCAOB AS 1215: Model version and prompt version tracked
+        - AICPA SAS 142: Citations link to source evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - engagement_id
+                - section
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+                section:
+                  type: string
+                  description: Disclosure section code
+                context:
+                  type: object
+                  description: Additional context (TB data, facts)
+                prior_year_text:
+                  type: string
+                  description: Prior year disclosure for comparison
+      responses:
+        '200':
+          description: Disclosure draft generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDraft'
+
+  /disclosures/sections:
+    get:
+      tags: [Disclosures]
+      summary: List available disclosure sections
+      responses:
+        '200':
+          description: List of sections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type: string
+
+  # ========================================
+  # Engagement Service
+  # ========================================
+
+  /engagements:
+    get:
+      tags: [Engagement]
+      summary: List engagements
+      description: List engagements accessible to current user (RLS enforced)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, planning, fieldwork, review, finalized]
+        - name: client_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of engagements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  engagements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Engagement'
+    post:
+      tags: [Engagement]
+      summary: Create engagement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EngagementCreate'
+      responses:
+        '201':
+          description: Engagement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Engagement'
+
+  /engagements/{engagement_id}:
+    get:
+      tags: [Engagement]
+      summary: Get engagement details
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      responses:
+        '200':
+          description: Engagement details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Engagement'
+
+  /binder/{engagement_id}/tree:
+    get:
+      tags: [Engagement]
+      summary: Get binder tree structure
+      parameters:
+        - $ref: '#/components/parameters/EngagementId'
+      responses:
+        '200':
+          description: Binder tree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinderTree'
+
+  /binder/lock:
+    post:
+      tags: [Engagement]
+      summary: Lock binder (finalize engagement)
+      description: |
+        **CRITICAL**: Human-in-the-loop gate
+
+        Requirements:
+        - Partner e-signature
+        - All QC checks passed
+        - All blocking review notes cleared
+
+        **Output**:
+        - Immutable PDF written to WORM storage
+        - SHA-256 hash recorded
+        - 7-year retention policy applied
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - engagement_id
+                - signature_data
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+                signature_data:
+                  type: string
+                  description: Partner e-signature (PKI cert or DocuSign envelope)
+      responses:
+        '200':
+          description: Binder locked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinderLockResponse'
+        '403':
+          description: QC checks failed or signature invalid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  blocking_issues:
+                    type: array
+                    items:
+                      type: string
+
+  # ========================================
+  # QC Service
+  # ========================================
+
+  /qc/policy/check:
+    post:
+      tags: [QC]
+      summary: Run QC policy checks
+      description: |
+        Execute blocking/non-blocking policy checks:
+        - PCAOB AS 1215: Audit documentation complete
+        - AICPA SAS 142: Sufficient appropriate evidence
+        - AICPA SAS 145: Risk assessment documented
+        - Partner sign-off required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: QC check results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QCCheckResults'
+
+  # ========================================
+  # Connectors Service
+  # ========================================
+
+  /connectors/{vendor}/authorize:
+    post:
+      tags: [Connectors]
+      summary: Initiate OAuth2 authorization
+      parameters:
+        - name: vendor
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [qbo, netsuite, xero, sage, adp]
+      responses:
+        '200':
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url:
+                    type: string
+                    format: uri
+
+  /connectors/{vendor}/sync:
+    post:
+      tags: [Connectors]
+      summary: Trigger data sync
+      parameters:
+        - name: vendor
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                engagement_id:
+                  type: string
+                  format: uuid
+                sync_type:
+                  type: string
+                  enum: [full, incremental]
+      responses:
+        '202':
+          description: Sync job started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
+
+# ========================================
+# Components
+# ========================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.aura-audit.ai/oauth/authorize
+          tokenUrl: https://auth.aura-audit.ai/oauth/token
+          scopes:
+            read: Read access
+            write: Write access
+            admin: Admin access
+
+  parameters:
+    EngagementId:
+      name: engagement_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              detail:
+                type: string
+    Unauthorized:
+      description: Unauthorized
+    Forbidden:
+      description: Forbidden (insufficient permissions)
+
+  schemas:
+    # Ingestion
+    EdgarFactsResponse:
+      type: object
+      properties:
+        filing:
+          $ref: '#/components/schemas/FilingInfo'
+        facts:
+          type: array
+          items:
+            $ref: '#/components/schemas/FactItem'
+        total_facts:
+          type: integer
+
+    FilingInfo:
+      type: object
+      properties:
+        cik:
+          type: string
+        ticker:
+          type: string
+        company_name:
+          type: string
+        form:
+          type: string
+        filing_date:
+          type: string
+          format: date
+        source_uri:
+          type: string
+          format: uri
+
+    FactItem:
+      type: object
+      properties:
+        concept:
+          type: string
+        taxonomy:
+          type: string
+        value:
+          type: number
+        unit:
+          type: string
+        end_date:
+          type: string
+          format: date
+        instant_date:
+          type: string
+          format: date
+
+    PBCUploadResponse:
+      type: object
+      properties:
+        engagement_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        s3_uri:
+          type: string
+        size_bytes:
+          type: integer
+        content_type:
+          type: string
+
+    TrialBalanceImportResponse:
+      type: object
+      properties:
+        trial_balance_id:
+          type: string
+          format: uuid
+        lines_imported:
+          type: integer
+        total_debits:
+          type: number
+        total_credits:
+          type: number
+        validation_errors:
+          type: array
+          items:
+            type: string
+
+    # Analytics
+    AnalyticsResults:
+      type: object
+      properties:
+        engagement_id:
+          type: string
+          format: uuid
+        executed_at:
+          type: string
+          format: date-time
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Anomaly'
+
+    Anomaly:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        anomaly_type:
+          type: string
+        severity:
+          type: string
+          enum: [info, low, medium, high, critical]
+        title:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: object
+        score:
+          type: number
+
+    # Disclosures
+    NoteDraft:
+      type: object
+      properties:
+        section:
+          type: string
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteItem'
+        overall_confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        model_version:
+          type: string
+        prompt_version:
+          type: string
+        temperature:
+          type: number
+
+    NoteItem:
+      type: object
+      properties:
+        label:
+          type: string
+        text:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        contradictions:
+          type: array
+          items:
+            type: object
+
+    Citation:
+      type: object
+      properties:
+        source_type:
+          type: string
+        source_reference:
+          type: string
+        section:
+          type: string
+        excerpt:
+          type: string
+
+    # Engagement
+    Engagement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        engagement_type:
+          type: string
+          enum: [audit, review, compilation]
+        status:
+          type: string
+          enum: [draft, planning, fieldwork, review, finalized]
+        fiscal_year_end:
+          type: string
+          format: date
+        partner_id:
+          type: string
+          format: uuid
+        manager_id:
+          type: string
+          format: uuid
+
+    EngagementCreate:
+      type: object
+      required:
+        - client_id
+        - name
+        - engagement_type
+        - fiscal_year_end
+      properties:
+        client_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        engagement_type:
+          type: string
+        fiscal_year_end:
+          type: string
+          format: date
+
+    BinderTree:
+      type: object
+      properties:
+        engagement_id:
+          type: string
+          format: uuid
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BinderNode'
+
+    BinderNode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+        node_type:
+          type: string
+          enum: [folder, workpaper, evidence, note]
+        title:
+          type: string
+        status:
+          type: string
+          enum: [draft, prepared, reviewed, approved]
+
+    BinderLockResponse:
+      type: object
+      properties:
+        binder_version_id:
+          type: string
+          format: uuid
+        content_hash:
+          type: string
+          description: SHA-256 hash
+        worm_uri:
+          type: string
+          description: S3 Object Lock URI
+        locked_at:
+          type: string
+          format: date-time
+        retention_until:
+          type: string
+          format: date-time
+          description: 7 years from lock
+
+    # QC
+    QCCheckResults:
+      type: object
+      properties:
+        engagement_id:
+          type: string
+          format: uuid
+        executed_at:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              policy_code:
+                type: string
+              policy_name:
+                type: string
+              status:
+                type: string
+                enum: [passed, failed, waived]
+              is_blocking:
+                type: boolean
+              details:
+                type: string
+        can_lock_binder:
+          type: boolean
