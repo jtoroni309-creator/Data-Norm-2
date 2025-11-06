@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aura-audit-ai
+  labels:
+    name: aura-audit-ai
+    app.kubernetes.io/name: aura-audit-ai
+    app.kubernetes.io/managed-by: terraform

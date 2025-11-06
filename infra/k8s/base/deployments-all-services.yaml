@@ -1,0 +1,607 @@
+# All Aura Audit AI Service Deployments
+# This file contains deployments for all 10 microservices
+
+---
+# LLM Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm
+  namespace: aura-audit-ai
+  labels:
+    app: llm
+    component: api
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: llm
+  template:
+    metadata:
+      labels:
+        app: llm
+        component: api
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: llm
+        image: ${ACR_NAME}.azurecr.io/aura/llm:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: openai-api-key
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      nodeSelector:
+        workload: application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: llm
+---
+# Analytics Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics
+  namespace: aura-audit-ai
+  labels:
+    app: analytics
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: analytics
+  template:
+    metadata:
+      labels:
+        app: analytics
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: analytics
+        image: ${ACR_NAME}.azurecr.io/aura/analytics:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 3Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: analytics
+---
+# Normalize Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: normalize
+  namespace: aura-audit-ai
+  labels:
+    app: normalize
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: normalize
+  template:
+    metadata:
+      labels:
+        app: normalize
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: normalize
+        image: ${ACR_NAME}.azurecr.io/aura/normalize:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: normalize
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: normalize
+---
+# Ingestion Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+  namespace: aura-audit-ai
+  labels:
+    app: ingestion
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ingestion
+  template:
+    metadata:
+      labels:
+        app: ingestion
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: ingestion
+        image: ${ACR_NAME}.azurecr.io/aura/ingestion:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: ingestion
+---
+# Engagement Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engagement
+  namespace: aura-audit-ai
+  labels:
+    app: engagement
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: engagement
+  template:
+    metadata:
+      labels:
+        app: engagement
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: engagement
+        image: ${ACR_NAME}.azurecr.io/aura/engagement:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: engagement
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: engagement
+---
+# Disclosures Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: disclosures
+  namespace: aura-audit-ai
+  labels:
+    app: disclosures
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: disclosures
+  template:
+    metadata:
+      labels:
+        app: disclosures
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: disclosures
+        image: ${ACR_NAME}.azurecr.io/aura/disclosures:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: disclosures
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: disclosures
+---
+# Reporting Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting
+  namespace: aura-audit-ai
+  labels:
+    app: reporting
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: reporting
+  template:
+    metadata:
+      labels:
+        app: reporting
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: reporting
+        image: ${ACR_NAME}.azurecr.io/aura/reporting:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporting
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: reporting
+---
+# QC Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qc
+  namespace: aura-audit-ai
+  labels:
+    app: qc
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: qc
+  template:
+    metadata:
+      labels:
+        app: qc
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: qc
+        image: ${ACR_NAME}.azurecr.io/aura/qc:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qc
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: qc
+---
+# Connectors Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectors
+  namespace: aura-audit-ai
+  labels:
+    app: connectors
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: connectors
+  template:
+    metadata:
+      labels:
+        app: connectors
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: connectors
+        image: ${ACR_NAME}.azurecr.io/aura/connectors:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connectors
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: connectors
