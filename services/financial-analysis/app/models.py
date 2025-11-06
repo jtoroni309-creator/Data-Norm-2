@@ -49,13 +49,35 @@ class FinancialStatementType(str, Enum):
     COMPREHENSIVE_INCOME = "comprehensive_income"
 
 
+class EngagementType(str, Enum):
+    """Type of financial statement engagement"""
+    AUDIT = "audit"  # GAAS - Reasonable assurance
+    REVIEW = "review"  # SSARS AR-C 90 - Limited assurance
+    COMPILATION = "compilation"  # SSARS AR-C 80 - No assurance
+
+
 class AuditOpinion(str, Enum):
-    """Type of audit opinion"""
+    """Type of audit opinion (for audit engagements)"""
     UNMODIFIED = "unmodified"  # Clean opinion
     QUALIFIED = "qualified"  # Exception noted
     ADVERSE = "adverse"  # Material misstatement
     DISCLAIMER = "disclaimer"  # Unable to obtain sufficient evidence
     GOING_CONCERN = "going_concern"  # Substantial doubt about going concern
+
+
+class ReviewConclusion(str, Enum):
+    """Type of review conclusion (for review engagements)"""
+    UNMODIFIED = "unmodified"  # No material modifications needed
+    MODIFIED = "modified"  # Material modifications needed
+    ADVERSE = "adverse"  # Departures from framework
+    WITHDRAWAL = "withdrawal"  # Unable to complete
+
+
+class CompilationReport(str, Enum):
+    """Type of compilation report (for compilation engagements)"""
+    STANDARD = "standard"  # No assurance provided
+    WITH_DISCLOSURES = "with_disclosures"  # Full GAAP disclosures
+    OMIT_DISCLOSURES = "omit_disclosures"  # Substantially all disclosures omitted
 
 
 class RiskLevel(str, Enum):
@@ -867,3 +889,198 @@ class DisclosureComplianceCheck(Base):
     # Relationships
     disclosure_note = relationship("DisclosureNote", back_populates="compliance_checks")
     generated_disclosure = relationship("GeneratedDisclosure", back_populates="compliance_checks")
+
+
+class Engagement(Base):
+    """
+    Financial statement engagement (Audit, Review, or Compilation).
+
+    Tracks the complete lifecycle of an engagement following GAAS/SSARS standards.
+    """
+    __tablename__ = "engagements"
+    __table_args__ = (
+        Index("idx_engagement_company", "company_id"),
+        Index("idx_engagement_type", "engagement_type"),
+        Index("idx_engagement_status", "status"),
+        Index("idx_engagement_partner", "engagement_partner_id"),
+        {"schema": "financial_analysis"}
+    )
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    company_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_analysis.companies.id"),
+        nullable=False
+    )
+
+    # Engagement identification
+    engagement_number = Column(String(50), unique=True, nullable=False)
+    engagement_name = Column(String(500), nullable=False)
+    engagement_type = Column(SQLEnum(EngagementType), nullable=False)
+
+    # Period covered
+    period_start = Column(DateTime(timezone=True), nullable=False)
+    period_end = Column(DateTime(timezone=True), nullable=False)
+    fiscal_year = Column(Integer, nullable=False)
+    fiscal_quarter = Column(Integer)  # NULL for annual
+
+    # Engagement team
+    engagement_partner_id = Column(PGUUID(as_uuid=True), nullable=False)
+    engagement_manager_id = Column(PGUUID(as_uuid=True))
+    engagement_staff = Column(JSONB)  # List of staff assigned
+
+    # Client information
+    client_contact_id = Column(PGUUID(as_uuid=True))
+    client_authorized_signers = Column(JSONB)
+
+    # Engagement status
+    status = Column(String(50), default="planning")
+    # Statuses: planning, fieldwork, review, complete, issued
+
+    # Independence (required for audit and review)
+    independence_confirmed = Column(Boolean, default=False)
+    independence_date = Column(DateTime(timezone=True))
+    independence_documentation = Column(Text)
+    independence_threats = Column(JSONB)  # Identified threats and safeguards
+
+    # Engagement letter
+    engagement_letter_sent = Column(Boolean, default=False)
+    engagement_letter_signed = Column(Boolean, default=False)
+    engagement_letter_date = Column(DateTime(timezone=True))
+    engagement_letter_path = Column(String(500))
+
+    # Understanding of entity (required for review)
+    industry_knowledge = Column(JSONB)
+    accounting_policies_understanding = Column(Text)
+    significant_transactions = Column(JSONB)
+
+    # Materiality (required for review, optional for compilation)
+    materiality_determined = Column(Boolean, default=False)
+    overall_materiality = Column(Numeric(20, 2))
+    performance_materiality = Column(Numeric(20, 2))
+    materiality_basis = Column(String(100))
+
+    # Management representations
+    representation_letter_required = Column(Boolean, default=False)
+    representation_letter_obtained = Column(Boolean, default=False)
+    representation_letter_date = Column(DateTime(timezone=True))
+    representation_letter_path = Column(String(500))
+
+    # Procedures performed
+    procedures_performed = Column(JSONB)  # List of procedures
+    # For Review: analytical procedures, inquiries
+    # For Audit: tests of controls, substantive procedures
+    # For Compilation: read financial statements
+
+    # Work papers
+    workpaper_path = Column(String(500))
+    workpaper_completion_date = Column(DateTime(timezone=True))
+
+    # Quality control
+    engagement_quality_review = Column(Boolean, default=False)
+    reviewer_id = Column(PGUUID(as_uuid=True))
+    review_date = Column(DateTime(timezone=True))
+    review_notes = Column(Text)
+    review_issues = Column(JSONB)
+
+    # Peer review ready
+    peer_review_ready = Column(Boolean, default=False)
+    peer_review_deficiencies = Column(JSONB)
+
+    # Final deliverables
+    report_type = Column(String(100))
+    report_date = Column(DateTime(timezone=True))
+    report_path = Column(String(500))
+
+    # For Audit
+    audit_opinion = Column(SQLEnum(AuditOpinion))
+
+    # For Review
+    review_conclusion = Column(SQLEnum(ReviewConclusion))
+    modifications_noted = Column(JSONB)
+
+    # For Compilation
+    compilation_report_type = Column(SQLEnum(CompilationReport))
+    disclosures_omitted = Column(Boolean, default=False)
+
+    # Subsequent events
+    subsequent_events_date = Column(DateTime(timezone=True))
+    subsequent_events = Column(JSONB)
+
+    # Billing and admin
+    estimated_hours = Column(Float)
+    actual_hours = Column(Float)
+    billing_status = Column(String(50))
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True))
+    issued_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    company = relationship("Company")
+    review_procedures = relationship("ReviewProcedure", back_populates="engagement")
+
+
+class ReviewProcedure(Base):
+    """
+    Individual review procedure performed (AR-C 90).
+
+    Tracks inquiries and analytical procedures for review engagements.
+    """
+    __tablename__ = "review_procedures"
+    __table_args__ = (
+        Index("idx_review_engagement", "engagement_id"),
+        Index("idx_review_type", "procedure_type"),
+        {"schema": "financial_analysis"}
+    )
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    engagement_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_analysis.engagements.id"),
+        nullable=False
+    )
+
+    # Procedure details
+    procedure_number = Column(String(50))
+    procedure_type = Column(String(100), nullable=False)
+    # Types: "analytical_procedure", "inquiry", "other_procedure"
+
+    # For Analytical Procedures
+    account_analyzed = Column(String(200))
+    expectation_developed = Column(Text)
+    comparison_data = Column(JSONB)  # Prior period, budget, industry
+    threshold_percentage = Column(Float)  # Significant difference threshold
+    variance_identified = Column(Boolean, default=False)
+    variance_explanation = Column(Text)
+    variance_resolution = Column(String(100))  # "accepted", "requires_modification"
+
+    # For Inquiries
+    inquiry_of = Column(String(200))  # Who was asked
+    inquiry_question = Column(Text)
+    inquiry_response = Column(Text)
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_notes = Column(Text)
+
+    # Results
+    procedure_result = Column(String(50))  # "satisfactory", "exception_noted"
+    exception_description = Column(Text)
+    impact_on_conclusion = Column(String(100))
+
+    # Supporting documentation
+    workpaper_reference = Column(String(200))
+    documentation_path = Column(String(500))
+
+    # Performer
+    performed_by = Column(PGUUID(as_uuid=True))
+    performed_date = Column(DateTime(timezone=True))
+    reviewed_by = Column(PGUUID(as_uuid=True))
+    reviewed_date = Column(DateTime(timezone=True))
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    engagement = relationship("Engagement", back_populates="review_procedures")
