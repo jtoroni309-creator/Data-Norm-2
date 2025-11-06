@@ -672,7 +672,34 @@ async def create_invitation(
 
     logger.info(f"Invitation created for {invitation.email} by {current_user.email}")
 
-    # TODO: Send invitation email with token
+    # Send invitation email
+    try:
+        from .email_service import get_email_service
+
+        # Get organization name
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == current_user.organization_id)
+        )
+        organization = org_result.scalar_one()
+
+        email_service = get_email_service()
+        email_sent = await email_service.send_invitation_email(
+            to_email=invitation.email,
+            to_name=invitation.email.split('@')[0],  # Use email prefix as fallback name
+            invitation_token=token,
+            invited_by=current_user.full_name or current_user.email,
+            organization_name=organization.name,
+            role=invitation.role.value
+        )
+
+        if email_sent:
+            logger.info(f"Invitation email sent successfully to {invitation.email}")
+        else:
+            logger.warning(f"Failed to send invitation email to {invitation.email}")
+
+    except Exception as e:
+        # Log error but don't fail the invitation creation
+        logger.error(f"Error sending invitation email to {invitation.email}: {e}")
 
     return UserInvitationResponse.model_validate(invitation)
 
