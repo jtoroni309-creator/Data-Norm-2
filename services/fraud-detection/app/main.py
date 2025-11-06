@@ -17,7 +17,7 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
-from .database import get_db
+from .database import get_db, AsyncSessionLocal
 from .ml_fraud_detector import ml_fraud_detector
 from .models import (
     AlertStatus,
@@ -84,7 +84,34 @@ app.add_middleware(
 )
 
 # Encryption cipher for sensitive data
-cipher = Fernet(settings.ENCRYPTION_KEY.encode()[:32].ljust(32, b'='))
+# Use proper key derivation for Fernet encryption
+import base64
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.backends import default_backend
+
+def get_encryption_cipher() -> Fernet:
+    """
+    Create a Fernet cipher with properly derived key.
+
+    Uses PBKDF2 key derivation function to convert the encryption key
+    into a proper 32-byte key suitable for Fernet encryption.
+
+    Returns:
+        Fernet cipher instance with properly derived key
+    """
+    # Use PBKDF2 to derive a proper 32-byte key from the encryption key
+    kdf = PBKDF2(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b'aura_audit_ai_salt_v1',  # Static salt for deterministic key derivation
+        iterations=100000,
+        backend=default_backend()
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(settings.ENCRYPTION_KEY.encode()))
+    return Fernet(key)
+
+cipher = get_encryption_cipher()
 
 
 # ============================================================================
@@ -1277,9 +1304,6 @@ async def create_fraud_case_from_transaction(
 
     return fraud_case
 
-
-# Make session factory available for background tasks
-from .database import AsyncSessionLocal
 
 if __name__ == "__main__":
     import uvicorn
