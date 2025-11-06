@@ -1,0 +1,75 @@
+# OpenAPI Metadata Configuration
+# This file contains global metadata for the combined API specification
+
+info:
+  title: "Aura Audit AI - Unified API"
+  description: |
+    Enterprise-grade audit platform API for CPA firms.
+
+    **Compliance**: PCAOB AS 1000/1215, AICPA SAS 142/145, SEC 17 CFR 210.2-06
+
+    **Security**: OIDC/OAuth2 authentication, RBAC authorization, engagement-level RLS
+
+    **Architecture**: Microservices architecture with 25+ specialized services
+
+    **Key Features**:
+    - EDGAR/XBRL ingestion and normalization
+    - Trial balance import and mapping
+    - Journal entry testing and anomaly detection
+    - AI-powered disclosure drafting with citations
+    - Cloud binder with immutable versioning
+    - QC gates and partner e-signature
+    - WORM storage with 7-year retention
+    - SOC 2 Type II compliant security
+    - Multi-tenant with row-level security
+
+    **Services**:
+    - **Identity**: Authentication, authorization, user management
+    - **Ingestion**: EDGAR/XBRL fetching, PBC uploads
+    - **Normalize**: Taxonomy mapping, COA alignment
+    - **Analytics**: Journal entry testing, ratio analysis, anomaly detection
+    - **LLM**: AI-powered analysis and disclosure generation
+    - **Engagement**: Workpaper management, binder operations
+    - **Disclosures**: Note drafting with citations
+    - **Reporting**: PDF assembly, e-signature
+    - **QC**: Quality control gates, compliance checks
+    - **Connectors**: ERP/payroll integrations
+    - **Security**: Encryption, key management, audit logging
+    - **Reg AB Audit**: CMBS loan compliance auditing
+
+  version: "1.0.0"
+  contact:
+    name: "Aura Audit AI Support"
+    email: "support@aura-audit.ai"
+    url: "https://aura-audit.ai/support"
+  license:
+    name: "Proprietary"
+  termsOfService: "https://aura-audit.ai/terms"
+
+servers:
+  - url: "http://localhost:8000"
+    description: "Local development"
+    variables:
+      port:
+        default: "8000"
+        description: "API Gateway port"
+
+  - url: "https://api-dev.aura-audit.ai"
+    description: "Development environment"
+
+  - url: "https://api-staging.aura-audit.ai"
+    description: "Staging environment"
+
+  - url: "https://api.aura-audit.ai"
+    description: "Production environment"
+
+security:
+  - bearerAuth: []
+  - oauth2:
+      - read
+      - write
+      - admin
+
+externalDocs:
+  description: "Aura Audit AI Documentation"
+  url: "https://docs.aura-audit.ai"
