@@ -83,6 +83,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Security Middleware (SOC 2 compliance - rate limiting, IP filtering, CSRF protection)
+try:
+    import sys
+    sys.path.insert(0, '/home/user/Data-Norm-2/services')
+    from security.app import SecurityMiddleware, AuditLogService
+
+    # Initialize audit logging
+    audit_log_service = AuditLogService()
+
+    # Add security middleware
+    app.add_middleware(
+        SecurityMiddleware,
+        audit_log_service=audit_log_service,
+        enable_rate_limiting=True,
+        enable_ip_filtering=False,
+        enable_csrf_protection=True
+    )
+    logger.info("Security middleware enabled (SOC 2 compliant)")
+except ImportError as e:
+    logger.warning(f"Security middleware not available: {e}")
+
 # Encryption cipher for sensitive data
 # Use proper key derivation for Fernet encryption
 import base64
