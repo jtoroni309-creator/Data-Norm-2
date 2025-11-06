@@ -202,6 +202,35 @@ services:
     networks:
       - atlas-network
 
+  api-reg-ab-audit:
+    build:
+      context: ./services/reg-ab-audit
+      dockerfile: Dockerfile
+    container_name: atlas-api-reg-ab-audit
+    environment:
+      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-placeholder}
+      - AI_MODEL_VERSION=gpt-4-turbo
+      - STORAGE_ENDPOINT=http://minio:9000
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=minio123
+      - STORAGE_BUCKET=reg-ab-audit
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+    ports:
+      - "8011:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./services/reg-ab-audit:/app:ro
+    networks:
+      - atlas-network
+
   api-reporting:
     build:
       context: ./services/reporting
