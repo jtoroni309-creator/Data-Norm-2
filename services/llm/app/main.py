@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
@@ -264,7 +264,7 @@ async def update_knowledge_document(
     if content_updated:
         # Delete old chunks
         await db.execute(
-            select(DocumentChunk).where(DocumentChunk.document_id == document_id)
+            delete(DocumentChunk).where(DocumentChunk.document_id == document_id)
         )
         await db.commit()
 
