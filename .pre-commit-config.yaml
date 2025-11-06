@@ -1,0 +1,295 @@
+# Pre-commit hooks for Aura Audit AI
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_language_version:
+  python: python3.11
+  node: 18.x
+
+repos:
+  # ============================================================================
+  # GENERAL FILE CHECKS
+  # ============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # File formatting
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: mixed-line-ending
+        name: Fix mixed line endings
+        args: [--fix=lf]
+
+      # JSON/YAML validation
+      - id: check-json
+        name: Check JSON syntax
+      - id: check-yaml
+        name: Check YAML syntax
+        args: [--allow-multiple-documents]
+      - id: check-toml
+        name: Check TOML syntax
+
+      # Security checks
+      - id: check-added-large-files
+        name: Check for large files
+        args: [--maxkb=1000]
+      - id: detect-private-key
+        name: Detect private keys
+      - id: detect-aws-credentials
+        name: Detect AWS credentials
+        args: [--allow-missing-credentials]
+
+      # Code quality
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-case-conflict
+        name: Check for case conflicts
+      - id: check-docstring-first
+        name: Check docstring is first
+      - id: check-executables-have-shebangs
+        name: Check executables have shebangs
+      - id: check-shebang-scripts-are-executable
+        name: Check shebang scripts are executable
+
+      # Python-specific
+      - id: debug-statements
+        name: Check for debugger imports
+      - id: name-tests-test
+        name: Check test naming
+        args: [--pytest-test-first]
+
+  # ============================================================================
+  # PYTHON: CODE FORMATTING
+  # ============================================================================
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        name: Format Python code with Black
+        language_version: python3.11
+        args: [--line-length=100]
+        files: ^services/.*\.py$
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Sort Python imports with isort
+        args: [--profile=black, --line-length=100]
+        files: ^services/.*\.py$
+
+  # ============================================================================
+  # PYTHON: LINTING
+  # ============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.1
+    hooks:
+      - id: ruff
+        name: Lint Python code with Ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^services/.*\.py$
+
+  # ============================================================================
+  # PYTHON: TYPE CHECKING
+  # ============================================================================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: Type check Python code with Mypy
+        additional_dependencies:
+          - pydantic>=2.5.0
+          - sqlalchemy>=2.0.0
+          - types-redis
+        args: [--ignore-missing-imports, --show-error-codes]
+        files: ^services/.*\.py$
+        exclude: ^services/.*/tests/.*$
+
+  # ============================================================================
+  # PYTHON: SECURITY CHECKS
+  # ============================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        name: Security check with Bandit
+        args: [-c, pyproject.toml, -r, services/, -ll, -i]
+        additional_dependencies: ["bandit[toml]"]
+        files: ^services/.*\.py$
+        exclude: ^services/.*/tests/.*$
+
+  # ============================================================================
+  # JAVASCRIPT/TYPESCRIPT: CODE FORMATTING
+  # ============================================================================
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: Format JS/TS with Prettier
+        types_or: [javascript, jsx, ts, tsx, json, yaml, markdown]
+        files: ^(frontend|admin-portal|client-portal)/.*\.(js|jsx|ts|tsx|json|yml|yaml|md)$
+        args: [--write, --ignore-unknown]
+
+  # ============================================================================
+  # JAVASCRIPT/TYPESCRIPT: LINTING
+  # ============================================================================
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.0.0-beta.0
+    hooks:
+      - id: eslint
+        name: Lint JS/TS with ESLint
+        files: ^(frontend|admin-portal|client-portal)/.*\.(js|jsx|ts|tsx)$
+        args: [--fix, --max-warnings=0]
+        additional_dependencies:
+          - eslint@8.56.0
+          - eslint-config-next@14.1.0
+          - "@typescript-eslint/parser@6.19.0"
+          - "@typescript-eslint/eslint-plugin@6.19.0"
+
+  # ============================================================================
+  # DOCKERFILE LINTING
+  # ============================================================================
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfiles
+        args: [--ignore, DL3008, --ignore, DL3009]
+
+  # ============================================================================
+  # SECRET SCANNING
+  # ============================================================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: package-lock.json
+
+  # ============================================================================
+  # COMMIT MESSAGE VALIDATION
+  # ============================================================================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.13.0
+    hooks:
+      - id: commitizen
+        name: Check commit message format
+        stages: [commit-msg]
+
+  # ============================================================================
+  # SQL FORMATTING
+  # ============================================================================
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.0.0
+    hooks:
+      - id: sqlfluff-lint
+        name: Lint SQL files
+        files: ^db/migrations/.*\.sql$
+        args: [--dialect, postgres]
+
+  # ============================================================================
+  # SHELL SCRIPT LINTING
+  # ============================================================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        name: Lint shell scripts
+        args: [-e, SC1091]
+
+  # ============================================================================
+  # MARKDOWN LINTING
+  # ============================================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        name: Lint Markdown files
+        args: [--fix]
+        files: \.md$
+
+  # ============================================================================
+  # CUSTOM HOOKS
+  # ============================================================================
+  - repo: local
+    hooks:
+      # Python tests for critical services
+      - id: pytest-security
+        name: Run security service tests
+        entry: bash -c 'cd services/security && pytest tests/ -q --tb=line || true'
+        language: system
+        pass_filenames: false
+        files: ^services/security/.*\.py$
+        stages: [push]
+
+      - id: pytest-changed-services
+        name: Run tests for changed services
+        entry: bash -c 'for dir in $(git diff --cached --name-only | grep "^services/" | cut -d/ -f2 | sort -u); do if [ -d "services/$dir/tests" ]; then echo "Testing $dir..."; (cd "services/$dir" && pytest tests/ -q --tb=line || true); fi; done'
+        language: system
+        pass_filenames: false
+        files: ^services/.*\.py$
+        stages: [commit]
+
+      # Check for TODO/FIXME/XXX comments
+      - id: check-todos
+        name: Check for TODO/FIXME comments
+        entry: bash -c 'git diff --cached --name-only | xargs grep -n "TODO\|FIXME\|XXX" || true'
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        verbose: true
+
+      # Ensure .env.example is updated when .env is modified
+      - id: check-env-example
+        name: Check .env.example updates
+        entry: bash -c 'if git diff --cached --name-only | grep -q "\.env$" && ! git diff --cached --name-only | grep -q "\.env\.example$"; then echo "Warning: .env changed but .env.example not updated"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+
+      # Check for console.log in production code
+      - id: no-console-log
+        name: Check for console.log statements
+        entry: bash -c 'git diff --cached --name-only | grep -E "\.(ts|tsx|js|jsx)$" | grep -v "\.test\." | xargs grep -n "console\.log" && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
+        files: ^(frontend|admin-portal|client-portal)/.*\.(ts|tsx|js|jsx)$
+        exclude: \.test\.(ts|tsx|js|jsx)$
+        stages: [commit]
+
+      # Check for debugger statements
+      - id: no-debugger
+        name: Check for debugger statements
+        entry: bash -c 'git diff --cached --name-only | grep -E "\.(ts|tsx|js|jsx)$" | xargs grep -n "debugger" && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
+        files: ^(frontend|admin-portal|client-portal)/.*\.(ts|tsx|js|jsx)$
+        stages: [commit]
+
+      # Ensure TypeScript files have corresponding test files
+      - id: check-test-coverage-files
+        name: Check test file existence
+        entry: bash -c 'for file in $(git diff --cached --name-only | grep -E "^services/.*/app/.*\.py$" | grep -v test_ | grep -v __init__); do testfile=$(echo $file | sed "s|/app/|/tests/unit/test_|"); if [ ! -f "$testfile" ]; then echo "Missing test: $testfile for $file"; fi; done'
+        language: system
+        pass_filenames: false
+        files: ^services/.*/app/.*\.py$
+        stages: [commit]
+        verbose: true
+
+# CI-specific configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [pytest-security, pytest-changed-services]
+  submodules: false

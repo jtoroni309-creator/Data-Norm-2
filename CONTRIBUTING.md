@@ -63,13 +63,21 @@ By participating in this project, you agree to:
    cd ../client-portal && npm install
    ```
 
-6. **Run database migrations**
+6. **Set up pre-commit hooks** (IMPORTANT)
+   ```bash
+   ./setup-pre-commit.sh
+   ```
+
+   This installs automated code quality checks that run before each commit.
+   See [PRE_COMMIT_HOOKS.md](PRE_COMMIT_HOOKS.md) for details.
+
+7. **Run database migrations**
    ```bash
    psql -U postgres -d aura_audit -f db/migrations/0001_init.sql
    psql -U postgres -d aura_audit -f db/migrations/0002_reg_ab_audit.sql
    ```
 
-7. **Verify setup**
+8. **Verify setup**
    ```bash
    ./demo_platform.sh
    ```
@@ -120,6 +128,55 @@ By participating in this project, you agree to:
    ```bash
    git push origin feature/your-feature-name
    ```
+
+## Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality and consistency. These hooks run automatically before each commit.
+
+### What Hooks Do We Use?
+
+- **Code Formatting**: Black (Python), Prettier (JS/TS)
+- **Linting**: Ruff (Python), ESLint (JS/TS)
+- **Type Checking**: Mypy (Python)
+- **Security**: Bandit, detect-secrets
+- **Testing**: Automated test running for changed services
+- **Commit Messages**: Conventional commits validation
+
+### Setup
+
+Run once after cloning:
+```bash
+./setup-pre-commit.sh
+```
+
+### Usage
+
+Hooks run automatically:
+```bash
+git commit -m "feat: add new feature"
+# Hooks run automatically before commit
+```
+
+Run manually:
+```bash
+pre-commit run --all-files
+```
+
+Skip hooks (not recommended):
+```bash
+git commit --no-verify -m "message"
+```
+
+### Troubleshooting
+
+If a hook fails:
+1. Read the error message
+2. Fix the issue
+3. Re-commit
+
+Most formatting hooks auto-fix files - just re-commit after they run.
+
+**Full documentation:** [PRE_COMMIT_HOOKS.md](PRE_COMMIT_HOOKS.md)
 
 ## Coding Standards
 

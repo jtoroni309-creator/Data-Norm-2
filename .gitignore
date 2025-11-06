@@ -29,6 +29,12 @@ htmlcov/
 .dmypy.json
 dmypy.json
 .ruff_cache/
+venv/
+env/
+ENV/
+
+# Pre-commit
+.pre-commit-cache/
 
 # Node / React
 node_modules/
