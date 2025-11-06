@@ -332,7 +332,7 @@ services:
       - db
       - redis
     volumes:
-      - ./orchestration/dags:/opt/airflow/dags:ro
+      - ./services/disclosures/web/orchestration/dags:/opt/airflow/dags:ro
       - airflow_logs:/opt/airflow/logs
     command: webserver
     healthcheck:
@@ -356,7 +356,7 @@ services:
       - db
       - redis
     volumes:
-      - ./orchestration/dags:/opt/airflow/dags:ro
+      - ./services/disclosures/web/orchestration/dags:/opt/airflow/dags:ro
       - airflow_logs:/opt/airflow/logs
     command: scheduler
     networks:
@@ -368,15 +368,15 @@ services:
 
   web:
     build:
-      context: ./web
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: atlas-web
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     volumes:
-      - ./web:/app:ro
+      - ./frontend:/app:ro
       - /app/node_modules
     networks:
       - atlas-network
