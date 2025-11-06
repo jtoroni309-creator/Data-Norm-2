@@ -1,0 +1,48 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#d946ef;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0ea5e9;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0f2fe;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+
+  <!-- Pattern overlay -->
+  <circle cx="100" cy="100" r="150" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="1100" cy="530" r="150" fill="rgba(255,255,255,0.1)"/>
+
+  <!-- Logo -->
+  <rect x="80" y="80" width="80" height="80" rx="16" fill="white" opacity="0.2"/>
+  <text x="120" y="145" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">A</text>
+
+  <!-- Main text -->
+  <text x="600" y="250" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">Aura Audit AI</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="330" font-family="Arial, sans-serif" font-size="36" fill="rgba(255,255,255,0.9)" text-anchor="middle">Intelligent Audit Automation</text>
+
+  <!-- Tagline -->
+  <text x="600" y="400" font-family="Arial, sans-serif" font-size="28" fill="rgba(255,255,255,0.8)" text-anchor="middle">30-50% Faster Audits • AI-Powered • PCAOB Compliant</text>
+
+  <!-- Stats -->
+  <g transform="translate(300, 480)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">500+</text>
+    <text x="0" y="35" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">CPA Firms</text>
+  </g>
+  <g transform="translate(550, 480)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">10K+</text>
+    <text x="0" y="35" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">Audits</text>
+  </g>
+  <g transform="translate(750, 480)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">99.9%</text>
+    <text x="0" y="35" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">Accuracy</text>
+  </g>
+</svg>
