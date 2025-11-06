@@ -59,18 +59,57 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
-addopts = "-v --tb=short --strict-markers"
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--cov=services",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=70",
+]
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
     "e2e: marks tests as end-to-end tests",
+    "unit: marks tests as unit tests",
 ]
 
 [tool.coverage.run]
 source = ["services"]
-omit = ["*/tests/*", "*/test_*.py"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/virtualenv/*",
+    "*/.tox/*",
+    "*/migrations/*",
+    "*/config.py",
+    "*/database.py",
+]
+branch = true
+parallel = true
 
 [tool.coverage.report]
 precision = 2
 show_missing = true
 skip_covered = false
+fail_under = 70
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\(Protocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
