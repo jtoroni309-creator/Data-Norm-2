@@ -146,16 +146,19 @@ export const api = {
 
   // Normalize (Account Mapping)
   normalize: {
-    generateSuggestions: (engagementId: string, options?: any) =>
-      api.post(`/normalize/engagements/${engagementId}/map`, options),
+    mappings: {
+      list: (engagementId: string) =>
+        api.get(`/normalize/engagements/${engagementId}/suggestions`),
 
-    listSuggestions: (engagementId: string, status?: string) =>
-      api.get(`/normalize/engagements/${engagementId}/suggestions`, {
-        params: { status },
-      }),
+      generate: (engagementId: string) =>
+        api.post(`/normalize/engagements/${engagementId}/map`),
 
-    confirmSuggestion: (suggestionId: string, action: string, data?: any) =>
-      api.patch(`/normalize/suggestions/${suggestionId}`, { action, ...data }),
+      update: (suggestionId: string, data: any) =>
+        api.patch(`/normalize/suggestions/${suggestionId}`, data),
+
+      batch: (data: any) =>
+        api.post('/normalize/suggestions/batch', data),
+    },
 
     findSimilar: (accountName: string, topK: number = 5) =>
       api.post('/normalize/similarity', { account_name: accountName, top_k: topK }),
@@ -163,14 +166,116 @@ export const api = {
 
   // QC (Quality Control)
   qc: {
-    runChecks: (engagementId: string, policies?: string[]) =>
-      api.post(`/qc/engagements/${engagementId}/run`, { policies }),
+    policies: {
+      list: () => api.get('/qc/policies'),
+      get: (policyId: string) => api.get(`/qc/policies/${policyId}`),
+    },
 
-    getResults: (engagementId: string) =>
-      api.get(`/qc/engagements/${engagementId}/results`),
+    results: {
+      list: (engagementId: string) =>
+        api.get(`/qc/engagements/${engagementId}/results`),
+      get: (resultId: string) => api.get(`/qc/results/${resultId}`),
+    },
 
-    getResult: (resultId: string) =>
-      api.get(`/qc/results/${resultId}`),
+    execute: (engagementId: string, data: any) =>
+      api.post(`/qc/engagements/${engagementId}/run`, data),
+  },
+
+  // Admin Portal
+  admin: {
+    // Customers
+    customers: {
+      list: (params?: any) => api.get('/admin/customers', { params }),
+      get: (customerId: string) => api.get(`/admin/customers/${customerId}`),
+      create: (data: any) => api.post('/admin/customers', data),
+      update: (customerId: string, data: any) =>
+        api.put(`/admin/customers/${customerId}`, data),
+      delete: (customerId: string) => api.delete(`/admin/customers/${customerId}`),
+      suspend: (customerId: string) =>
+        api.post(`/admin/customers/${customerId}/suspend`),
+      activate: (customerId: string) =>
+        api.post(`/admin/customers/${customerId}/activate`),
+    },
+
+    // Licenses
+    licenses: {
+      list: (customerId?: string) =>
+        api.get('/admin/licenses', { params: { customer_id: customerId } }),
+      get: (licenseId: string) => api.get(`/admin/licenses/${licenseId}`),
+      create: (data: any) => api.post('/admin/licenses', data),
+      update: (licenseId: string, data: any) =>
+        api.put(`/admin/licenses/${licenseId}`, data),
+      cancel: (licenseId: string) =>
+        api.post(`/admin/licenses/${licenseId}/cancel`),
+      renew: (licenseId: string, data: any) =>
+        api.post(`/admin/licenses/${licenseId}/renew`, data),
+    },
+
+    // Usage Metrics
+    usage: {
+      getByCustomer: (customerId: string, params?: any) =>
+        api.get(`/admin/customers/${customerId}/usage`, { params }),
+      getAll: (params?: any) => api.get('/admin/usage', { params }),
+      export: (params?: any) =>
+        api.get('/admin/usage/export', { params, responseType: 'blob' }),
+    },
+
+    // Metrics & Analytics
+    metrics: {
+      overview: () => api.get('/admin/metrics/overview'),
+      revenue: (params?: any) => api.get('/admin/metrics/revenue', { params }),
+      growth: (params?: any) => api.get('/admin/metrics/growth', { params }),
+      churn: (params?: any) => api.get('/admin/metrics/churn', { params }),
+    },
+
+    // Activity Logs
+    activity: {
+      list: (customerId?: string, params?: any) =>
+        api.get('/admin/activity', { params: { customer_id: customerId, ...params } }),
+      export: (params?: any) =>
+        api.get('/admin/activity/export', { params, responseType: 'blob' }),
+    },
+
+    // Invoices
+    invoices: {
+      list: (customerId?: string) =>
+        api.get('/admin/invoices', { params: { customer_id: customerId } }),
+      get: (invoiceId: string) => api.get(`/admin/invoices/${invoiceId}`),
+      create: (data: any) => api.post('/admin/invoices', data),
+      send: (invoiceId: string) => api.post(`/admin/invoices/${invoiceId}/send`),
+      markPaid: (invoiceId: string, data: any) =>
+        api.post(`/admin/invoices/${invoiceId}/mark-paid`, data),
+    },
+
+    // Support Tickets
+    tickets: {
+      list: (params?: any) => api.get('/admin/tickets', { params }),
+      get: (ticketId: string) => api.get(`/admin/tickets/${ticketId}`),
+      update: (ticketId: string, data: any) =>
+        api.put(`/admin/tickets/${ticketId}`, data),
+      assign: (ticketId: string, userId: string) =>
+        api.post(`/admin/tickets/${ticketId}/assign`, { user_id: userId }),
+      resolve: (ticketId: string, data: any) =>
+        api.post(`/admin/tickets/${ticketId}/resolve`, data),
+    },
+
+    // Customer Settings
+    settings: {
+      get: (customerId: string) =>
+        api.get(`/admin/customers/${customerId}/settings`),
+      update: (customerId: string, data: any) =>
+        api.put(`/admin/customers/${customerId}/settings`, data),
+    },
+
+    // Admin Users
+    users: {
+      list: () => api.get('/admin/users'),
+      get: (userId: string) => api.get(`/admin/users/${userId}`),
+      create: (data: any) => api.post('/admin/users', data),
+      update: (userId: string, data: any) =>
+        api.put(`/admin/users/${userId}`, data),
+      delete: (userId: string) => api.delete(`/admin/users/${userId}`),
+    },
   },
 };
 
