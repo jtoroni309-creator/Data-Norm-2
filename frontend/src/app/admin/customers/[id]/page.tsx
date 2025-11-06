@@ -29,10 +29,12 @@ import {
   BarChart3,
   FileText,
   Activity,
+  Shield,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Customer, CustomerStatus } from '@/types/admin';
 import { formatDate, formatCurrency, formatNumber } from '@/lib/utils';
+import { FraudDetectionSettings } from '@/components/admin/fraud-detection-settings';
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -154,6 +156,10 @@ export default function CustomerDetailPage() {
           <TabsTrigger value="licenses">Licenses</TabsTrigger>
           <TabsTrigger value="usage">Usage</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="fraud-detection">
+            <Shield className="mr-2 h-4 w-4" />
+            Fraud Detection
+          </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -404,6 +410,10 @@ export default function CustomerDetailPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="fraud-detection" className="space-y-4">
+          <FraudDetectionSettings customerId={customerId} />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">
