@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aura-config
+  namespace: aura-audit-ai
+  labels:
+    app.kubernetes.io/name: aura-audit-ai
+data:
+  # Service ports
+  IDENTITY_PORT: "8000"
+  INGESTION_PORT: "8000"
+  NORMALIZE_PORT: "8000"
+  ANALYTICS_PORT: "8000"
+  LLM_PORT: "8000"
+  ENGAGEMENT_PORT: "8000"
+  DISCLOSURES_PORT: "8000"
+  REPORTING_PORT: "8000"
+  QC_PORT: "8000"
+  CONNECTORS_PORT: "8000"
+
+  # Logging
+  LOG_LEVEL: "INFO"
+
+  # JWT
+  JWT_ALGORITHM: "HS256"
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+  JWT_REFRESH_TOKEN_EXPIRE_DAYS: "7"
+
+  # OpenAI
+  OPENAI_MODEL: "gpt-4-turbo-preview"
+  OPENAI_TEMPERATURE: "0.1"
+  OPENAI_MAX_TOKENS: "4096"
+
+  # Embedding
+  EMBEDDING_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+  EMBEDDING_DIMENSION: "384"
+
+  # RAG
+  RAG_TOP_K: "5"
+  RAG_SIMILARITY_THRESHOLD: "0.7"
+  RAG_CHUNK_SIZE: "512"
+  RAG_CHUNK_OVERLAP: "50"
+
+  # Analytics
+  ROUND_DOLLAR_THRESHOLD: "0.001"
+  OUTLIER_Z_SCORE_THRESHOLD: "3.0"
+
+  # CORS
+  CORS_ORIGINS: "https://aura-audit-ai.com"
