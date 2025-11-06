@@ -80,6 +80,47 @@ class CompilationReport(str, Enum):
     OMIT_DISCLOSURES = "omit_disclosures"  # Substantially all disclosures omitted
 
 
+class ConfirmationType(str, Enum):
+    """Type of confirmation request"""
+    BANK = "bank"  # Bank confirmations
+    ACCOUNTS_RECEIVABLE = "accounts_receivable"  # AR confirmations
+    ACCOUNTS_PAYABLE = "accounts_payable"  # AP confirmations
+    LEGAL = "legal"  # Legal confirmations
+    DEBT = "debt"  # Debt confirmations
+    INVESTMENTS = "investments"  # Investment confirmations
+    INVENTORY = "inventory"  # Inventory confirmations
+    OTHER = "other"  # Other confirmations
+
+
+class ConfirmationMethod(str, Enum):
+    """Method of confirmation delivery"""
+    ELECTRONIC = "electronic"  # Electronic delivery
+    PAPER = "paper"  # Physical mail
+    FAX = "fax"  # Fax delivery
+    PORTAL = "portal"  # Web portal
+
+
+class ConfirmationFormat(str, Enum):
+    """Format of confirmation request"""
+    POSITIVE = "positive"  # Requires response regardless
+    NEGATIVE = "negative"  # Response only if disagrees
+    BLANK = "blank"  # Respondent fills in information
+
+
+class ConfirmationStatus(str, Enum):
+    """Status of confirmation"""
+    DRAFT = "draft"  # Being prepared
+    PENDING_APPROVAL = "pending_approval"  # Awaiting auditor approval
+    APPROVED = "approved"  # Approved for sending
+    SENT = "sent"  # Sent to respondent
+    DELIVERED = "delivered"  # Confirmed delivery
+    RESPONDED = "responded"  # Response received
+    EXCEPTION = "exception"  # Exception noted
+    NO_RESPONSE = "no_response"  # No response received
+    CANCELLED = "cancelled"  # Cancelled
+    ALTERNATIVE_PROCEDURES = "alternative_procedures"  # Performing alternatives
+
+
 class RiskLevel(str, Enum):
     """Risk assessment level"""
     LOW = "low"
@@ -1084,3 +1125,243 @@ class ReviewProcedure(Base):
 
     # Relationships
     engagement = relationship("Engagement", back_populates="review_procedures")
+
+
+class ConfirmationRequest(Base):
+    """
+    External confirmation request (AS 2310 / AU-C 505).
+
+    Tracks confirmation requests sent to third parties during audit/review.
+    """
+    __tablename__ = "confirmation_requests"
+    __table_args__ = (
+        Index("idx_confirmation_engagement", "engagement_id"),
+        Index("idx_confirmation_type", "confirmation_type"),
+        Index("idx_confirmation_status", "status"),
+        Index("idx_confirmation_respondent", "respondent_email"),
+        {"schema": "financial_analysis"}
+    )
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    engagement_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_analysis.engagements.id"),
+        nullable=False
+    )
+
+    # Confirmation details
+    confirmation_number = Column(String(50), unique=True, nullable=False)
+    confirmation_type = Column(SQLEnum(ConfirmationType), nullable=False)
+    confirmation_format = Column(SQLEnum(ConfirmationFormat), nullable=False)
+    confirmation_method = Column(SQLEnum(ConfirmationMethod), nullable=False)
+
+    # Subject information (what is being confirmed)
+    subject_type = Column(String(100))  # "bank_balance", "ar_balance", etc.
+    subject_description = Column(Text)
+    account_number = Column(String(100))
+
+    # For AR/AP
+    customer_vendor_name = Column(String(500))
+    balance_to_confirm = Column(Numeric(20, 2))
+    as_of_date = Column(DateTime(timezone=True))
+
+    # Respondent information
+    respondent_name = Column(String(500), nullable=False)
+    respondent_organization = Column(String(500))
+    respondent_title = Column(String(200))
+    respondent_email = Column(String(500))
+    respondent_phone = Column(String(50))
+    respondent_address = Column(JSONB)
+
+    # Delivery
+    delivery_method = Column(SQLEnum(ConfirmationMethod), nullable=False)
+    delivery_date = Column(DateTime(timezone=True))
+    delivery_confirmation = Column(String(500))  # Tracking number or confirmation ID
+    read_receipt = Column(Boolean, default=False)
+    read_date = Column(DateTime(timezone=True))
+
+    # Due date
+    due_date = Column(DateTime(timezone=True))
+    reminder_sent = Column(Boolean, default=False)
+    reminder_dates = Column(JSONB)  # List of reminder dates
+
+    # Status
+    status = Column(SQLEnum(ConfirmationStatus), default=ConfirmationStatus.DRAFT)
+    status_updated_at = Column(DateTime(timezone=True))
+
+    # Template used
+    template_id = Column(String(100))
+    template_name = Column(String(200))
+    custom_fields = Column(JSONB)  # Template-specific fields
+
+    # Content
+    confirmation_text = Column(Text)  # Generated confirmation letter
+    confirmation_pdf_path = Column(String(500))
+    attachments = Column(JSONB)  # List of attachment paths
+
+    # Response
+    response_received = Column(Boolean, default=False)
+    response_date = Column(DateTime(timezone=True))
+    response_method = Column(String(100))  # How response came back
+    response_content = Column(Text)
+    response_pdf_path = Column(String(500))
+    response_attachments = Column(JSONB)
+
+    # Electronic signature
+    respondent_signature = Column(Text)  # Digital signature
+    respondent_signature_date = Column(DateTime(timezone=True))
+    respondent_ip_address = Column(String(50))
+
+    # Confirmation results
+    confirmed_amount = Column(Numeric(20, 2))
+    confirmed_details = Column(JSONB)
+    agrees_with_records = Column(Boolean)
+    exceptions_noted = Column(JSONB)  # List of exceptions
+    exception_description = Column(Text)
+
+    # Alternative procedures (if no response)
+    alternative_procedures_required = Column(Boolean, default=False)
+    alternative_procedures_performed = Column(JSONB)
+    alternative_procedures_sufficient = Column(Boolean)
+
+    # Audit trail
+    created_by = Column(PGUUID(as_uuid=True), nullable=False)
+    approved_by = Column(PGUUID(as_uuid=True))
+    approved_date = Column(DateTime(timezone=True))
+    sent_by = Column(PGUUID(as_uuid=True))
+    sent_date = Column(DateTime(timezone=True))
+
+    # Security and compliance
+    encryption_used = Column(Boolean, default=True)
+    audit_trail = Column(JSONB)  # Complete audit trail
+    compliance_check = Column(JSONB)  # AS 2310 compliance
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    engagement = relationship("Engagement")
+
+
+class ConfirmationTemplate(Base):
+    """
+    Template for confirmation requests.
+
+    Pre-built templates for different confirmation types.
+    """
+    __tablename__ = "confirmation_templates"
+    __table_args__ = (
+        Index("idx_template_type", "confirmation_type"),
+        Index("idx_template_active", "is_active"),
+        {"schema": "financial_analysis"}
+    )
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+
+    # Template identification
+    template_code = Column(String(50), unique=True, nullable=False)
+    template_name = Column(String(200), nullable=False)
+    template_description = Column(Text)
+
+    # Type
+    confirmation_type = Column(SQLEnum(ConfirmationType), nullable=False)
+    confirmation_format = Column(SQLEnum(ConfirmationFormat), nullable=False)
+
+    # Template content
+    subject_line = Column(String(500))
+    letter_header = Column(Text)
+    letter_body = Column(Text, nullable=False)  # Can contain {{placeholders}}
+    letter_footer = Column(Text)
+    instructions = Column(Text)
+
+    # Fields required
+    required_fields = Column(JSONB)  # List of required field names
+    optional_fields = Column(JSONB)  # List of optional field names
+
+    # Standard compliance
+    applicable_standards = Column(JSONB)  # ["AS 2310", "AU-C 505"]
+    compliance_notes = Column(Text)
+
+    # Usage
+    is_active = Column(Boolean, default=True)
+    is_default = Column(Boolean, default=False)
+    usage_count = Column(Integer, default=0)
+
+    # Metadata
+    created_by = Column(PGUUID(as_uuid=True))
+    approved_by = Column(PGUUID(as_uuid=True))
+    version = Column(String(20))
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class ConfirmationResponse(Base):
+    """
+    Response received for a confirmation request.
+
+    Tracks detailed response information and exceptions.
+    """
+    __tablename__ = "confirmation_responses"
+    __table_args__ = (
+        Index("idx_response_request", "confirmation_request_id"),
+        Index("idx_response_date", "response_date"),
+        {"schema": "financial_analysis"}
+    )
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    confirmation_request_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_analysis.confirmation_requests.id"),
+        nullable=False
+    )
+
+    # Response details
+    response_date = Column(DateTime(timezone=True), nullable=False)
+    response_method = Column(String(100))  # electronic, paper, phone, etc.
+    respondent_name = Column(String(500))
+    respondent_title = Column(String(200))
+
+    # Response content
+    response_text = Column(Text)
+    response_data = Column(JSONB)  # Structured response data
+
+    # Confirmation results
+    agrees_with_client_records = Column(Boolean)
+    confirmed_amount = Column(Numeric(20, 2))
+    confirmed_balance = Column(JSONB)  # Detailed balance breakdown
+
+    # Exceptions
+    has_exceptions = Column(Boolean, default=False)
+    exception_type = Column(String(100))  # "amount_difference", "unrecorded_transaction", etc.
+    exception_details = Column(JSONB)
+    exception_amount = Column(Numeric(20, 2))
+    exception_explanation = Column(Text)
+
+    # Additional information provided
+    additional_information = Column(JSONB)
+    notes = Column(Text)
+
+    # Digital signature
+    digital_signature = Column(Text)
+    signature_timestamp = Column(DateTime(timezone=True))
+    ip_address = Column(String(50))
+    verification_code = Column(String(100))
+
+    # Attachments
+    attachments = Column(JSONB)  # List of attachment paths
+
+    # Processing
+    processed_by = Column(PGUUID(as_uuid=True))
+    processed_date = Column(DateTime(timezone=True))
+    resolution = Column(String(100))  # "accepted", "requires_follow_up", "resolved"
+    resolution_notes = Column(Text)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    confirmation_request = relationship("ConfirmationRequest")
