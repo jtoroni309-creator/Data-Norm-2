@@ -213,10 +213,30 @@ repos:
         files: \.md$
 
   # ============================================================================
+  # OPENAPI VALIDATION
+  # ============================================================================
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.27.3
+    hooks:
+      - id: check-jsonschema
+        name: Validate OpenAPI specs
+        files: ^openapi/.*\.(json|yaml|yml)$
+        args:
+          - --schemafile
+          - https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json
+
+  # ============================================================================
   # CUSTOM HOOKS
   # ============================================================================
   - repo: local
     hooks:
+      # OpenAPI spec generation and validation
+      - id: openapi-validate
+        name: Validate OpenAPI specifications
+        entry: python3 scripts/openapi/validate_spec.py
+        language: system
+        files: ^openapi/atlas.*\.(json|yaml)$
+        pass_filenames: true
       # Python tests for critical services
       - id: pytest-security
         name: Run security service tests
