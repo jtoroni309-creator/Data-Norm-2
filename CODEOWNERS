@@ -1,0 +1,84 @@
+# CODEOWNERS file for Aura Audit AI
+#
+# This file defines code ownership for different parts of the repository.
+# When a pull request is created, the specified owners will be automatically
+# requested for review.
+#
+# Format: path/to/code @username @team-name
+#
+# More information: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owners - fallback for everything not explicitly defined
+* @jtoroni309-creator
+
+# Documentation
+*.md @jtoroni309-creator
+/docs/ @jtoroni309-creator
+
+# Infrastructure & DevOps
+/.github/ @jtoroni309-creator
+/infra/ @jtoroni309-creator
+docker-compose.yml @jtoroni309-creator
+**/Dockerfile @jtoroni309-creator
+
+# Database
+/db/ @jtoroni309-creator
+**/migrations/ @jtoroni309-creator
+
+# Frontend Applications
+/frontend/ @jtoroni309-creator
+/admin-portal/ @jtoroni309-creator
+/client-portal/ @jtoroni309-creator
+
+# Core Backend Services
+/services/identity/ @jtoroni309-creator
+/services/engagement/ @jtoroni309-creator
+/services/qc/ @jtoroni309-creator
+
+# Data Services
+/services/ingestion/ @jtoroni309-creator
+/services/normalize/ @jtoroni309-creator
+/services/analytics/ @jtoroni309-creator
+
+# AI/ML Services
+/services/llm/ @jtoroni309-creator
+/services/fraud-detection/ @jtoroni309-creator
+/services/training-data/ @jtoroni309-creator
+
+# Integration Services
+/services/connectors/ @jtoroni309-creator
+/services/accounting-integrations/ @jtoroni309-creator
+
+# Audit Procedure Services
+/services/audit-planning/ @jtoroni309-creator
+/services/substantive-testing/ @jtoroni309-creator
+/services/sampling/ @jtoroni309-creator
+/services/estimates-evaluation/ @jtoroni309-creator
+/services/subsequent-events/ @jtoroni309-creator
+/services/related-party/ @jtoroni309-creator
+
+# Specialized Services
+/services/reg-ab-audit/ @jtoroni309-creator
+/services/disclosures/ @jtoroni309-creator
+/services/reporting/ @jtoroni309-creator
+/services/eo-insurance-portal/ @jtoroni309-creator
+
+# Security & Compliance
+/services/security/ @jtoroni309-creator
+/services/data-anonymization/ @jtoroni309-creator
+SECURITY.md @jtoroni309-creator
+
+# Financial Analysis
+/services/financial-analysis/ @jtoroni309-creator
+
+# API Specifications
+/openapi/ @jtoroni309-creator
+
+# Configuration Files
+pyproject.toml @jtoroni309-creator
+.editorconfig @jtoroni309-creator
+.gitignore @jtoroni309-creator
+.env.example @jtoroni309-creator
+
+# Build & CI/CD
+/.github/workflows/ @jtoroni309-creator
