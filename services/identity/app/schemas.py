@@ -121,11 +121,34 @@ class OrganizationCreate(OrganizationBase):
     pass
 
 
+class OrganizationUpdate(BaseModel):
+    """Organization update request"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    tax_id: Optional[str] = None
+    industry_code: Optional[str] = None
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+    secondary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    timezone: Optional[str] = None
+    date_format: Optional[str] = None
+
+
 class OrganizationResponse(OrganizationBase):
     """Organization response"""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    logo_url: Optional[str] = None
+    primary_color: str
+    secondary_color: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    timezone: str
+    date_format: str
     created_at: datetime
     updated_at: datetime
 
@@ -143,3 +166,75 @@ class LoginAttemptResponse(BaseModel):
     success: bool
     ip_address: Optional[str] = None
     attempted_at: datetime
+
+
+# ========================================
+# User Invitation Schemas
+# ========================================
+
+class UserInvitationCreate(BaseModel):
+    """User invitation creation request"""
+    email: EmailStr
+    role: RoleEnum
+    message: Optional[str] = Field(None, max_length=500)
+
+
+class UserInvitationResponse(BaseModel):
+    """User invitation response"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: str
+    role: RoleEnum
+    invited_by_user_id: UUID
+    expires_at: datetime
+    accepted_at: Optional[datetime] = None
+    is_expired: bool
+    created_at: datetime
+
+
+class UserInvitationAccept(BaseModel):
+    """Accept invitation request"""
+    token: str
+    full_name: str = Field(..., min_length=1, max_length=200)
+    password: str = Field(..., min_length=8, max_length=100)
+
+
+# ========================================
+# User Permission Schemas
+# ========================================
+
+class UserPermissionUpdate(BaseModel):
+    """User permission update request"""
+    can_create_engagements: Optional[bool] = None
+    can_edit_engagements: Optional[bool] = None
+    can_delete_engagements: Optional[bool] = None
+    can_view_all_engagements: Optional[bool] = None
+    can_invite_users: Optional[bool] = None
+    can_manage_users: Optional[bool] = None
+    can_manage_roles: Optional[bool] = None
+    can_edit_firm_settings: Optional[bool] = None
+    can_manage_billing: Optional[bool] = None
+    can_upload_documents: Optional[bool] = None
+    can_delete_documents: Optional[bool] = None
+
+
+class UserPermissionResponse(BaseModel):
+    """User permission response"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    can_create_engagements: bool
+    can_edit_engagements: bool
+    can_delete_engagements: bool
+    can_view_all_engagements: bool
+    can_invite_users: bool
+    can_manage_users: bool
+    can_manage_roles: bool
+    can_edit_firm_settings: bool
+    can_manage_billing: bool
+    can_upload_documents: bool
+    can_delete_documents: bool
+    created_at: datetime
+    updated_at: datetime

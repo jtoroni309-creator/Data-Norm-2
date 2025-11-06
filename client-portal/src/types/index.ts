@@ -223,3 +223,106 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore: boolean;
 }
+
+// CPA Firm Types
+export type UserRole = 'partner' | 'manager' | 'senior' | 'staff' | 'qc_reviewer' | 'client_contact';
+
+export interface FirmUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  organization_id: string;
+  is_active: boolean;
+  created_at: string;
+  last_login_at?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  tax_id?: string;
+  industry_code?: string;
+  logo_url?: string;
+  primary_color: string;
+  secondary_color: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  timezone: string;
+  date_format: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationUpdate {
+  name?: string;
+  tax_id?: string;
+  industry_code?: string;
+  logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  timezone?: string;
+  date_format?: string;
+}
+
+export interface UserInvitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  invited_by_user_id: string;
+  expires_at: string;
+  accepted_at?: string;
+  is_expired: boolean;
+  created_at: string;
+}
+
+export interface UserInvitationCreate {
+  email: string;
+  role: UserRole;
+  message?: string;
+}
+
+export interface UserPermission {
+  id: string;
+  user_id: string;
+  can_create_engagements: boolean;
+  can_edit_engagements: boolean;
+  can_delete_engagements: boolean;
+  can_view_all_engagements: boolean;
+  can_invite_users: boolean;
+  can_manage_users: boolean;
+  can_manage_roles: boolean;
+  can_edit_firm_settings: boolean;
+  can_manage_billing: boolean;
+  can_upload_documents: boolean;
+  can_delete_documents: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserPermissionUpdate {
+  can_create_engagements?: boolean;
+  can_edit_engagements?: boolean;
+  can_delete_engagements?: boolean;
+  can_view_all_engagements?: boolean;
+  can_invite_users?: boolean;
+  can_manage_users?: boolean;
+  can_manage_roles?: boolean;
+  can_edit_firm_settings?: boolean;
+  can_manage_billing?: boolean;
+  can_upload_documents?: boolean;
+  can_delete_documents?: boolean;
+}
+
+export interface FirmStats {
+  total_employees: number;
+  active_engagements: number;
+  pending_invitations: number;
+  total_clients: number;
+  documents_uploaded_this_month: number;
+  active_integrations: number;
+}
