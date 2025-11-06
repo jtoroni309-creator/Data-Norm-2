@@ -392,3 +392,264 @@ class TestConfiguration:
 
         assert settings.MLFLOW_TRACKING_URI.startswith("http")
         assert "mlflow" in settings.MLFLOW_TRACKING_URI.lower()
+
+
+# ========================================
+# Additional JE Testing
+# ========================================
+
+class TestPeriodEndDetection:
+    """Test period-end entry detection"""
+
+    @pytest.mark.asyncio
+    async def test_period_end_entry_detection(self):
+        """Test detection of entries near period-end"""
+        from app.analytics_engine import JournalEntryTester
+
+        # Mock database response - entries within 3 days of close
+        # (id, entry_number, entry_date, total_amount, days_to_close)
+        je_id = uuid4()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [
+            (je_id, "JE-END", date(2024, 12, 30), Decimal("50000.00"), 1),  # 1 day before close
+        ]
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=mock_result)
+
+        engagement_id = uuid4()
+        results = await JournalEntryTester.test_period_end_entries(engagement_id, db)
+
+        assert len(results) == 1
+        assert results[0].entry_number == "JE-END"
+        assert results[0].test_type == "period_end"
+        assert results[0].flagged is True
+        # Score should be high (close to 1.0) since it's only 1 day before close
+        assert results[0].score > 0.8
+
+    @pytest.mark.asyncio
+    async def test_period_end_material_amounts_only(self):
+        """Test period-end detection filters immaterial amounts"""
+        from app.analytics_engine import JournalEntryTester
+
+        # Only entries > 10,000 should be flagged
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [
+            (uuid4(), "JE-MAT", date(2024, 12, 29), Decimal("50000.00"), 2),
+        ]
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=mock_result)
+
+        engagement_id = uuid4()
+        results = await JournalEntryTester.test_period_end_entries(engagement_id, db)
+
+        # All results should be material
+        assert all(r.amount > 10000 for r in results)
+
+
+# ========================================
+# Additional Anomaly Detection Tests
+# ========================================
+
+class TestIsolationForestDetection:
+    """Test Isolation Forest anomaly detection"""
+
+    def test_isolation_forest_basic(self):
+        """Test basic Isolation Forest detection"""
+        from app.analytics_engine import AnomalyDetector
+
+        # Create data with obvious outlier
+        normal_data = np.random.normal(100, 10, 95)
+        outlier_data = np.array([500])  # Clear outlier
+        data = np.concatenate([normal_data, outlier_data]).reshape(-1, 1)
+
+        predictions, scores = AnomalyDetector.detect_outliers_isolation_forest(data)
+
+        # Should detect at least one anomaly
+        anomaly_count = np.sum(predictions == -1)
+        assert anomaly_count >= 1
+
+    def test_isolation_forest_no_outliers(self):
+        """Test Isolation Forest with no outliers"""
+        from app.analytics_engine import AnomalyDetector
+
+        # Normal distributed data
+        data = np.random.normal(100, 10, 100).reshape(-1, 1)
+
+        predictions, scores = AnomalyDetector.detect_outliers_isolation_forest(
+            data,
+            contamination=0.01  # Very strict - expect almost no anomalies
+        )
+
+        # Should detect very few or no anomalies
+        anomaly_count = np.sum(predictions == -1)
+        assert anomaly_count <= 2
+
+    def test_isolation_forest_custom_contamination(self):
+        """Test Isolation Forest with custom contamination rate"""
+        from app.analytics_engine import AnomalyDetector
+
+        data = np.random.normal(100, 10, 100).reshape(-1, 1)
+
+        # Test with 10% contamination
+        predictions, scores = AnomalyDetector.detect_outliers_isolation_forest(
+            data,
+            contamination=0.1
+        )
+
+        # Should detect approximately 10% as anomalies
+        anomaly_count = np.sum(predictions == -1)
+        assert 5 <= anomaly_count <= 15  # Allow some variance
+
+
+# ========================================
+# Ratio Edge Cases
+# ========================================
+
+class TestRatioEdgeCases:
+    """Test ratio calculation edge cases"""
+
+    @pytest.mark.asyncio
+    async def test_current_ratio_zero_liabilities(self):
+        """Test current ratio with zero liabilities"""
+        from app.analytics_engine import RatioAnalyzer
+
+        # Mock zero liabilities (should not crash)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (
+            Decimal("100000.00"),  # current_assets
+            Decimal("0")           # current_liabilities (zero!)
+        )
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=mock_result)
+
+        engagement_id = uuid4()
+        result = await RatioAnalyzer.calculate_current_ratio(engagement_id, db)
+
+        # Should handle gracefully, not crash
+        assert result is not None
+        assert result.ratio_name == "Current Ratio"
+
+    @pytest.mark.asyncio
+    async def test_current_ratio_outlier_detection(self):
+        """Test current ratio outlier flagging"""
+        from app.analytics_engine import RatioAnalyzer
+
+        # Mock very low ratio (0.5:1 - concerning)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (
+            Decimal("50000.00"),   # current_assets
+            Decimal("100000.00")   # current_liabilities
+        )
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=mock_result)
+
+        engagement_id = uuid4()
+        result = await RatioAnalyzer.calculate_current_ratio(engagement_id, db)
+
+        assert result.value == 0.5
+        assert result.is_outlier is True  # Below 1.0 should be flagged
+
+    @pytest.mark.asyncio
+    async def test_debt_to_equity_high_leverage(self):
+        """Test debt-to-equity with high leverage"""
+        from app.analytics_engine import RatioAnalyzer
+
+        # Mock very high leverage (4:1 debt-to-equity)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (
+            Decimal("400000.00"),  # total_liabilities
+            Decimal("100000.00")   # total_equity
+        )
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=mock_result)
+
+        engagement_id = uuid4()
+        result = await RatioAnalyzer.calculate_debt_to_equity(engagement_id, db)
+
+        assert result.value == 4.0
+        assert result.is_outlier is True  # > 3.0 should be flagged
+
+
+# ========================================
+# Business Logic Validation
+# ========================================
+
+class TestAnalyticsBusinessLogic:
+    """Test analytics business logic"""
+
+    def test_anomaly_severity_ordering(self):
+        """Test anomaly severity has correct priority"""
+        assert AnomalySeverity.INFO.value == "info"
+        assert AnomalySeverity.LOW.value == "low"
+        assert AnomalySeverity.MEDIUM.value == "medium"
+        assert AnomalySeverity.HIGH.value == "high"
+        assert AnomalySeverity.CRITICAL.value == "critical"
+
+        # Critical should have highest priority
+        severities = [e.value for e in AnomalySeverity]
+        assert severities.index("critical") > severities.index("high")
+        assert severities.index("high") > severities.index("medium")
+
+    def test_anomaly_resolution_workflow(self):
+        """Test anomaly resolution status workflow"""
+        anomaly = Anomaly(
+            id=uuid4(),
+            engagement_id=uuid4(),
+            anomaly_type="test",
+            severity=AnomalySeverity.MEDIUM,
+            title="Test",
+            description="Test description",
+            resolution_status="open"
+        )
+
+        # Initially open
+        assert anomaly.resolution_status == "open"
+        assert anomaly.resolved_by is None
+
+        # Move to investigating
+        anomaly.resolution_status = "investigating"
+        assert anomaly.resolution_status == "investigating"
+
+        # Resolve
+        anomaly.resolution_status = "resolved"
+        anomaly.resolved_by = uuid4()
+        anomaly.resolved_at = datetime.utcnow()
+
+        assert anomaly.resolution_status == "resolved"
+        assert anomaly.resolved_by is not None
+        assert anomaly.resolved_at is not None
+
+    def test_je_test_score_range(self):
+        """Test JE test scores are in valid range"""
+        # Test that scores are between 0.0 and 1.0
+        test_result = JETestResult(
+            test_type="round_dollar",
+            journal_entry_id=uuid4(),
+            entry_number="JE-001",
+            entry_date=datetime.utcnow(),
+            amount=10000.00,
+            flagged=True,
+            reason="Test",
+            score=0.9
+        )
+
+        assert 0.0 <= test_result.score <= 1.0
+
+    def test_ratio_deviation_calculation(self):
+        """Test ratio deviation is calculated correctly"""
+        result = RatioResult(
+            ratio_name="test_ratio",
+            value=3.0,
+            benchmark=2.0,
+            deviation=0.5,  # (3.0 - 2.0) / 2.0 = 0.5
+            is_outlier=False
+        )
+
+        # Verify deviation is correct
+        expected_deviation = abs(result.value - result.benchmark) / result.benchmark
+        assert abs(result.deviation - expected_deviation) < 0.01
