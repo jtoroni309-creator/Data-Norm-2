@@ -4,65 +4,79 @@
 
 @layer base {
   :root {
+    /* Premium Fintech Light Theme - Adobe/Apple Inspired */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Deep professional blue */
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Sophisticated slate */
+    --secondary: 215 20% 97%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted: Soft gray background */
+    --muted: 210 40% 98%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Vibrant purple */
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive: Professional red */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    /* Borders and inputs */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 211 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Premium Fintech Dark Theme - Adobe/Apple Inspired */
+    --background: 222 47% 4%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 7%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 47% 7%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Primary: Bright blue for dark mode */
+    --primary: 211 96% 60%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    /* Secondary: Dark slate */
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Muted: Subtle dark gray */
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Accent: Vivid purple */
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
+    /* Destructive: Muted red for dark */
+    --destructive: 0 63% 45%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Borders and inputs */
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 211 96% 60%;
   }
 }
 
@@ -74,76 +88,157 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    /* Sharp rendering for high-DPI displays */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Smooth scrolling */
+  /* Smooth scrolling with Apple-style easing */
   html {
     scroll-behavior: smooth;
   }
 
-  /* Custom scrollbar */
+  /* Premium custom scrollbar - macOS inspired */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-secondary;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground rounded-md;
+    @apply bg-muted-foreground/40 rounded-full;
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-foreground/60;
+    @apply bg-muted-foreground/60;
   }
 
-  /* Focus visible */
+  /* Apple-style focus ring */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Selection */
+  /* Selection color matching primary theme */
   ::selection {
-    @apply bg-primary/20;
+    @apply bg-primary/20 text-primary-foreground;
+  }
+
+  /* High-quality image rendering */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 }
 
 @layer utilities {
-  /* Text gradient */
+  /* Premium text gradient - Fintech theme */
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-fintech-600 via-primary to-purple-600;
   }
 
-  /* Glass morphism */
+  .text-gradient-fintech {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-fintech-500 to-purple-600;
+  }
+
+  /* Premium glassmorphism - Adobe/Apple inspired */
   .glass {
-    @apply backdrop-blur-md bg-white/10 border border-white/20;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
   }
 
   .glass-dark {
-    @apply backdrop-blur-md bg-black/10 border border-black/20;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   }
 
-  /* Elevated cards */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.1);
+  }
+
+  /* Elevated cards with Apple-style shadows */
   .elevated-card {
-    @apply bg-card rounded-lg border shadow-elevation-2 hover:shadow-elevation-3 transition-shadow;
+    @apply bg-card rounded-xl border shadow-elevation-2 hover:shadow-elevation-3;
+    transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Animated underline */
+  .elevated-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .premium-card {
+    @apply bg-card rounded-2xl border shadow-lg;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .premium-card:hover {
+    @apply shadow-xl;
+    transform: translateY(-4px) scale(1.01);
+  }
+
+  /* Animated underline - Apple style */
   .animated-underline {
-    @apply relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full;
+    @apply relative;
+    position: relative;
   }
 
-  /* Shimmer effect */
+  .animated-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 h-0.5 w-0 bg-primary;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animated-underline:hover::after {
+    @apply w-full;
+  }
+
+  /* Premium shimmer effect */
   .shimmer {
     @apply relative overflow-hidden;
   }
 
   .shimmer::after {
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent;
     content: '';
-    animation: shimmer 2s infinite;
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    animation: shimmer 2s infinite ease-in-out;
+  }
+
+  /* Gradient backgrounds - Fintech theme */
+  .gradient-fintech {
+    @apply bg-gradient-to-br from-fintech-500 via-fintech-600 to-purple-600;
+  }
+
+  .gradient-fintech-subtle {
+    @apply bg-gradient-to-br from-fintech-50 via-purple-50 to-slate-50;
+  }
+
+  /* Sharp text rendering */
+  .text-sharp {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   /* Hide scrollbar but keep functionality */
@@ -154,5 +249,25 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Premium button styles */
+  .btn-premium {
+    @apply px-6 py-3 rounded-xl font-semibold shadow-lg;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-premium:hover {
+    @apply shadow-xl;
+    transform: translateY(-2px);
+  }
+
+  .btn-premium:active {
+    transform: translateY(0);
+  }
+
+  /* Smooth transitions with Apple easing */
+  .transition-apple {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
