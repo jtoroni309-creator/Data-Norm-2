@@ -103,10 +103,11 @@ async def get_edgar_company_facts(
     form: Optional[str] = None,
     filing_date: Optional[date] = None,
     concepts: Optional[list[str]] = None,
+    upload_raw: bool = True,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Fetch normalized facts from EDGAR company-facts endpoint
+    Fetch normalized facts from EDGAR company-facts endpoint and store in database
 
     Args:
         cik: Company CIK (Central Index Key)
@@ -114,6 +115,7 @@ async def get_edgar_company_facts(
         form: Filing form type (10-K, 10-Q, etc.)
         filing_date: Specific filing date
         concepts: List of XBRL concepts to filter (e.g., ['us-gaap:Assets', 'us-gaap:Revenues'])
+        upload_raw: Whether to upload raw JSON to S3 (default True)
 
     Returns:
         EdgarFactsResponse with filing metadata and normalized facts
@@ -125,63 +127,60 @@ async def get_edgar_company_facts(
         )
 
     try:
-        # Fetch from EDGAR
-        if cik:
-            company_data = await edgar_client.get_company_facts(cik)
-        else:
-            # Resolve ticker to CIK first (you'd need a ticker->CIK mapping)
-            company_data = await edgar_client.get_company_facts_by_ticker(ticker)
+        from .scraper import EdgarScraper
 
-        # Normalize facts
-        facts = edgar_client.normalize_company_facts(
-            company_data,
-            concepts=concepts,
-            form=form,
-            filing_date=filing_date
-        )
+        scraper = EdgarScraper(db)
 
-        # Store in database
-        filing = Filing(
-            cik=company_data["entityName"]["cik"],
-            company_name=company_data["entityName"]["name"],
-            ticker=ticker,
-            form=form or "10-K",
-            filing_date=filing_date or date.today(),
-            accession_number=f"CIK{company_data['entityName']['cik']}-{filing_date}",
-            source_uri=f"{settings.EDGAR_BASE_URL}/companyfacts/CIK{int(company_data['entityName']['cik']):010d}.json",
-        )
+        try:
+            # Use the comprehensive scraper
+            if cik:
+                filing = await scraper.scrape_company_by_cik(
+                    cik=cik,
+                    forms=[form] if form else None,
+                    concepts=concepts,
+                    upload_raw=upload_raw
+                )
+            else:
+                filing = await scraper.scrape_company_by_ticker(
+                    ticker=ticker,
+                    forms=[form] if form else None,
+                    concepts=concepts,
+                    upload_raw=upload_raw
+                )
 
-        db.add(filing)
-        await db.flush()
+            # Get facts
+            facts = await scraper.get_facts_by_filing(filing.id, concepts=concepts)
 
-        # Store facts
-        for fact_data in facts:
-            fact = Fact(
-                filing_id=filing.id,
-                concept=fact_data["concept"],
-                taxonomy=fact_data.get("taxonomy", "us-gaap"),
-                value=fact_data.get("value"),
-                unit=fact_data.get("unit"),
-                start_date=fact_data.get("start_date"),
-                end_date=fact_data.get("end_date"),
-                instant_date=fact_data.get("instant_date"),
-                metadata=fact_data.get("metadata", {})
+            # Convert to response format
+            fact_items = [
+                FactItem(
+                    concept=f.concept,
+                    taxonomy=f.taxonomy,
+                    label=f.label or f.concept,
+                    value=float(f.value) if f.value else None,
+                    unit=f.unit,
+                    start_date=f.start_date,
+                    end_date=f.end_date,
+                    instant_date=f.instant_date,
+                    metadata=f.metadata or {}
+                )
+                for f in facts
+            ]
+
+            return EdgarFactsResponse(
+                filing=FilingInfo(
+                    cik=filing.cik,
+                    ticker=filing.ticker,
+                    company_name=filing.company_name,
+                    form=filing.form,
+                    filing_date=filing.filing_date,
+                    source_uri=filing.source_uri
+                ),
+                facts=fact_items
             )
-            db.add(fact)
 
-        await db.commit()
-
-        return EdgarFactsResponse(
-            filing=FilingInfo(
-                cik=filing.cik,
-                ticker=ticker,
-                company_name=filing.company_name,
-                form=filing.form,
-                filing_date=filing.filing_date,
-                source_uri=filing.source_uri
-            ),
-            facts=[FactItem(**f) for f in facts]
-        )
+        finally:
+            await scraper.close()
 
     except httpx.HTTPError as e:
         logger.error(f"EDGAR API error: {e}")
@@ -230,6 +229,8 @@ async def upload_pbc_document(
         Upload confirmation with S3 URI and metadata
     """
     try:
+        from .storage import get_storage_client
+
         # Validate file type
         allowed_types = [
             "application/pdf",
@@ -250,12 +251,21 @@ async def upload_pbc_document(
         content = await file.read()
 
         # Upload to S3/MinIO
+        storage = get_storage_client()
         s3_key = f"pbc/{engagement_id}/{file.filename}"
-        # Implementation: upload to S3 using boto3
-        # s3_uri = await upload_to_s3(content, s3_key)
 
-        # For now, mock response
-        s3_uri = f"s3://{settings.S3_BUCKET}/{s3_key}"
+        s3_uri = storage.upload_file(
+            file_content=content,
+            key=s3_key,
+            content_type=file.content_type,
+            metadata={
+                'engagement_id': str(engagement_id),
+                'description': description or '',
+                'original_filename': file.filename
+            }
+        )
+
+        logger.info(f"Uploaded PBC document to {s3_uri}")
 
         return PBCUploadResponse(
             engagement_id=engagement_id,
