@@ -165,6 +165,84 @@ jobs:
         run: |
           ruff check services/ --output-format=github || true
 
+  # Dependency Security Audit
+  dependency-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install audit tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit safety
+
+      - name: Audit Python dependencies (pip-audit)
+        continue-on-error: true
+        run: |
+          # Audit all requirements.txt files
+          for file in services/*/requirements.txt; do
+            if [ -f "$file" ]; then
+              echo "Auditing $file..."
+              pip-audit -r "$file" --desc || echo "⚠️ Vulnerabilities found in $file"
+            fi
+          done
+
+      - name: Audit Python dependencies (safety)
+        continue-on-error: true
+        run: |
+          # Check all requirements files with safety
+          for file in services/*/requirements.txt; do
+            if [ -f "$file" ]; then
+              echo "Safety check for $file..."
+              safety check -r "$file" --json || echo "⚠️ Safety issues found in $file"
+            fi
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Audit Frontend dependencies
+        continue-on-error: true
+        run: |
+          # Audit frontend dependencies
+          if [ -f frontend/package-lock.json ]; then
+            cd frontend
+            npm audit --audit-level=moderate || echo "⚠️ Frontend vulnerabilities found"
+            cd ..
+          fi
+
+          # Audit admin portal dependencies
+          if [ -f admin-portal/package-lock.json ]; then
+            cd admin-portal
+            npm audit --audit-level=moderate || echo "⚠️ Admin portal vulnerabilities found"
+            cd ..
+          fi
+
+          # Audit client portal dependencies
+          if [ -f client-portal/package-lock.json ]; then
+            cd client-portal
+            npm audit --audit-level=moderate || echo "⚠️ Client portal vulnerabilities found"
+          fi
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-results
+          path: |
+            **/*.audit.json
+          retention-days: 90
+
   # Build Status Check
   build-status:
     name: Build Status
@@ -173,6 +251,7 @@ jobs:
       - backend-tests
       - frontend-tests
       - code-quality
+      - dependency-audit
     if: always()
 
     steps:
@@ -181,4 +260,5 @@ jobs:
           echo "Backend tests: ${{ needs.backend-tests.result }}"
           echo "Frontend tests: ${{ needs.frontend-tests.result }}"
           echo "Code quality: ${{ needs.code-quality.result }}"
+          echo "Dependency audit: ${{ needs.dependency-audit.result }}"
           echo "All checks completed!"
