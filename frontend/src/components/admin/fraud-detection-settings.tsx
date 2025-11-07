@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,11 +95,11 @@ export function FraudDetectionSettings({ customerId }: Props) {
   const [formData, setFormData] = useState<Partial<FraudDetectionSettings>>(settings || {});
 
   // Update form data when settings load
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setFormData(settings);
     }
-  });
+  }, [settings]);
 
   // Update settings mutation
   const updateSettings = useMutation({
@@ -169,7 +169,7 @@ export function FraudDetectionSettings({ customerId }: Props) {
             checked={isEnabled}
             onCheckedChange={(checked) => handleToggle('is_enabled', checked)}
           />
-        </div>
+        </CardContent>
       </Card>
 
       {/* Statistics (only show if enabled) */}
