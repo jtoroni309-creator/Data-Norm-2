@@ -7,11 +7,16 @@ from datetime import date, datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .edgar import EdgarClient
 from .models import Filing, Fact, TrialBalance, TrialBalanceLine
+from .text_models import (
+    FilingSection, FilingNote, FilingRiskFactor,
+    FilingAccountingPolicy, FilingFullText
+)
+from .filing_parser import FilingParser
 from .storage import get_storage_client
 from .config import settings
 
@@ -33,6 +38,7 @@ class EdgarScraper:
             base_url=settings.EDGAR_BASE_URL,
             user_agent=settings.EDGAR_USER_AGENT
         )
+        self.filing_parser = FilingParser(user_agent=settings.EDGAR_USER_AGENT)
         self.storage = get_storage_client()
 
     async def scrape_company_by_cik(
@@ -443,6 +449,182 @@ class EdgarScraper:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    async def extract_filing_text(
+        self,
+        filing: Filing,
+        upload_to_s3: bool = True
+    ) -> Dict[str, int]:
+        """
+        Extract full text content from a filing
+
+        Args:
+            filing: Filing ORM object
+            upload_to_s3: Whether to upload large text to S3
+
+        Returns:
+            Dictionary with counts of extracted items
+        """
+        logger.info(f"Extracting text content from filing {filing.id}")
+
+        try:
+            # Parse the filing
+            parsed_data = await self.filing_parser.parse_filing(
+                filing.cik,
+                filing.accession_number,
+                filing.form
+            )
+
+            if not parsed_data:
+                logger.warning(f"No content extracted from filing {filing.id}")
+                return {'sections': 0, 'notes': 0, 'risks': 0}
+
+            counts = {
+                'sections': 0,
+                'notes': 0,
+                'risks': 0,
+                'policies': 0
+            }
+
+            # Store sections
+            for section_type, content in parsed_data.get('sections', {}).items():
+                if content and len(content) > 100:
+                    # Upload to S3 if large
+                    s3_uri = None
+                    if upload_to_s3 and len(content) > 10000:
+                        s3_key = f"edgar/sections/{filing.cik}/{filing.accession_number}/{section_type}.txt"
+                        s3_uri = self.storage.upload_file(
+                            content.encode('utf-8'),
+                            s3_key,
+                            content_type='text/plain',
+                            metadata={
+                                'filing_id': str(filing.id),
+                                'section_type': section_type
+                            }
+                        )
+
+                    section = FilingSection(
+                        filing_id=filing.id,
+                        section_type=section_type,
+                        section_title=section_type.replace('_', ' ').title(),
+                        content=content[:50000],  # Store first 50k chars in DB
+                        content_length=len(content),
+                        word_count=len(content.split()),
+                        s3_uri=s3_uri
+                    )
+                    self.db.add(section)
+                    counts['sections'] += 1
+
+            # Store notes to financial statements
+            for note in parsed_data.get('notes_to_financial_statements', []):
+                s3_uri = None
+                note_content = note['content']
+
+                if upload_to_s3 and len(note_content) > 5000:
+                    s3_key = f"edgar/notes/{filing.cik}/{filing.accession_number}/note_{note['note_number']}.txt"
+                    s3_uri = self.storage.upload_file(
+                        note_content.encode('utf-8'),
+                        s3_key,
+                        content_type='text/plain',
+                        metadata={
+                            'filing_id': str(filing.id),
+                            'note_number': note['note_number']
+                        }
+                    )
+
+                filing_note = FilingNote(
+                    filing_id=filing.id,
+                    note_number=note['note_number'],
+                    note_title=note['title'],
+                    content=note_content[:20000],  # First 20k in DB
+                    content_length=len(note_content),
+                    word_count=len(note_content.split()),
+                    s3_uri=s3_uri
+                )
+                self.db.add(filing_note)
+                counts['notes'] += 1
+
+            # Store risk factors
+            for risk_text in parsed_data.get('risk_factors', []):
+                if len(risk_text) > 50:
+                    risk_factor = FilingRiskFactor(
+                        filing_id=filing.id,
+                        risk_text=risk_text
+                    )
+                    self.db.add(risk_factor)
+                    counts['risks'] += 1
+
+            # Store accounting policies
+            accounting_policies = parsed_data.get('accounting_policies')
+            if accounting_policies:
+                s3_uri = None
+                if upload_to_s3 and len(accounting_policies) > 5000:
+                    s3_key = f"edgar/policies/{filing.cik}/{filing.accession_number}/accounting_policies.txt"
+                    s3_uri = self.storage.upload_file(
+                        accounting_policies.encode('utf-8'),
+                        s3_key,
+                        content_type='text/plain'
+                    )
+
+                policy = FilingAccountingPolicy(
+                    filing_id=filing.id,
+                    policy_type='significant_accounting_policies',
+                    policy_title='Summary of Significant Accounting Policies',
+                    content=accounting_policies[:20000],
+                    content_length=len(accounting_policies),
+                    s3_uri=s3_uri
+                )
+                self.db.add(policy)
+                counts['policies'] += 1
+
+            # Store full text
+            full_text = parsed_data.get('full_text', '')
+            if full_text:
+                s3_uri = None
+                if upload_to_s3:
+                    s3_key = f"edgar/full_text/{filing.cik}/{filing.accession_number}/full_text.txt"
+                    s3_uri = self.storage.upload_file(
+                        full_text.encode('utf-8'),
+                        s3_key,
+                        content_type='text/plain'
+                    )
+
+                full_text_obj = FilingFullText(
+                    filing_id=filing.id,
+                    full_text=full_text[:100000],  # First 100k in DB
+                    text_length=len(full_text),
+                    word_count=len(full_text.split()),
+                    s3_uri=s3_uri
+                )
+                self.db.add(full_text_obj)
+
+            # Update filing metadata
+            await self.db.execute(
+                update(Filing)
+                .where(Filing.id == filing.id)
+                .values(
+                    text_extracted=True,
+                    text_extraction_date=datetime.now(),
+                    sections_count=counts['sections'],
+                    notes_count=counts['notes'],
+                    risks_count=counts['risks']
+                )
+            )
+
+            await self.db.commit()
+
+            logger.info(
+                f"Extracted text from filing {filing.id}: "
+                f"{counts['sections']} sections, {counts['notes']} notes, "
+                f"{counts['risks']} risks, {counts['policies']} policies"
+            )
+
+            return counts
+
+        except Exception as e:
+            logger.error(f"Error extracting text from filing {filing.id}: {e}")
+            raise
+
     async def close(self):
-        """Close EDGAR client"""
+        """Close EDGAR client and parser"""
         await self.edgar_client.close()
+        await self.filing_parser.close()

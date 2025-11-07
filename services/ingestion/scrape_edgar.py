@@ -248,6 +248,9 @@ Examples:
     parser.add_argument('--forms', help='Comma-separated list of form types (e.g., 10-K,10-Q)')
     parser.add_argument('--concepts', help='Comma-separated list of XBRL concepts')
 
+    # Text extraction
+    parser.add_argument('--extract-text', action='store_true', help='Extract full text content (notes, disclosures, etc.)')
+
     # Search options
     parser.add_argument('--search', action='store_true', help='Search existing filings')
     parser.add_argument('--limit', type=int, default=10, help='Search result limit')
