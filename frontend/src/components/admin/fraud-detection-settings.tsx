@@ -169,7 +169,7 @@ export function FraudDetectionSettings({ customerId }: Props) {
             checked={isEnabled}
             onCheckedChange={(checked) => handleToggle('is_enabled', checked)}
           />
-        </div>
+        </CardContent>
       </Card>
 
       {/* Statistics (only show if enabled) */}
