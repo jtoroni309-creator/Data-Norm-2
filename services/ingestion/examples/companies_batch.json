@@ -1,0 +1,45 @@
+{
+  "description": "Example batch file for EDGAR scraping",
+  "companies": [
+    {
+      "cik": "0000320193",
+      "note": "Apple Inc."
+    },
+    {
+      "ticker": "MSFT",
+      "note": "Microsoft Corporation"
+    },
+    {
+      "ticker": "GOOGL",
+      "note": "Alphabet Inc."
+    },
+    {
+      "ticker": "AMZN",
+      "note": "Amazon.com Inc."
+    },
+    {
+      "ticker": "TSLA",
+      "note": "Tesla Inc."
+    },
+    {
+      "ticker": "META",
+      "note": "Meta Platforms Inc."
+    },
+    {
+      "ticker": "NVDA",
+      "note": "NVIDIA Corporation"
+    },
+    {
+      "ticker": "JPM",
+      "note": "JPMorgan Chase & Co."
+    },
+    {
+      "ticker": "V",
+      "note": "Visa Inc."
+    },
+    {
+      "ticker": "WMT",
+      "note": "Walmart Inc."
+    }
+  ]
+}
