@@ -111,7 +111,7 @@ export const api = {
     refreshToken: () => api.post('/auth/refresh'),
   },
 
-  // Engagements
+  // Engagements (Full Workflow Support)
   engagements: {
     list: () => api.get('/engagements'),
 
@@ -119,9 +119,214 @@ export const api = {
 
     create: (data: any) => api.post('/engagements', data),
 
-    update: (id: string, data: any) => api.put(`/engagements/${id}`, data),
+    update: (id: string, data: any) => api.patch(`/engagements/${id}`, data),
 
     delete: (id: string) => api.delete(`/engagements/${id}`),
+
+    // State Transitions
+    transition: (id: string, newStatus: string) =>
+      api.post(`/engagements/${id}/transition`, null, { params: { new_status: newStatus } }),
+
+    // Team Members
+    team: {
+      list: (engagementId: string) =>
+        api.get(`/engagements/${engagementId}/team`),
+
+      add: (engagementId: string, data: { user_id: string; role: string }) =>
+        api.post(`/engagements/${engagementId}/team`, data),
+
+      remove: (engagementId: string, teamMemberId: string) =>
+        api.delete(`/engagements/${engagementId}/team/${teamMemberId}`),
+    },
+
+    // Binder & Workpapers
+    binder: {
+      getTree: (engagementId: string) =>
+        api.get(`/engagements/${engagementId}/binder/tree`),
+
+      createNode: (engagementId: string, data: any) =>
+        api.post(`/engagements/${engagementId}/binder/nodes`, data),
+
+      updateNode: (nodeId: string, data: any) =>
+        api.patch(`/binder/nodes/${nodeId}`, data),
+
+      deleteNode: (nodeId: string) =>
+        api.delete(`/binder/nodes/${nodeId}`),
+    },
+
+    // Workpapers
+    workpapers: {
+      get: (workpaperId: string) =>
+        api.get(`/workpapers/${workpaperId}`),
+
+      update: (workpaperId: string, data: any) =>
+        api.patch(`/workpapers/${workpaperId}`, data),
+
+      addReviewNote: (workpaperId: string, data: any) =>
+        api.post(`/workpapers/${workpaperId}/review-notes`, data),
+    },
+  },
+
+  // Disclosures
+  disclosures: {
+    // Disclosure Templates
+    templates: {
+      list: (reportType?: string) =>
+        api.get('/disclosures/templates', { params: { report_type: reportType } }),
+
+      get: (templateId: string) =>
+        api.get(`/disclosures/templates/${templateId}`),
+
+      create: (data: any) =>
+        api.post('/disclosures/templates', data),
+
+      update: (templateId: string, data: any) =>
+        api.patch(`/disclosures/templates/${templateId}`, data),
+
+      delete: (templateId: string) =>
+        api.delete(`/disclosures/templates/${templateId}`),
+    },
+
+    // Engagement Disclosures
+    byEngagement: {
+      list: (engagementId: string) =>
+        api.get(`/disclosures/engagements/${engagementId}`),
+
+      create: (engagementId: string, data: any) =>
+        api.post(`/disclosures/engagements/${engagementId}`, data),
+
+      get: (disclosureId: string) =>
+        api.get(`/disclosures/${disclosureId}`),
+
+      update: (disclosureId: string, data: any) =>
+        api.patch(`/disclosures/${disclosureId}`, data),
+
+      delete: (disclosureId: string) =>
+        api.delete(`/disclosures/${disclosureId}`),
+
+      updateStatus: (disclosureId: string, status: string) =>
+        api.patch(`/disclosures/${disclosureId}/status`, { status }),
+
+      aiDraft: (disclosureId: string) =>
+        api.post(`/disclosures/${disclosureId}/ai-draft`),
+    },
+
+    // Checklist Management
+    checklists: {
+      get: (engagementId: string, standard: string) =>
+        api.get(`/disclosures/engagements/${engagementId}/checklist`, { params: { standard } }),
+
+      update: (engagementId: string, data: any) =>
+        api.patch(`/disclosures/engagements/${engagementId}/checklist`, data),
+
+      generate: (engagementId: string, standard: string) =>
+        api.post(`/disclosures/engagements/${engagementId}/checklist/generate`, { standard }),
+    },
+  },
+
+  // Reporting
+  reporting: {
+    // Report Templates
+    templates: {
+      list: (reportType?: string) =>
+        api.get('/reporting/templates', { params: { report_type: reportType } }),
+
+      get: (templateId: string) =>
+        api.get(`/reporting/templates/${templateId}`),
+
+      create: (data: any) =>
+        api.post('/reporting/templates', data),
+
+      update: (templateId: string, data: any) =>
+        api.patch(`/reporting/templates/${templateId}`, data),
+
+      delete: (templateId: string) =>
+        api.delete(`/reporting/templates/${templateId}`),
+    },
+
+    // Reports
+    reports: {
+      list: (engagementId?: string) =>
+        api.get('/reporting/reports', { params: { engagement_id: engagementId } }),
+
+      get: (reportId: string) =>
+        api.get(`/reporting/reports/${reportId}`),
+
+      create: (data: any) =>
+        api.post('/reporting/reports', data),
+
+      update: (reportId: string, data: any) =>
+        api.patch(`/reporting/reports/${reportId}`, data),
+
+      delete: (reportId: string) =>
+        api.delete(`/reporting/reports/${reportId}`),
+
+      generate: (reportId: string) =>
+        api.post(`/reporting/reports/${reportId}/generate`),
+
+      download: (reportId: string) =>
+        api.get(`/reporting/reports/${reportId}/download`, { responseType: 'blob' }),
+
+      finalize: (reportId: string) =>
+        api.post(`/reporting/reports/${reportId}/finalize`),
+    },
+
+    // E-Signatures
+    signatures: {
+      create: (reportId: string, data: any) =>
+        api.post(`/reporting/reports/${reportId}/signatures`, data),
+
+      get: (envelopeId: string) =>
+        api.get(`/reporting/signatures/${envelopeId}`),
+
+      send: (envelopeId: string) =>
+        api.post(`/reporting/signatures/${envelopeId}/send`),
+
+      void: (envelopeId: string, reason: string) =>
+        api.post(`/reporting/signatures/${envelopeId}/void`, { reason }),
+
+      resend: (envelopeId: string) =>
+        api.post(`/reporting/signatures/${envelopeId}/resend`),
+    },
+
+    // Opinions (Audit/Review/Compilation)
+    opinions: {
+      generate: (engagementId: string, data: any) =>
+        api.post(`/reporting/engagements/${engagementId}/opinion`, data),
+
+      get: (engagementId: string) =>
+        api.get(`/reporting/engagements/${engagementId}/opinion`),
+
+      update: (engagementId: string, data: any) =>
+        api.patch(`/reporting/engagements/${engagementId}/opinion`, data),
+    },
+  },
+
+  // Confirmations (Wire/Bank confirmations)
+  confirmations: {
+    list: (engagementId: string) =>
+      api.get(`/confirmations/engagements/${engagementId}`),
+
+    create: (engagementId: string, data: any) =>
+      api.post(`/confirmations/engagements/${engagementId}`, data),
+
+    get: (confirmationId: string) =>
+      api.get(`/confirmations/${confirmationId}`),
+
+    update: (confirmationId: string, data: any) =>
+      api.patch(`/confirmations/${confirmationId}`, data),
+
+    generateLetter: (confirmationId: string, templateId?: string) =>
+      api.post(`/confirmations/${confirmationId}/generate-letter`, { template_id: templateId }),
+
+    markSent: (confirmationId: string, data: any) =>
+      api.post(`/confirmations/${confirmationId}/mark-sent`, data),
+
+    recordResponse: (confirmationId: string, data: any) =>
+      api.post(`/confirmations/${confirmationId}/record-response`, data),
+
+    summary: (engagementId: string) =>
+      api.get(`/confirmations/engagements/${engagementId}/summary`),
   },
 
   // Analytics
