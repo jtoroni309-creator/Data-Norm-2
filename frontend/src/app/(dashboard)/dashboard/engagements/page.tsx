@@ -47,10 +47,8 @@ export default function EngagementsPage() {
         return 'info';
       case EngagementStatus.REVIEW:
         return 'warning';
-      case EngagementStatus.COMPLETED:
+      case EngagementStatus.FINALIZED:
         return 'success';
-      case EngagementStatus.ARCHIVED:
-        return 'secondary';
       default:
         return 'default';
     }
@@ -64,8 +62,6 @@ export default function EngagementsPage() {
         return 'text-purple-600 bg-purple-100 dark:bg-purple-900/20';
       case EngagementType.COMPILATION:
         return 'text-green-600 bg-green-100 dark:bg-green-900/20';
-      case EngagementType.TAX:
-        return 'text-orange-600 bg-orange-100 dark:bg-orange-900/20';
       default:
         return 'text-gray-600 bg-gray-100 dark:bg-gray-900/20';
     }
@@ -90,8 +86,8 @@ export default function EngagementsPage() {
       color: 'text-yellow-600',
     },
     {
-      label: 'Completed',
-      value: engagements.filter((e: Engagement) => e.status === EngagementStatus.COMPLETED).length,
+      label: 'Finalized',
+      value: engagements.filter((e: Engagement) => e.status === EngagementStatus.FINALIZED).length,
       color: 'text-green-600',
     },
   ];
@@ -166,8 +162,7 @@ export default function EngagementsPage() {
                 <option value={EngagementStatus.PLANNING}>Planning</option>
                 <option value={EngagementStatus.FIELDWORK}>Fieldwork</option>
                 <option value={EngagementStatus.REVIEW}>Review</option>
-                <option value={EngagementStatus.COMPLETED}>Completed</option>
-                <option value={EngagementStatus.ARCHIVED}>Archived</option>
+                <option value={EngagementStatus.FINALIZED}>Finalized</option>
               </select>
             </div>
           </div>

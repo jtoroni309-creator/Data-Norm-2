@@ -129,7 +129,6 @@ export default function CreateEngagementForm({ onSuccess }: CreateEngagementForm
             <option value={EngagementType.AUDIT}>Audit</option>
             <option value={EngagementType.REVIEW}>Review</option>
             <option value={EngagementType.COMPILATION}>Compilation</option>
-            <option value={EngagementType.TAX}>Tax</option>
           </select>
         </div>
 
@@ -157,8 +156,7 @@ export default function CreateEngagementForm({ onSuccess }: CreateEngagementForm
             <option value={EngagementStatus.PLANNING}>Planning</option>
             <option value={EngagementStatus.FIELDWORK}>Fieldwork</option>
             <option value={EngagementStatus.REVIEW}>Review</option>
-            <option value={EngagementStatus.COMPLETED}>Completed</option>
-            <option value={EngagementStatus.ARCHIVED}>Archived</option>
+            <option value={EngagementStatus.FINALIZED}>Finalized</option>
           </select>
         </div>
 

@@ -144,6 +144,23 @@ export const api = {
       api.get(`/analytics/ratios/${engagementId}`),
   },
 
+  // Trial Balance
+  trialBalance: {
+    getByEngagement: (engagementId: string) =>
+      api.get(`/engagements/${engagementId}/trial-balance`),
+
+    uploadFile: (engagementId: string, file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return api.post(`/engagements/${engagementId}/trial-balance/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+
+    updateMapping: (lineId: string, data: any) =>
+      api.patch(`/trial-balance/lines/${lineId}`, data),
+  },
+
   // Normalize (Account Mapping)
   normalize: {
     mappings: {

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+// import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'sonner';
 import '@/styles/globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+// Using system fonts for now (Google Fonts requires network access)
+// const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'Aura Audit AI - Intelligent Audit Platform',
@@ -26,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.variable}>
+      <body className="font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

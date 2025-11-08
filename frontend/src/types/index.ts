@@ -43,6 +43,13 @@ export interface Engagement {
   manager_id?: string;
   created_at: string;
   updated_at: string;
+  // AI-computed fields (optional, added by frontend)
+  risk_level?: 'low' | 'medium' | 'high' | 'critical';
+  ai_insights_available?: boolean;
+  total_assets?: number;
+  total_revenue?: number;
+  industry?: string;
+  prior_year_issues?: string[];
 }
 
 export enum EngagementType {

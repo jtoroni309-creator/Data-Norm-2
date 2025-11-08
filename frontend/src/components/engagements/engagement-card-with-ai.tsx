@@ -67,7 +67,7 @@ export function EngagementCardWithAI({ engagement, onClick }: EngagementCardWith
 
   const getStatusIcon = (status: EngagementStatus) => {
     switch (status) {
-      case EngagementStatus.COMPLETED:
+      case EngagementStatus.FINALIZED:
         return <CheckCircle2 className="h-4 w-4" />;
       case EngagementStatus.REVIEW:
         return <AlertTriangle className="h-4 w-4" />;
@@ -112,7 +112,7 @@ export function EngagementCardWithAI({ engagement, onClick }: EngagementCardWith
                 variant="outline"
                 className={cn(
                   'flex items-center space-x-1',
-                  engagement.status === EngagementStatus.COMPLETED
+                  engagement.status === EngagementStatus.FINALIZED
                     ? 'border-green-500 text-green-600'
                     : engagement.status === EngagementStatus.REVIEW
                       ? 'border-yellow-500 text-yellow-600'

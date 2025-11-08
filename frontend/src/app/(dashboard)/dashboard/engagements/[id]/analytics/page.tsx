@@ -61,13 +61,13 @@ export default function AnalyticsDashboardPage({ params }: { params: { id: strin
   // Fetch JE test results
   const { data: jeResults = [], isLoading: isLoadingJE } = useQuery({
     queryKey: ['je-tests', params.id],
-    queryFn: () => api.analytics.runJETests(params.id),
+    queryFn: () => api.analytics.jeTests(params.id),
   });
 
   // Fetch anomalies
   const { data: anomaliesData, isLoading: isLoadingAnomalies } = useQuery({
     queryKey: ['anomalies', params.id],
-    queryFn: () => api.analytics.getAnomalies(params.id),
+    queryFn: () => api.analytics.anomalies.list(params.id),
   });
 
   const anomalies = anomaliesData?.anomalies || [];

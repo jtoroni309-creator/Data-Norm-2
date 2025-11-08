@@ -62,10 +62,8 @@ export default function EngagementDetailPage() {
         return 'info';
       case EngagementStatus.REVIEW:
         return 'warning';
-      case EngagementStatus.COMPLETED:
+      case EngagementStatus.FINALIZED:
         return 'success';
-      case EngagementStatus.ARCHIVED:
-        return 'secondary';
       default:
         return 'default';
     }

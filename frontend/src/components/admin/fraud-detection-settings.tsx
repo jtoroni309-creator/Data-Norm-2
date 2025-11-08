@@ -113,8 +113,8 @@ export function FraudDetectionSettings({ customerId }: Props) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['fraud-detection-settings', customerId]);
-      queryClient.invalidateQueries(['fraud-detection-stats', customerId]);
+      queryClient.invalidateQueries({ queryKey: ['fraud-detection-settings', customerId] });
+      queryClient.invalidateQueries({ queryKey: ['fraud-detection-stats', customerId] });
       toast.success('Fraud detection settings updated successfully');
       setHasChanges(false);
     },

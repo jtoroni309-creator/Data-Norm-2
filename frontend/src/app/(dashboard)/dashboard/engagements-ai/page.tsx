@@ -168,7 +168,7 @@ export default function EngagementsAIPage() {
                 <option value={EngagementStatus.PLANNING}>Planning</option>
                 <option value={EngagementStatus.FIELDWORK}>Fieldwork</option>
                 <option value={EngagementStatus.REVIEW}>Review</option>
-                <option value={EngagementStatus.COMPLETED}>Completed</option>
+                <option value={EngagementStatus.FINALIZED}>Finalized</option>
               </select>
               <Button variant="outline">
                 <Filter className="mr-2 h-4 w-4" />
