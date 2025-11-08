@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # Row-Level Security
     RLS_ENABLED: bool = True
 
+    # Auditor Firm Information (for confirmations and reports)
+    AUDITOR_FIRM_NAME: str = "Aura Audit AI"
+    AUDITOR_FIRM_ADDRESS_LINE1: str = "123 Main Street, Suite 100"
+    AUDITOR_FIRM_ADDRESS_LINE2: str = ""
+    AUDITOR_FIRM_CITY: str = "Anytown"
+    AUDITOR_FIRM_STATE: str = "USA"
+    AUDITOR_FIRM_POSTAL_CODE: str = "12345"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

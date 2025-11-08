@@ -8,11 +8,12 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 import jinja2
 
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Engagement
 from .database import Base
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +244,35 @@ class ConfirmationService:
 
         # Get engagement
         engagement = await self.db.get(Engagement, confirmation.engagement_id)
+        if not engagement:
+            raise ValueError(f"Engagement {confirmation.engagement_id} not found")
+
+        # Fetch client information from atlas.clients table
+        client_query = text("""
+            SELECT
+                client_name,
+                primary_contact_name,
+                primary_contact_email,
+                address_line1,
+                address_line2,
+                city,
+                state,
+                zip_code
+            FROM atlas.clients
+            WHERE id = :client_id
+        """)
+        client_result = await self.db.execute(client_query, {"client_id": engagement.client_id})
+        client = client_result.fetchone()
+
+        # Default client info if not found
+        if client:
+            client_company_name = client[0] or "Client Company"
+            client_contact_name = client[1] or "Management"
+            client_contact_title = "Primary Contact"  # Default title
+        else:
+            client_company_name = "Client Company"
+            client_contact_name = "Management"
+            client_contact_title = "Primary Contact"
 
         # Get template
         if template_id:
@@ -260,6 +290,13 @@ class ConfirmationService:
         if not template:
             raise ValueError(f"No template found for {confirmation.confirmation_type}")
 
+        # Build auditor address from settings
+        auditor_address_parts = [settings.AUDITOR_FIRM_ADDRESS_LINE1]
+        if settings.AUDITOR_FIRM_ADDRESS_LINE2:
+            auditor_address_parts.append(settings.AUDITOR_FIRM_ADDRESS_LINE2)
+        auditor_address_parts.append(f"{settings.AUDITOR_FIRM_CITY}, {settings.AUDITOR_FIRM_STATE} {settings.AUDITOR_FIRM_POSTAL_CODE}")
+        auditor_address = "\n".join(auditor_address_parts)
+
         # Prepare template variables
         context = {
             'entity_name': confirmation.entity_name,
@@ -268,11 +305,11 @@ class ConfirmationService:
             'as_of_date': confirmation.as_of_date.strftime('%B %d, %Y'),
             'amount': f"${confirmation.amount:,.2f}" if confirmation.amount else "N/A",
             'account_number': confirmation.account_number or "N/A",
-            'client_company_name': engagement.client_name,
-            'client_contact_name': 'Management',  # TODO: Get from engagement
-            'client_contact_title': 'CFO',  # TODO: Get from engagement
-            'auditor_firm_name': 'Aura Audit AI',  # TODO: Get from settings
-            'auditor_address': '123 Main St, Suite 100\nAnytown, USA',  # TODO: Get from settings
+            'client_company_name': client_company_name,
+            'client_contact_name': client_contact_name,
+            'client_contact_title': client_contact_title,
+            'auditor_firm_name': settings.AUDITOR_FIRM_NAME,
+            'auditor_address': auditor_address,
         }
 
         # Render template

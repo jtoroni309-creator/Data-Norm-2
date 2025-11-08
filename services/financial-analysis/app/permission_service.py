@@ -12,6 +12,7 @@ Key Features:
 - Secure by default (deny unless explicitly allowed)
 """
 
+import bcrypt
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -43,6 +44,43 @@ class PermissionService:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    # ========================================================================
+    # PASSWORD HASHING UTILITIES
+    # ========================================================================
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """
+        Hash a password using bcrypt.
+
+        Args:
+            password: Plain text password
+
+        Returns:
+            Hashed password string
+        """
+        # Generate salt and hash password
+        salt = bcrypt.gensalt(rounds=12)
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
+
+    @staticmethod
+    def verify_password(password: str, password_hash: str) -> bool:
+        """
+        Verify a password against a bcrypt hash.
+
+        Args:
+            password: Plain text password to verify
+            password_hash: Hashed password to compare against
+
+        Returns:
+            True if password matches, False otherwise
+        """
+        return bcrypt.checkpw(
+            password.encode('utf-8'),
+            password_hash.encode('utf-8')
+        )
 
     # ========================================================================
     # TENANT MANAGEMENT (Platform Admin Only)
@@ -506,14 +544,14 @@ class PermissionService:
             await self.session.commit()
             raise ValueError("Invitation has expired")
 
-        # Create user (password should be hashed in real implementation)
+        # Create user with hashed password
         user = User(
             email=invitation.email,
             first_name=first_name,
             last_name=last_name,
             role=invitation.role,
             tenant_id=invitation.tenant_id,
-            password_hash=password,  # TODO: Hash password with bcrypt
+            password_hash=self.hash_password(password),
             email_verified=True,
             email_verified_at=datetime.utcnow(),
         )
