@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # JWT Configuration (for token validation)
+    JWT_SECRET: str = "dev-secret-change-in-production-to-256-bit-random-key"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRY_HOURS: int = 8
+
     # CORS
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
