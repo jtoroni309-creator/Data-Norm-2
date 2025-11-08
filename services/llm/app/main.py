@@ -4,11 +4,13 @@ from contextlib import asynccontextmanager
 from typing import List
 from uuid import UUID
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError, jwt
 
 from .config import settings
 from .database import init_db, close_db, get_db
@@ -51,6 +53,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Security
+security = HTTPBearer()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,14 +94,50 @@ app.add_middleware(
 # Dependency: User Authentication
 # ========================================
 
-async def get_current_user_id() -> UUID:
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Security(security)
+) -> UUID:
     """
     Get current user ID from JWT token
-    TODO: Implement actual JWT validation
+
+    Validates the JWT token and extracts the user ID.
+
+    Args:
+        credentials: HTTP Bearer token from Authorization header
+
+    Returns:
+        UUID: The authenticated user's ID
+
+    Raises:
+        HTTPException: If token is invalid, expired, or missing required claims
     """
-    # For now, return a mock user ID
-    # In production, this should extract and validate JWT from Authorization header
-    return UUID("00000000-0000-0000-0000-000000000001")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            logger.error("JWT token missing 'sub' claim")
+            raise credentials_exception
+
+        return UUID(user_id)
+
+    except JWTError as e:
+        logger.error(f"JWT decode error: {e}")
+        raise credentials_exception
+    except ValueError as e:
+        logger.error(f"Invalid UUID format in JWT 'sub' claim: {e}")
+        raise credentials_exception
 
 
 # ========================================
