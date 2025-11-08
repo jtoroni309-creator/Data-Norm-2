@@ -1,0 +1,105 @@
+# AlertManager Configuration for Aura Audit AI
+# Routes alerts and sends notifications
+
+global:
+  resolve_timeout: 5m
+  # SMTP configuration for email alerts
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@aura-audit.ai'
+  smtp_auth_username: 'alerts@aura-audit.ai'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Email and Slack templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert distribution
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  routes:
+    # Critical alerts go to PagerDuty
+    - match:
+        severity: critical
+      receiver: 'pagerduty'
+      continue: true
+
+    # Critical alerts also email oncall
+    - match:
+        severity: critical
+      receiver: 'oncall-email'
+
+    # Warning alerts go to Slack
+    - match:
+        severity: warning
+      receiver: 'slack-warnings'
+
+    # Database alerts
+    - match:
+        alertname: Database*
+      receiver: 'database-team'
+
+    # Security alerts
+    - match:
+        alertname: HighAuthFailureRate|JWTValidationFailures
+      receiver: 'security-team'
+
+# Inhibition rules (suppress alerts)
+inhibit_rules:
+  # If service is down, don't alert on high error rate
+  - source_match:
+      severity: 'critical'
+      alertname: 'ServiceDown'
+    target_match:
+      severity: 'warning'
+    equal: ['service']
+
+# Receivers (notification destinations)
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: 'ops@aura-audit.ai'
+        send_resolved: true
+
+  - name: 'oncall-email'
+    email_configs:
+      - to: 'oncall@aura-audit.ai'
+        send_resolved: true
+        headers:
+          Subject: '[CRITICAL] {{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
+
+  - name: 'slack-warnings'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#alerts'
+        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+  - name: 'pagerduty'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}'
+        details:
+          firing: '{{ template "__text_alert_list" .Alerts.Firing }}'
+        send_resolved: true
+
+  - name: 'database-team'
+    email_configs:
+      - to: 'database-team@aura-audit.ai'
+        send_resolved: true
+
+  - name: 'security-team'
+    email_configs:
+      - to: 'security-team@aura-audit.ai'
+        send_resolved: true
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#security-alerts'
+        title: '[SECURITY] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true

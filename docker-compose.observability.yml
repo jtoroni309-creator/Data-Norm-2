@@ -1,0 +1,205 @@
+# Observability Stack for Aura Audit AI
+# Provides monitoring, logging, tracing for production-ready operations
+#
+# Services:
+# - Prometheus: Metrics collection
+# - Grafana: Visualization and dashboards
+# - Jaeger: Distributed tracing
+# - Loki: Log aggregation
+# - Promtail: Log collection
+# - AlertManager: Alert management
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+#
+# Access:
+#   Grafana: http://localhost:3000 (admin/admin)
+#   Prometheus: http://localhost:9090
+#   Jaeger UI: http://localhost:16686
+#   AlertManager: http://localhost:9093
+
+version: '3.8'
+
+networks:
+  atlas-network:
+    external: true
+  observability:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+services:
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: atlas-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - atlas-network
+      - observability
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # Grafana - Visualization & Dashboards
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: atlas-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+      - loki
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: atlas-jaeger
+    restart: unless-stopped
+    ports:
+      - "5775:5775/udp"   # Agent: accept zipkin.thrift over compact thrift protocol
+      - "6831:6831/udp"   # Agent: accept jaeger.thrift over compact thrift protocol
+      - "6832:6832/udp"   # Agent: accept jaeger.thrift over binary thrift protocol
+      - "5778:5778"       # Agent: serve configs
+      - "16686:16686"     # UI
+      - "14268:14268"     # Collector: accept jaeger.thrift directly from clients
+      - "14250:14250"     # Collector: accept model.proto
+      - "9411:9411"       # Collector: Zipkin compatible endpoint
+      - "4317:4317"       # OTLP gRPC receiver
+      - "4318:4318"       # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=badger
+      - BADGER_EPHEMERAL=false
+      - BADGER_DIRECTORY_VALUE=/badger/data
+      - BADGER_DIRECTORY_KEY=/badger/key
+    volumes:
+      - ./observability/jaeger:/badger
+    networks:
+      - atlas-network
+      - observability
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: atlas-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - observability
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # Promtail - Log Collection Agent
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: atlas-promtail
+    restart: unless-stopped
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - observability
+    depends_on:
+      - loki
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # AlertManager - Alert Management
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: atlas-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - observability
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # Node Exporter - Host Metrics
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: atlas-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - observability
+    labels:
+      org.label-schema.group: "monitoring"
+
+  # cAdvisor - Container Metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: atlas-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - observability
+    labels:
+      org.label-schema.group: "monitoring"
