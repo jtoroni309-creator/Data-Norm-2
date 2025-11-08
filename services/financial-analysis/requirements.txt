@@ -48,6 +48,9 @@ boto3==1.34.27
 aiohttp==3.9.3
 httpx==0.26.0
 
+# Security
+bcrypt==4.1.2
+
 # Utilities
 python-multipart==0.0.6
 python-dateutil==2.8.2
