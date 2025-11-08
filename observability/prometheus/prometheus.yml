@@ -1,0 +1,114 @@
+# Prometheus Configuration for Aura Audit AI
+# Scrapes metrics from all services and infrastructure
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'aura-audit-ai'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Identity Service
+  - job_name: 'identity-service'
+    static_configs:
+      - targets: ['api-identity:8000']
+    metrics_path: '/metrics'
+
+  # Engagement Service
+  - job_name: 'engagement-service'
+    static_configs:
+      - targets: ['api-engagement:8000']
+    metrics_path: '/metrics'
+
+  # Ingestion Service
+  - job_name: 'ingestion-service'
+    static_configs:
+      - targets: ['api-ingestion:8000']
+    metrics_path: '/metrics'
+
+  # Normalize Service
+  - job_name: 'normalize-service'
+    static_configs:
+      - targets: ['api-normalize:8000']
+    metrics_path: '/metrics'
+
+  # Analytics Service
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['api-analytics:8000']
+    metrics_path: '/metrics'
+
+  # LLM Service
+  - job_name: 'llm-service'
+    static_configs:
+      - targets: ['api-llm:8000']
+    metrics_path: '/metrics'
+
+  # Disclosures Service
+  - job_name: 'disclosures-service'
+    static_configs:
+      - targets: ['api-disclosures:8000']
+    metrics_path: '/metrics'
+
+  # Reporting Service
+  - job_name: 'reporting-service'
+    static_configs:
+      - targets: ['api-reporting:8000']
+    metrics_path: '/metrics'
+
+  # QC Service
+  - job_name: 'qc-service'
+    static_configs:
+      - targets: ['api-qc:8000']
+    metrics_path: '/metrics'
+
+  # PostgreSQL
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # MinIO
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    metrics_path: '/minio/v2/metrics/cluster'
+
+  # Node Exporter (host metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
