@@ -44,6 +44,17 @@ dev = [
     "pre-commit>=3.6.0",
 ]
 
+test = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-html>=4.1.0",
+    "httpx>=0.26.0",
+    "redis>=5.0.1",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"
@@ -78,6 +89,10 @@ markers = [
     "integration: marks tests as integration tests",
     "e2e: marks tests as end-to-end tests",
     "unit: marks tests as unit tests",
+    "smoke: deployment smoke tests for critical integration points",
+    "database: tests that require database connectivity",
+    "redis: tests that require Redis connectivity",
+    "service: tests that require service-to-service communication",
 ]
 
 [tool.coverage.run]
