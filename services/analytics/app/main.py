@@ -212,11 +212,94 @@ async def detect_anomalies(
         }
 
     elif method == "isolation_forest":
-        # TODO: Implement Isolation Forest with trial balance data
+        # Get trial balance data for isolation forest
+        from sqlalchemy import text
+        import numpy as np
+
+        query = text("""
+            SELECT
+                tb.id,
+                tb.account_code,
+                tb.account_name,
+                tb.balance_amount
+            FROM atlas.trial_balance_lines tb
+            JOIN atlas.trial_balances tbal ON tbal.id = tb.trial_balance_id
+            WHERE tbal.engagement_id = :engagement_id
+                AND tb.balance_amount IS NOT NULL
+            ORDER BY tb.account_code
+        """)
+
+        result = await db.execute(query, {"engagement_id": engagement_id})
+        rows = result.fetchall()
+
+        if len(rows) < 10:  # Need minimum sample size
+            return {
+                "method": "isolation_forest",
+                "engagement_id": engagement_id,
+                "message": "Insufficient data for Isolation Forest (minimum 10 accounts required)"
+            }
+
+        # Prepare data for Isolation Forest
+        account_data = []
+        account_info = []
+        for row in rows:
+            tb_id, account_code, account_name, balance = row
+            account_data.append([float(balance)])  # Can add more features later
+            account_info.append({
+                "tb_id": str(tb_id),
+                "account_code": account_code,
+                "account_name": account_name,
+                "balance": float(balance)
+            })
+
+        data_array = np.array(account_data)
+
+        # Run Isolation Forest
+        predictions, scores = detector.detect_outliers_isolation_forest(data_array)
+
+        # Create anomaly records for detected anomalies
+        anomalies_created = []
+        outliers = []
+        for i, (pred, score) in enumerate(zip(predictions, scores)):
+            if pred == -1:  # Anomaly detected
+                account = account_info[i]
+
+                # Calculate severity based on score
+                if score < -0.5:
+                    severity = AnomalySeverity.CRITICAL
+                elif score < -0.3:
+                    severity = AnomalySeverity.HIGH
+                else:
+                    severity = AnomalySeverity.MEDIUM
+
+                anomaly = Anomaly(
+                    engagement_id=engagement_id,
+                    anomaly_type="outlier_isolation_forest",
+                    severity=severity,
+                    title=f"Isolation Forest Anomaly: {account['account_name']}",
+                    description=f"Account balance identified as anomalous by ML model (score: {score:.3f})",
+                    evidence=account,
+                    score=float(score)
+                )
+                db.add(anomaly)
+                anomalies_created.append(anomaly)
+
+                outliers.append({
+                    **account,
+                    "anomaly_score": float(score),
+                    "severity": severity.value
+                })
+
+        await db.commit()
+
+        logger.info(f"Isolation Forest created {len(anomalies_created)} anomaly records for engagement {engagement_id}")
+
         return {
             "method": "isolation_forest",
             "engagement_id": engagement_id,
-            "message": "Isolation Forest detection coming soon"
+            "anomalies_detected": len(outliers),
+            "total_accounts_analyzed": len(rows),
+            "outliers": outliers
         }
 
     else:
