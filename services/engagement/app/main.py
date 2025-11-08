@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, text
 from sqlalchemy.orm import selectinload
 
 from .config import settings
@@ -318,9 +318,52 @@ async def transition_engagement_status(
 
     # Finalized requires additional checks (partner approval, QC pass)
     if new_status == EngagementStatus.FINALIZED:
-        # TODO: Check QC policies passed
-        # TODO: Check partner signature exists
-        pass
+        # Check QC policies passed
+        qc_check_query = text("""
+            SELECT
+                qc.id,
+                qp.policy_name,
+                qp.is_blocking,
+                qc.status
+            FROM atlas.qc_checks qc
+            JOIN atlas.qc_policies qp ON qc.policy_id = qp.id
+            WHERE qc.engagement_id = :engagement_id
+              AND qp.is_blocking = TRUE
+              AND qp.is_active = TRUE
+              AND qc.status NOT IN ('passed', 'waived')
+        """)
+        qc_result = await db.execute(qc_check_query, {"engagement_id": engagement_id})
+        failed_qc_checks = qc_result.fetchall()
+
+        if failed_qc_checks:
+            failed_policies = [row[1] for row in failed_qc_checks]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot finalize: blocking QC policies not passed: {', '.join(failed_policies)}"
+            )
+
+        # Check partner signature exists
+        signature_check_query = text("""
+            SELECT
+                se.id,
+                se.status,
+                r.report_type
+            FROM atlas.signature_envelopes se
+            JOIN atlas.reports r ON se.report_id = r.id
+            WHERE r.engagement_id = :engagement_id
+              AND r.report_type IN ('audit_opinion', 'review_opinion', 'compilation_report')
+              AND se.status = 'completed'
+            ORDER BY se.created_at DESC
+            LIMIT 1
+        """)
+        signature_result = await db.execute(signature_check_query, {"engagement_id": engagement_id})
+        partner_signature = signature_result.fetchone()
+
+        if not partner_signature:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot finalize: partner signature not completed on engagement report"
+            )
 
     engagement.status = new_status
     engagement.updated_at = datetime.utcnow()
