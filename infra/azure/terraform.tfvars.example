@@ -1,0 +1,61 @@
+# ===========================================
+# Aura Audit AI - Azure Configuration
+# Environment: Production MVP
+# ===========================================
+#
+# IMPORTANT: Update the values below before deployment
+#
+
+# General Configuration
+location    = "eastus"
+environment = "prod"
+
+# Azure AD Admin Group (REQUIRED - get from Azure Portal)
+# Run: az ad group list --query "[].{name:displayName, id:id}" -o table
+# Or create: az ad group create --display-name "AKS-Aura-Admins" --mail-nickname "aks-aura-admins"
+aks_admin_group_ids = ["REPLACE_WITH_YOUR_AZURE_AD_GROUP_OBJECT_ID"]
+
+# AKS Configuration
+kubernetes_version    = "1.28"
+aks_system_node_count = 3
+aks_app_node_count    = 3
+aks_system_node_size  = "Standard_D4s_v3"
+aks_app_node_size     = "Standard_D8s_v3"
+
+# PostgreSQL Configuration
+postgres_admin_username          = "atlasadmin"
+postgres_sku                     = "GP_Standard_D4s_v3"
+postgres_storage_mb              = 131072  # 128 GB
+postgres_high_availability       = true
+postgres_standby_zone            = "2"
+postgres_backup_retention_days   = 35
+postgres_geo_redundant_backup    = true
+
+# Redis Configuration
+redis_sku      = "Premium"
+redis_family   = "P"
+redis_capacity = 1
+
+# Storage Configuration
+storage_replication_type   = "GRS"
+blob_delete_retention_days = 30
+
+# Container Registry
+acr_sku             = "Premium"
+acr_georeplications = ["westus2"]  # Optional: add more regions for DR
+
+# Application Gateway
+appgw_sku_name  = "WAF_v2"
+appgw_sku_tier  = "WAF_v2"
+appgw_capacity  = 2
+
+# Monitoring
+log_retention_days = 90
+
+# Tags
+tags = {
+  CostCenter  = "Engineering"
+  Owner       = "Platform Team"
+  Environment = "Production"
+  Purpose     = "Audit AI Platform"
+}
