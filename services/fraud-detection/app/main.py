@@ -74,13 +74,13 @@ app = FastAPI(
     description="AI-powered fraud detection with bank account integration",
 )
 
-# Add CORS middleware
+# Add CORS middleware - Configured for security
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
 )
 
 # Security Middleware (SOC 2 compliance - rate limiting, IP filtering, CSRF protection)

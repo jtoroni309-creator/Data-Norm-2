@@ -3,6 +3,25 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { AxiosError } from 'axios';
+
+// Type for API error responses
+interface ApiErrorResponse {
+  message?: string;
+  detail?: string;
+}
+
+// Helper to extract error message from unknown error
+function getErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as ApiErrorResponse | undefined;
+    return data?.message || data?.detail || 'An error occurred. Please try again.';
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'An unexpected error occurred.';
+}
 
 export function useAuth() {
   const router = useRouter();
@@ -24,8 +43,8 @@ export function useAuth() {
       toast.success('Login successful!');
       router.push('/dashboard');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Login failed. Please try again.');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -45,8 +64,8 @@ export function useAuth() {
       toast.success('Account created successfully!');
       router.push('/dashboard');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 
