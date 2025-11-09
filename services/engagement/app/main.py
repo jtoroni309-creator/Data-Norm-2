@@ -72,17 +72,56 @@ app.add_middleware(
 
 
 # ========================================
-# Mock Authentication (Replace with real auth)
+# JWT Authentication
 # ========================================
 
-async def get_current_user_id() -> UUID:
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Security
+from jose import JWTError, jwt
+
+security = HTTPBearer()
+
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Security(security)
+) -> UUID:
     """
-    Mock function to get current user ID
-    In production, this would decode JWT and return user ID
+    Extract user ID from JWT token
+
+    Args:
+        credentials: JWT token from Authorization header
+
+    Returns:
+        User ID from token payload
+
+    Raises:
+        HTTPException: If token is invalid or expired
     """
-    # For now, return a fixed UUID
-    # In production: extract from JWT token via Identity service
-    return UUID("00000000-0000-0000-0000-000000000001")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+
+        return UUID(user_id)
+
+    except JWTError as e:
+        logger.error(f"JWT validation error: {e}")
+        raise credentials_exception
+    except ValueError as e:
+        logger.error(f"Invalid user ID format in token: {e}")
+        raise credentials_exception
 
 
 # ========================================
@@ -260,8 +299,17 @@ async def update_engagement(
         setattr(engagement, field, value)
 
     engagement.updated_at = datetime.utcnow()
-    await db.commit()
-    await db.refresh(engagement)
+
+    try:
+        await db.commit()
+        await db.refresh(engagement)
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Database error updating engagement {engagement_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update engagement"
+        )
 
     logger.info(f"Updated engagement: {engagement.id}")
 

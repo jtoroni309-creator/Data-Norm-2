@@ -5,23 +5,33 @@ Configuration management for Fraud Detection service.
 import os
 from typing import Optional
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Application settings"""
+    """Application settings with validation"""
 
     # Application
     APP_NAME: str = "Fraud Detection Service"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    DEBUG: bool = Field(default=False)
+    ENVIRONMENT: str = Field(default="development")
 
-    # Database
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/aura_fraud_detection"
+    # Database - Required in production
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/aura_fraud_detection",
+        description="PostgreSQL database connection string"
     )
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def validate_database_url(cls, v: str, info) -> str:
+        """Validate DATABASE_URL is set in production"""
+        env = info.data.get("ENVIRONMENT", "development")
+        if env == "production" and "localhost" in v:
+            raise ValueError("DATABASE_URL must not use localhost in production")
+        return v
 
     # Redis (for caching and real-time processing)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/3")
@@ -83,6 +93,12 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # CORS Configuration
+    ALLOWED_ORIGINS: list[str] = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+    ).split(",")
 
     # Feature flags
     ENABLE_ML_MODELS: bool = os.getenv("ENABLE_ML_MODELS", "true").lower() == "true"
