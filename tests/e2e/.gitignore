@@ -1,0 +1,28 @@
+# Playwright artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.test
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+*.log
+test-results.json
+
+# Screenshots and videos
+screenshots/
+videos/
+
+# Coverage
+coverage/
+.nyc_output/
