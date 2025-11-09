@@ -643,11 +643,110 @@ class TestEngagementLocking:
     """Test engagement locking on finalization"""
 
     @pytest.mark.asyncio
-    async def test_engagement_locked_on_finalization(self, test_client, test_data):
+    async def test_engagement_locked_on_finalization(self, test_client, test_data, test_db):
         """Test that engagement is locked when finalized"""
-        # This test would verify locked_at and locked_by fields are set
-        # when transitioning to FINALIZED status
-        pass
+        user_id = test_data["user_id"]
+        client_id = test_data["client_id"]
+
+        # Create engagement and advance to REVIEW
+        create_response = await test_client.post(
+            "/engagements",
+            json={
+                "client_id": str(client_id),
+                "name": "Test Engagement",
+                "engagement_type": "audit",
+                "fiscal_year_end": "2024-12-31",
+            },
+            headers={"X-User-ID": str(user_id)}
+        )
+
+        engagement_id = UUID(create_response.json()["id"])
+
+        # Advance to REVIEW
+        for status in ["planning", "fieldwork", "review"]:
+            await test_client.post(
+                f"/engagements/{engagement_id}/transition",
+                params={"new_status": status},
+                headers={"X-User-ID": str(user_id)}
+            )
+
+        # Setup QC and signature for finalization
+        policy_id = uuid4()
+        await test_db.execute(
+            text("""
+                INSERT INTO atlas.qc_policies (
+                    id, policy_code, policy_name, is_blocking, check_logic, is_active
+                )
+                VALUES (:policy_id, 'TEST_001', 'Test Policy', TRUE, '{}', TRUE)
+            """),
+            {"policy_id": policy_id}
+        )
+
+        await test_db.execute(
+            text("""
+                INSERT INTO atlas.qc_checks (
+                    id, engagement_id, policy_id, status, executed_at
+                )
+                VALUES (:check_id, :engagement_id, :policy_id, 'passed', NOW())
+            """),
+            {
+                "check_id": uuid4(),
+                "engagement_id": engagement_id,
+                "policy_id": policy_id,
+            }
+        )
+
+        report_id = uuid4()
+        await test_db.execute(
+            text("""
+                INSERT INTO atlas.reports (
+                    id, engagement_id, report_type, title, report_data, status, created_by
+                )
+                VALUES (
+                    :report_id, :engagement_id, 'audit_opinion',
+                    'Audit Opinion', '{}', 'finalized', :user_id
+                )
+            """),
+            {
+                "report_id": report_id,
+                "engagement_id": engagement_id,
+                "user_id": user_id,
+            }
+        )
+
+        await test_db.execute(
+            text("""
+                INSERT INTO atlas.signature_envelopes (
+                    id, report_id, subject, status, signers
+                )
+                VALUES (:envelope_id, :report_id, 'Partner Signature', 'completed', '[]')
+            """),
+            {
+                "envelope_id": uuid4(),
+                "report_id": report_id,
+            }
+        )
+
+        await test_db.commit()
+
+        # Finalize
+        finalize_response = await test_client.post(
+            f"/engagements/{engagement_id}/transition",
+            params={"new_status": "finalized"},
+            headers={"X-User-ID": str(user_id)}
+        )
+
+        assert finalize_response.status_code == 200
+
+        # Verify engagement is locked
+        get_response = await test_client.get(
+            f"/engagements/{engagement_id}",
+            headers={"X-User-ID": str(user_id)}
+        )
+
+        engagement = get_response.json()
+        assert engagement["locked_at"] is not None, "locked_at should be set when finalized"
+        assert engagement["locked_by"] == str(user_id), "locked_by should be set to user who finalized"
 
     @pytest.mark.asyncio
     async def test_finalized_engagement_cannot_transition(self, test_client, test_data, test_db):
