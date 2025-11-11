@@ -4,14 +4,12 @@
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-neutral-200;
   }
 
   :root {
-    /* Premium Fintech Theme - Adobe/Apple Inspired */
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
-
-    /* Sharp rendering for high-DPI displays */
+    /* Microsoft Fluent Design System Typography */
+    font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -19,127 +17,256 @@
   }
 
   body {
-    @apply text-gray-900 antialiased;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    @apply text-neutral-900 antialiased;
+    background: #faf9f8;
   }
 
-  /* High-quality image rendering */
-  img {
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-  }
-
-  /* Apple-style focus ring */
+  /* Fluent-style focus ring */
   *:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(12, 145, 234, 0.3);
-    transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+    transition: outline-offset 0.1s cubic-bezier(0.1, 0.9, 0.2, 1);
   }
 
   /* Selection color matching primary theme */
   ::selection {
-    background: rgba(12, 145, 234, 0.2);
+    background: rgba(0, 120, 212, 0.2);
     color: inherit;
   }
 }
 
 @layer components {
-  .btn-primary {
-    @apply px-6 py-3 bg-primary-600 text-white font-semibold rounded-xl
-           hover:bg-primary-700 active:scale-95 shadow-lg hover:shadow-xl
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Fluent Buttons */
+  .fluent-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           font-semibold text-body-strong rounded-fluent
+           transition-all duration-100 ease-fluent
+           focus:outline-none focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
 
-  .btn-secondary {
-    @apply px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl
-           hover:bg-slate-200 active:scale-95 shadow-md hover:shadow-lg
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  .fluent-btn-primary {
+    @apply fluent-btn bg-primary-500 text-white
+           hover:bg-primary-600 active:bg-primary-700
+           shadow-fluent-2 hover:shadow-fluent-4;
   }
 
-  .btn-outline {
-    @apply px-6 py-3 border-2 border-primary-600 text-primary-600 font-semibold
-           rounded-xl hover:bg-primary-50 active:scale-95 shadow-sm hover:shadow-md
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  .fluent-btn-secondary {
+    @apply fluent-btn bg-neutral-100 text-neutral-900
+           hover:bg-neutral-200 active:bg-neutral-300
+           border border-neutral-300;
   }
 
-  .card {
-    @apply bg-white rounded-2xl shadow-md border border-slate-200;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  .fluent-btn-outline {
+    @apply fluent-btn bg-transparent text-primary-500
+           border-2 border-primary-500
+           hover:bg-primary-50 active:bg-primary-100;
   }
 
-  .card:hover {
-    @apply shadow-lg;
-    transform: translateY(-2px);
+  .fluent-btn-subtle {
+    @apply fluent-btn bg-transparent text-neutral-700
+           hover:bg-neutral-100 active:bg-neutral-200;
   }
 
-  .card-interactive {
-    @apply card cursor-pointer hover:border-primary-300 hover:shadow-xl;
+  /* Fluent Cards */
+  .fluent-card {
+    @apply bg-white rounded-fluent border border-neutral-200
+           transition-all duration-150 ease-fluent;
+    box-shadow: 0 0.3px 0.9px rgba(0, 0, 0, 0.1), 0 1.6px 3.6px rgba(0, 0, 0, 0.13);
   }
 
-  .card-interactive:hover {
-    transform: translateY(-4px) scale(1.01);
+  .fluent-card-interactive {
+    @apply fluent-card cursor-pointer
+           hover:shadow-fluent-8 hover:border-neutral-300
+           active:scale-[0.98];
   }
 
-  .input-field {
-    @apply w-full px-4 py-3 border border-slate-300 rounded-xl
-           focus:outline-none focus:ring-2 focus:ring-primary-500
-           focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  .fluent-card-elevated {
+    @apply fluent-card shadow-fluent-8;
   }
 
-  .progress-bar {
-    @apply h-2 bg-gray-200 rounded-full overflow-hidden;
+  /* Acrylic/Mica Background */
+  .fluent-acrylic {
+    @apply bg-white/70 backdrop-blur-fluent border border-white/40;
+    background-image:
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.5)),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.02'%3E%3Cpath opacity='.5' d='M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
-  .progress-bar-fill {
-    @apply h-full bg-gradient-to-r from-primary-500 to-accent-500
-           transition-all duration-500 ease-out;
+  /* Fluent Input Fields */
+  .fluent-input {
+    @apply w-full px-3 py-2 bg-white border border-neutral-300 rounded-fluent-sm
+           text-body text-neutral-900 placeholder:text-neutral-500
+           transition-all duration-100 ease-fluent
+           hover:border-neutral-400
+           focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_1px_#0078d4]
+           disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed;
   }
 
-  .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  .fluent-textarea {
+    @apply fluent-input resize-none;
   }
 
-  .badge-success {
-    @apply badge bg-green-100 text-green-800;
+  .fluent-select {
+    @apply fluent-input appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10;
   }
 
-  .badge-warning {
-    @apply badge bg-yellow-100 text-yellow-800;
+  /* Fluent Badges */
+  .fluent-badge {
+    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-fluent-sm
+           text-caption font-semibold;
   }
 
-  .badge-error {
-    @apply badge bg-red-100 text-red-800;
+  .fluent-badge-success {
+    @apply fluent-badge bg-success-50 text-success-600 border border-success-200;
   }
 
-  .badge-info {
-    @apply badge bg-blue-100 text-blue-800;
+  .fluent-badge-warning {
+    @apply fluent-badge bg-warning-50 text-warning-700 border border-warning-200;
+  }
+
+  .fluent-badge-error {
+    @apply fluent-badge bg-error-50 text-error-600 border border-error-200;
+  }
+
+  .fluent-badge-info {
+    @apply fluent-badge bg-primary-50 text-primary-600 border border-primary-200;
+  }
+
+  .fluent-badge-neutral {
+    @apply fluent-badge bg-neutral-100 text-neutral-700 border border-neutral-300;
+  }
+
+  /* Fluent Divider */
+  .fluent-divider {
+    @apply h-px bg-neutral-200 border-0;
+  }
+
+  /* Fluent Command Bar */
+  .fluent-command-bar {
+    @apply flex items-center gap-2 p-3 bg-white border-b border-neutral-200;
+  }
+
+  /* Fluent List */
+  .fluent-list-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-fluent
+           hover:bg-neutral-50 active:bg-neutral-100
+           transition-colors duration-100 ease-fluent
+           cursor-pointer;
+  }
+
+  /* Fluent Progress Bar */
+  .fluent-progress {
+    @apply h-1 bg-neutral-200 rounded-full overflow-hidden;
+  }
+
+  .fluent-progress-fill {
+    @apply h-full bg-primary-500 transition-all duration-300 ease-fluent;
+  }
+
+  /* Fluent Skeleton Loader */
+  .fluent-skeleton {
+    @apply bg-neutral-200 rounded-fluent animate-shimmer;
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.5) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Fluent Stat Card */
+  .fluent-stat-card {
+    @apply fluent-card p-6 space-y-2;
+  }
+
+  .fluent-stat-label {
+    @apply text-body text-neutral-600 font-medium;
+  }
+
+  .fluent-stat-value {
+    @apply text-display text-neutral-900 font-semibold;
+  }
+
+  /* Reveal Highlight Effect (Fluent signature) */
+  .fluent-reveal {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fluent-reveal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+      circle 100px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(0, 120, 212, 0.1),
+      transparent
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .fluent-reveal:hover::before {
+    opacity: 1;
   }
 }
 
 @layer utilities {
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary-600 to-accent-600
-           bg-clip-text text-transparent;
+  /* Fluent Typography Utilities */
+  .text-fluent-caption {
+    @apply text-caption text-neutral-600;
   }
 
-  .bg-gradient-primary {
-    @apply bg-gradient-to-br from-primary-500 to-primary-700;
+  .text-fluent-body {
+    @apply text-body text-neutral-700;
   }
 
-  .bg-gradient-accent {
-    @apply bg-gradient-to-br from-accent-500 to-accent-700;
+  .text-fluent-body-strong {
+    @apply text-body-strong text-neutral-900;
   }
 
-  .glass-morphism {
-    @apply bg-white/80 backdrop-blur-lg border border-white/20;
+  .text-fluent-subtitle {
+    @apply text-subtitle text-neutral-900;
+  }
+
+  .text-fluent-title {
+    @apply text-title text-neutral-900;
+  }
+
+  .text-fluent-title-large {
+    @apply text-title-large text-neutral-900;
+  }
+
+  .text-fluent-display {
+    @apply text-display text-neutral-900;
+  }
+
+  /* Fluent Spacing */
+  .fluent-spacing {
+    @apply space-y-4;
+  }
+
+  .fluent-spacing-lg {
+    @apply space-y-6;
+  }
+
+  /* Fluent Grid */
+  .fluent-grid {
+    @apply grid gap-4;
+  }
+
+  .fluent-grid-lg {
+    @apply grid gap-6;
   }
 }
 
-/* Premium custom scrollbar - macOS inspired */
+/* Custom Fluent Scrollbar */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -150,34 +277,39 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.6);
+  background: rgba(0, 0, 0, 0.25);
   background-clip: content-box;
 }
 
-/* Animation utilities */
-.animate-shimmer {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  background-size: 200% 100%;
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+/* Smooth Page Transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s cubic-bezier(0.1, 0.9, 0.2, 1),
+              transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+.page-transition-exit {
+  opacity: 1;
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.9, 0.1, 1, 0.2);
 }

@@ -1,6 +1,6 @@
 /**
  * Main App Component
- * Configures routing for the CPA Firm Portal with Google Material Design
+ * Microsoft Fluent Design System inspired layout and routing
  */
 
 import React, { useState } from 'react';
@@ -14,11 +14,12 @@ import {
   FileText,
   BarChart3,
   Menu,
-  X,
-  Bell,
   Search,
+  Bell,
+  User,
   LogOut,
   Building2,
+  ChevronRight,
 } from 'lucide-react';
 
 // Pages
@@ -37,48 +38,52 @@ const navigation = [
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-[#faf9f8]">
+      {/* Sidebar Navigation */}
       <motion.aside
         initial={false}
-        animate={{ width: sidebarOpen ? 280 : 80 }}
-        className="fixed top-0 left-0 h-full bg-white border-r border-gray-200 shadow-xl z-50"
+        animate={{ width: sidebarOpen ? 280 : 72 }}
+        transition={{ duration: 0.2, ease: [0.1, 0.9, 0.2, 1] }}
+        className="fixed top-0 left-0 h-screen bg-white border-r border-neutral-200 z-50"
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          {/* Header */}
+          <div className="h-16 flex items-center justify-between px-4 border-b border-neutral-200">
             <AnimatePresence mode="wait">
               {sidebarOpen && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
                   className="flex items-center gap-3"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="w-6 h-6 text-white" />
+                  <div className="w-8 h-8 bg-primary-500 rounded-fluent flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h1 className="font-bold text-gray-900 text-lg">Aura AI</h1>
-                    <p className="text-xs text-gray-500">CPA Portal</p>
+                    <h1 className="text-body-strong text-neutral-900">Aura CPA</h1>
+                    <p className="text-caption text-neutral-600">Portal</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-neutral-100 rounded-fluent-sm transition-colors"
+              aria-label="Toggle sidebar"
             >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-5 h-5 text-neutral-700" />
             </button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -86,62 +91,74 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <button
                   key={item.id}
                   onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-fluent transition-all duration-100 ${
                     isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-200'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary-50 text-primary-600 font-semibold'
+                      : 'text-neutral-700 hover:bg-neutral-50 font-medium'
                   }`}
+                  title={!sidebarOpen ? item.label : undefined}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : ''}`} />
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-neutral-600'}`} />
                   <AnimatePresence mode="wait">
                     {sidebarOpen && (
                       <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="font-medium text-left"
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        exit={{ opacity: 0, width: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="text-body-strong whitespace-nowrap overflow-hidden"
                       >
                         {item.label}
                       </motion.span>
                     )}
                   </AnimatePresence>
+                  {isActive && sidebarOpen && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="ml-auto w-1 h-4 bg-primary-500 rounded-full"
+                      transition={{ duration: 0.2, ease: [0.1, 0.9, 0.2, 1] }}
+                    />
+                  )}
                 </button>
               );
             })}
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+          <div className="p-3 border-t border-neutral-200">
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white text-body-strong flex-shrink-0">
                 F
               </div>
               <AnimatePresence mode="wait">
                 {sidebarOpen && (
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex-1 min-w-0"
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex-1 min-w-0 overflow-hidden"
                   >
-                    <p className="font-semibold text-gray-900 text-sm truncate">Firm Admin</p>
-                    <p className="text-xs text-gray-500 truncate">admin@firm.com</p>
+                    <p className="text-body-strong text-neutral-900 truncate">Firm Admin</p>
+                    <p className="text-caption text-neutral-600 truncate">admin@firm.com</p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
             <button
               onClick={() => navigate('/login')}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors mt-2"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-error-500 hover:bg-error-50 rounded-fluent transition-colors mt-2"
+              title={!sidebarOpen ? 'Logout' : undefined}
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               <AnimatePresence mode="wait">
                 {sidebarOpen && (
                   <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="font-medium"
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="text-body-strong whitespace-nowrap overflow-hidden"
                   >
                     Logout
                   </motion.span>
@@ -154,26 +171,50 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Main Content */}
       <motion.main
-        animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
-        className="min-h-screen transition-all"
+        animate={{ marginLeft: sidebarOpen ? 280 : 72 }}
+        transition={{ duration: 0.2, ease: [0.1, 0.9, 0.2, 1] }}
+        className="min-h-screen"
       >
-        {/* Top Bar */}
-        <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40">
-          <div className="flex items-center justify-between p-6">
-            <div className="flex-1 max-w-2xl">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search anything..."
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all"
-                />
-              </div>
+        {/* Command Bar / Top Navigation */}
+        <div className="h-16 bg-white border-b border-neutral-200 sticky top-0 z-40 fluent-acrylic">
+          <div className="h-full flex items-center justify-between px-6">
+            {/* Search */}
+            <div className="flex-1 max-w-xl">
+              {searchOpen ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="relative"
+                >
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search for anything..."
+                    autoFocus
+                    onBlur={() => setSearchOpen(false)}
+                    className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-fluent text-body focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_1px_#0078d4]"
+                  />
+                </motion.div>
+              ) : (
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 rounded-fluent transition-colors w-full max-w-md"
+                >
+                  <Search className="w-4 h-4 text-neutral-500" />
+                  <span className="text-body text-neutral-600">Search</span>
+                  <span className="ml-auto text-caption text-neutral-500 font-mono">Ctrl+K</span>
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-4 ml-6">
-              <button className="relative p-3 hover:bg-gray-100 rounded-full transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 ml-6">
+              <button className="relative p-2.5 hover:bg-neutral-100 rounded-fluent transition-colors">
+                <Bell className="w-5 h-5 text-neutral-700" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error-500 rounded-full ring-2 ring-white"></span>
+              </button>
+              <button className="p-2.5 hover:bg-neutral-100 rounded-fluent transition-colors">
+                <User className="w-5 h-5 text-neutral-700" />
               </button>
             </div>
           </div>
@@ -184,10 +225,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.1, 0.9, 0.2, 1] }}
             >
               {children}
             </motion.div>
@@ -205,22 +246,25 @@ const App: React.FC = () => {
         position="top-right"
         toastOptions={{
           duration: 4000,
+          className: 'fluent-card',
           style: {
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: '#fff',
-            borderRadius: '12px',
-            padding: '16px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            background: '#fff',
+            color: '#171717',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            boxShadow: '0 2.4px 7.2px rgba(0, 0, 0, 0.1), 0 12.8px 28.8px rgba(0, 0, 0, 0.13)',
+            fontSize: '0.875rem',
+            fontWeight: 600,
           },
           success: {
             iconTheme: {
-              primary: '#10b981',
+              primary: '#10893e',
               secondary: '#fff',
             },
           },
           error: {
             iconTheme: {
-              primary: '#ef4444',
+              primary: '#e81123',
               secondary: '#fff',
             },
           },
@@ -235,8 +279,30 @@ const App: React.FC = () => {
         <Route path="/firm/dashboard" element={<AppLayout><FirmDashboard /></AppLayout>} />
         <Route path="/firm/settings" element={<AppLayout><FirmSettings /></AppLayout>} />
         <Route path="/firm/employees" element={<AppLayout><EmployeeManagement /></AppLayout>} />
-        <Route path="/firm/audits" element={<AppLayout><div className="text-center py-12"><h2 className="text-2xl font-bold text-gray-900">Audits Coming Soon</h2></div></AppLayout>} />
-        <Route path="/firm/reports" element={<AppLayout><div className="text-center py-12"><h2 className="text-2xl font-bold text-gray-900">Reports Coming Soon</h2></div></AppLayout>} />
+        <Route
+          path="/firm/audits"
+          element={
+            <AppLayout>
+              <div className="text-center py-20">
+                <FileText className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+                <h2 className="text-title-large text-neutral-900 mb-2">Audits Coming Soon</h2>
+                <p className="text-body text-neutral-600">This feature is currently in development</p>
+              </div>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/firm/reports"
+          element={
+            <AppLayout>
+              <div className="text-center py-20">
+                <BarChart3 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+                <h2 className="text-title-large text-neutral-900 mb-2">Reports Coming Soon</h2>
+                <p className="text-body text-neutral-600">This feature is currently in development</p>
+              </div>
+            </AppLayout>
+          }
+        />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/firm/dashboard" replace />} />
