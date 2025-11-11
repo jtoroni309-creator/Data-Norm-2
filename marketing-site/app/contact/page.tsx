@@ -44,37 +44,40 @@ export default function Contact() {
         <div className="section-container">
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <a
-              href="mailto:hello@auraaudit.ai"
-              className="p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 hover:border-primary-300 hover:shadow-lg transition-all text-center group"
+              href="mailto:hello@toroniandcompany.com"
+              className="p-8 bg-gradient-to-br from-slate-50 to-white rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-2xl transition-all text-center group transform hover:scale-105"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-accent-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform shadow-lg">
                 <Mail className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Email Us</h3>
-              <p className="text-gray-600 mb-2">For general inquiries</p>
-              <p className="text-primary-600 font-medium">hello@auraaudit.ai</p>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">Email Us</h3>
+              <p className="text-slate-600 mb-2">We reply within 24 hours</p>
+              <p className="text-blue-600 font-bold">hello@toroniandcompany.com</p>
             </a>
 
             <a
-              href="tel:+18005551234"
-              className="p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 hover:border-primary-300 hover:shadow-lg transition-all text-center group"
+              href="tel:+18885551234"
+              className="p-8 bg-gradient-to-br from-slate-50 to-white rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-2xl transition-all text-center group transform hover:scale-105"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-accent-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform shadow-lg">
                 <Phone className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Call Us</h3>
-              <p className="text-gray-600 mb-2">Mon-Fri, 9am-6pm EST</p>
-              <p className="text-primary-600 font-medium">1 (800) 555-1234</p>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">Call Us</h3>
+              <p className="text-slate-600 mb-2">Mon-Fri, 8am-6pm EST</p>
+              <p className="text-blue-600 font-bold">1 (888) 555-1234</p>
             </a>
 
-            <div className="p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-accent-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MapPin className="w-8 h-8 text-white" />
+            <a
+              href="mailto:jon@toroniandcompany.com"
+              className="p-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border-2 border-blue-300 shadow-xl text-center group transform hover:scale-105 transition-all"
+            >
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                <MessageSquare className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Visit Us</h3>
-              <p className="text-gray-600 mb-2">San Francisco, CA</p>
-              <p className="text-primary-600 font-medium">123 Market Street, Suite 400</p>
-            </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">Contact Founder</h3>
+              <p className="text-slate-600 mb-2">Jon Toroni, CEO</p>
+              <p className="text-blue-600 font-bold">jon@toroniandcompany.com</p>
+            </a>
           </div>
         </div>
       </section>
@@ -246,14 +249,22 @@ export default function Contact() {
             </div>
 
             <div className="mt-12 text-center">
-              <p className="text-gray-600 mb-4">Still have questions?</p>
-              <a
-                href="mailto:hello@auraaudit.ai"
-                className="inline-flex items-center space-x-2 text-primary-600 font-semibold hover:text-primary-700 transition-colors"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span>Chat with our team</span>
-              </a>
+              <p className="text-slate-600 mb-4 text-lg">Still have questions?</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <a
+                  href="mailto:hello@toroniandcompany.com"
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all hover:scale-105"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Chat with our team</span>
+                </a>
+                <a
+                  href="/#demo"
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-slate-100 text-slate-900 font-semibold rounded-xl hover:bg-slate-200 transition-all"
+                >
+                  <span>Schedule a Demo</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
