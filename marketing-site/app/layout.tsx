@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aura.toroniandcompany.com'
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://auraaudit.ai'),
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'Aura Audit AI - Intelligent Audit Automation for CPA Firms',
     template: '%s | Aura Audit AI'
@@ -34,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://auraaudit.ai',
+    url: siteUrl,
     siteName: 'Aura Audit AI',
     title: 'Aura Audit AI - Intelligent Audit Automation for CPA Firms',
     description: 'End-to-end audit automation that catches what humans miss. 30-50% faster engagements with AI-powered intelligence.',
@@ -70,7 +72,7 @@ export const metadata: Metadata = {
     yandex: 'your-yandex-verification-code',
   },
   alternates: {
-    canonical: 'https://auraaudit.ai',
+    canonical: siteUrl,
   },
 }
 
@@ -117,8 +119,8 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'Aura Audit AI',
-              url: 'https://auraaudit.ai',
-              logo: 'https://auraaudit.ai/images/logo.png',
+              url: siteUrl,
+              logo: `${siteUrl}/images/logo.png`,
               description: 'Enterprise-grade audit automation platform for CPA firms',
               sameAs: [
                 'https://twitter.com/auraauditai',
