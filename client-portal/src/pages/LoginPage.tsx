@@ -1,11 +1,12 @@
 /**
  * Login Page
- * Beautiful login page with OAuth SSO for Microsoft 365 and Google Business
+ * Microsoft Fluent Design inspired OAuth SSO login
  */
 
 import { useState } from 'react';
 import { authService } from '@/services/auth.service';
 import { motion } from 'framer-motion';
+import { Building2, Shield, ArrowRight } from 'lucide-react';
 
 export function LoginPage() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -21,88 +22,137 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(0,120,212,0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0,120,212,0.05) 1px, transparent 1px)
+          `,
+          backgroundSize: '4rem 4rem'
+        }} />
+      </div>
+
+      {/* Floating Orbs */}
+      <motion.div
+        className="absolute top-20 left-20 w-64 h-64 bg-primary-200 rounded-full blur-3xl opacity-20"
+        animate={{
+          y: [0, 30, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+      <motion.div
+        className="absolute bottom-20 right-20 w-80 h-80 bg-accent-200 rounded-full blur-3xl opacity-20"
+        animate={{
+          y: [0, -40, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.5, ease: [0.1, 0.9, 0.2, 1] }}
+        className="w-full max-w-md relative z-10"
       >
         {/* Logo and Header */}
         <div className="text-center mb-8">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-primary rounded-2xl mb-4 shadow-lg"
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{
+              type: 'spring',
+              stiffness: 200,
+              damping: 20,
+              delay: 0.1
+            }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-primary-500 rounded-fluent-lg mb-6 shadow-fluent-8"
           >
-            <svg
-              className="w-12 h-12 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
+            <Building2 className="w-9 h-9 text-white" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to <span className="text-gradient">Aura Audit</span>
-          </h1>
-          <p className="text-gray-600">
-            Access your client portal to manage your audit engagement
-          </p>
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="text-display-large text-neutral-900 mb-3 font-semibold"
+          >
+            Welcome to Aura CPA
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="text-subtitle text-neutral-600"
+          >
+            Access your professional accounting portal
+          </motion.p>
         </div>
 
         {/* Login Card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="card p-8"
+          transition={{ delay: 0.4, duration: 0.4, ease: [0.1, 0.9, 0.2, 1] }}
+          className="fluent-card-elevated p-8 backdrop-blur-sm"
         >
-          <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
-            Sign in with your business account
-          </h2>
+          <div className="flex items-center gap-2 mb-6">
+            <Shield className="w-5 h-5 text-primary-500" />
+            <h2 className="text-title text-neutral-900">
+              Sign in securely
+            </h2>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Microsoft 365 Login */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               onClick={() => handleOAuthLogin('microsoft')}
               disabled={loading !== null}
-              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 rounded-xl hover:border-primary-300 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+              className="fluent-reveal w-full flex items-center gap-4 px-5 py-4 bg-white border-2 border-neutral-200 rounded-fluent hover:border-primary-300 hover:shadow-fluent-4 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               {loading === 'microsoft' ? (
-                <div className="w-6 h-6 border-3 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <svg className="w-6 h-6" viewBox="0 0 23 23">
+                  <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 23 23">
                     <path fill="#f35325" d="M0 0h11v11H0z" />
                     <path fill="#81bc06" d="M12 0h11v11H12z" />
                     <path fill="#05a6f0" d="M0 12h11v11H0z" />
                     <path fill="#ffba08" d="M12 12h11v11H12z" />
                   </svg>
-                  <span className="font-semibold text-gray-700">
+                  <span className="text-body-strong text-neutral-900 flex-1 text-left">
                     Continue with Microsoft 365
                   </span>
+                  <ArrowRight className="w-5 h-5 text-neutral-400 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
                 </>
               )}
-            </button>
+            </motion.button>
 
             {/* Google Business Login */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               onClick={() => handleOAuthLogin('google')}
               disabled={loading !== null}
-              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 rounded-xl hover:border-primary-300 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+              className="fluent-reveal w-full flex items-center gap-4 px-5 py-4 bg-white border-2 border-neutral-200 rounded-fluent hover:border-primary-300 hover:shadow-fluent-4 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               {loading === 'google' ? (
-                <div className="w-6 h-6 border-3 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -120,22 +170,23 @@ export function LoginPage() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  <span className="font-semibold text-gray-700">
-                    Continue with Google Business
+                  <span className="text-body-strong text-neutral-900 flex-1 text-left">
+                    Continue with Google Workspace
                   </span>
+                  <ArrowRight className="w-5 h-5 text-neutral-400 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600 text-center">
+          <div className="mt-6 pt-6 border-t border-neutral-200">
+            <p className="text-caption text-neutral-600 text-center leading-relaxed">
               By signing in, you agree to our{' '}
-              <a href="/terms" className="text-primary-600 hover:text-primary-700 font-medium">
+              <a href="/terms" className="text-primary-500 hover:text-primary-600 font-semibold hover:underline transition-colors">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="/privacy" className="text-primary-600 hover:text-primary-700 font-medium">
+              <a href="/privacy" className="text-primary-500 hover:text-primary-600 font-semibold hover:underline transition-colors">
                 Privacy Policy
               </a>
             </p>
@@ -146,18 +197,29 @@ export function LoginPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.6, duration: 0.4 }}
           className="mt-6 text-center"
         >
-          <p className="text-sm text-gray-600">
-            Need help?{' '}
+          <p className="text-body text-neutral-600">
+            Need assistance?{' '}
             <a
-              href="mailto:support@aura-audit.com"
-              className="text-primary-600 hover:text-primary-700 font-medium"
+              href="mailto:support@aura-cpa.com"
+              className="text-primary-500 hover:text-primary-600 font-semibold hover:underline transition-colors"
             >
               Contact Support
             </a>
           </p>
+        </motion.div>
+
+        {/* Security Badge */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.4 }}
+          className="mt-8 flex items-center justify-center gap-2 text-caption text-neutral-500"
+        >
+          <Shield className="w-4 h-4" />
+          <span>Enterprise-grade security & compliance</span>
         </motion.div>
       </motion.div>
     </div>
