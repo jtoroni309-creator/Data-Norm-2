@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://auraaudit.ai'
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aura.toroniandcompany.com'
   const currentDate = new Date()
 
   return [
