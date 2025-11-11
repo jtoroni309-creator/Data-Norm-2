@@ -1,0 +1,59 @@
+# Admin Portal Ingress (with 3 a's - auraa)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auraa-admin-ingress
+  namespace: aura-audit-ai
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  labels:
+    app.kubernetes.io/name: aura-audit-ai
+    app.kubernetes.io/component: admin
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - admin.auraa.toroniandcompany.com
+    secretName: auraa-admin-tls-cert
+  rules:
+  - host: admin.auraa.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-portal
+            port:
+              number: 80
+---
+# Client Portal Ingress (CPA Portal with 3 a's - auraa)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auraa-client-ingress
+  namespace: aura-audit-ai
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  labels:
+    app.kubernetes.io/name: aura-audit-ai
+    app.kubernetes.io/component: client
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - cpa.auraa.toroniandcompany.com
+    secretName: auraa-client-tls-cert
+  rules:
+  - host: cpa.auraa.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-portal
+            port:
+              number: 80
