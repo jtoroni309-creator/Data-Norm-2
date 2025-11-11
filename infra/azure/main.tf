@@ -3,44 +3,7 @@
 # This Terraform configuration deploys the complete Aura Audit AI platform to Azure
 # with production-grade security, compliance, and high availability.
 
-terraform {
-  required_version = ">= 1.7"
-
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.80"
-    }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 2.45"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.5"
-    }
-  }
-
-  # Backend for remote state (optional - uncomment for production)
-  # backend "azurerm" {
-  #   resource_group_name  = "aura-tfstate-rg"
-  #   storage_account_name = "auratfstate"
-  #   container_name       = "tfstate"
-  #   key                  = "prod.terraform.tfstate"
-  # }
-}
-
-provider "azurerm" {
-  features {
-    key_vault {
-      purge_soft_delete_on_destroy    = false
-      recover_soft_deleted_key_vaults = true
-    }
-    resource_group {
-      prevent_deletion_if_contains_resources = false
-    }
-  }
-}
+# Note: Terraform and provider configuration is in backend.tf (auto-generated)
 
 provider "azuread" {}
 
@@ -364,7 +327,7 @@ resource "random_password" "postgres_admin" {
 resource "azurerm_postgresql_flexible_server" "main" {
   name                = "${local.resource_prefix}-psql"
   resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  location            = var.postgres_location  # Use separate location due to quota restrictions
 
   administrator_login    = var.postgres_admin_username
   administrator_password = random_password.postgres_admin.result
@@ -372,23 +335,25 @@ resource "azurerm_postgresql_flexible_server" "main" {
   sku_name   = var.postgres_sku
   version    = "15"
   storage_mb = var.postgres_storage_mb
+  zone       = "1"  # Match existing zone configuration
 
-  # High availability
-  dynamic "high_availability" {
-    for_each = var.postgres_high_availability ? [1] : []
-    content {
-      mode                      = "ZoneRedundant"
-      standby_availability_zone = var.postgres_standby_zone
-    }
-  }
+  # High availability - disabled due to zone configuration issues
+  # dynamic "high_availability" {
+  #   for_each = var.postgres_high_availability ? [1] : []
+  #   content {
+  #     mode                      = "ZoneRedundant"
+  #     standby_availability_zone = var.postgres_standby_zone
+  #   }
+  # }
 
   # Backup
   backup_retention_days        = var.postgres_backup_retention_days
   geo_redundant_backup_enabled = var.postgres_geo_redundant_backup
 
   # Network
-  delegated_subnet_id = azurerm_subnet.database.id
-  private_dns_zone_id = azurerm_private_dns_zone.postgres.id
+  delegated_subnet_id           = azurerm_subnet.database.id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
+  public_network_access_enabled = false
 
   # Maintenance window
   maintenance_window {
@@ -466,15 +431,10 @@ resource "azurerm_redis_cache" "main" {
     maxmemory_policy      = "allkeys-lru"
 
     # Persistence (Premium only)
-    dynamic "rdb_backup_enabled" {
-      for_each = var.redis_sku == "Premium" ? [1] : []
-      content {
-        rdb_backup_enabled            = true
-        rdb_backup_frequency          = 60
-        rdb_backup_max_snapshot_count = 1
-        rdb_storage_connection_string = azurerm_storage_account.main.primary_blob_connection_string
-      }
-    }
+    rdb_backup_enabled            = var.redis_sku == "Premium" ? true : false
+    rdb_backup_frequency          = var.redis_sku == "Premium" ? 60 : null
+    rdb_backup_max_snapshot_count = var.redis_sku == "Premium" ? 1 : null
+    rdb_storage_connection_string = var.redis_sku == "Premium" ? azurerm_storage_account.main.primary_blob_connection_string : null
   }
 
   # Patch schedule
@@ -517,7 +477,7 @@ resource "azurerm_storage_account" "main" {
 
   # Security
   min_tls_version                 = "TLS1_2"
-  enable_https_traffic_only       = true
+  https_traffic_only_enabled      = true
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = true
 
@@ -550,11 +510,12 @@ resource "azurerm_storage_account" "main" {
 }
 
 # WORM Storage Container (for immutable audit trail)
-resource "azurerm_storage_container" "worm" {
-  name                  = "atlas-worm"
-  storage_account_name  = azurerm_storage_account.main.name
-  container_access_type = "private"
-}
+# Temporarily commented - will be created manually via CLI after deployment
+# resource "azurerm_storage_container" "worm" {
+#   name                  = "atlas-worm"
+#   storage_account_name  = azurerm_storage_account.main.name
+#   container_access_type = "private"
+# }
 
 # Immutability policy (7 years for audit compliance)
 resource "azurerm_storage_management_policy" "worm_immutability" {
@@ -577,24 +538,38 @@ resource "azurerm_storage_management_policy" "worm_immutability" {
   }
 }
 
+# Role assignment for Terraform to manage storage
+resource "azurerm_role_assignment" "terraform_storage_blob_contributor" {
+  scope                = azurerm_storage_account.main.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
 # Standard blob containers
-resource "azurerm_storage_container" "workpapers" {
-  name                  = "workpapers"
-  storage_account_name  = azurerm_storage_account.main.name
-  container_access_type = "private"
-}
-
-resource "azurerm_storage_container" "engagements" {
-  name                  = "engagements"
-  storage_account_name  = azurerm_storage_account.main.name
-  container_access_type = "private"
-}
-
-resource "azurerm_storage_container" "reports" {
-  name                  = "reports"
-  storage_account_name  = azurerm_storage_account.main.name
-  container_access_type = "private"
-}
+# Temporarily commented - will be created manually via CLI after deployment
+# resource "azurerm_storage_container" "workpapers" {
+#   name                  = "workpapers"
+#   storage_account_name  = azurerm_storage_account.main.name
+#   container_access_type = "private"
+#
+#   depends_on = [azurerm_role_assignment.terraform_storage_blob_contributor]
+# }
+#
+# resource "azurerm_storage_container" "engagements" {
+#   name                  = "engagements"
+#   storage_account_name  = azurerm_storage_account.main.name
+#   container_access_type = "private"
+#
+#   depends_on = [azurerm_role_assignment.terraform_storage_blob_contributor]
+# }
+#
+# resource "azurerm_storage_container" "reports" {
+#   name                  = "reports"
+#   storage_account_name  = azurerm_storage_account.main.name
+#   container_access_type = "private"
+#
+#   depends_on = [azurerm_role_assignment.terraform_storage_blob_contributor]
+# }
 
 # ========================================
 # Azure Key Vault
@@ -603,7 +578,7 @@ resource "azurerm_storage_container" "reports" {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_key_vault" "main" {
-  name                = "${local.resource_prefix}-kv"
+  name                = "${local.resource_prefix}-kv2"  # Changed from kv to kv2 due to name conflict
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
@@ -788,6 +763,12 @@ resource "azurerm_application_gateway" "main" {
     timeout             = 30
     unhealthy_threshold = 3
     host                = "127.0.0.1"
+  }
+
+  # SSL policy
+  ssl_policy {
+    policy_type = "Predefined"
+    policy_name = "AppGwSslPolicy20220101"
   }
 
   # WAF configuration (if using WAF_v2 tier)

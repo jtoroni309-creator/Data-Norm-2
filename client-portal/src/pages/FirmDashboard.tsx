@@ -138,43 +138,38 @@ const FirmDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {organization?.logo_url && (
-                <img
-                  src={organization.logo_url}
-                  alt={organization.name}
-                  className="w-12 h-12 rounded-lg object-cover"
-                />
-              )}
-              <div>
-                <h1 className="text-3xl font-bold text-gradient">
-                  {organization?.name || 'Firm Dashboard'}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Welcome back! Here's what's happening with your firm.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => navigate('/firm/settings')}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {organization?.logo_url && (
+            <img
+              src={organization.logo_url}
+              alt={organization.name}
+              className="w-16 h-16 rounded-2xl object-cover shadow-lg"
+            />
+          )}
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {organization?.name || 'Firm Dashboard'}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Welcome back! Here's what's happening with your firm.
+            </p>
           </div>
         </div>
+
+        <button
+          onClick={() => navigate('/firm/settings')}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all"
+        >
+          <Settings className="w-4 h-4" />
+          Settings
+        </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
@@ -206,9 +201,9 @@ const FirmDashboard: React.FC = () => {
               </motion.div>
             );
           })}
-        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Quick Actions */}
           <div className="lg:col-span-2">
             <div className="card">
@@ -342,7 +337,6 @@ const FirmDashboard: React.FC = () => {
               </button>
             </div>
           </motion.div>
-        </div>
       </div>
     </div>
   );

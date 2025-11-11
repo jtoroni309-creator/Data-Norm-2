@@ -10,6 +10,12 @@ variable "location" {
   default     = "eastus"
 }
 
+variable "postgres_location" {
+  description = "Azure region for PostgreSQL (may differ due to quota restrictions)"
+  type        = string
+  default     = "eastus"
+}
+
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string

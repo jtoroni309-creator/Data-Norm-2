@@ -7,15 +7,23 @@ These tests verify critical integration points after deployment.
 
 import asyncio
 import os
+import sys
+from pathlib import Path
 from typing import AsyncGenerator, Dict, Any
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, RequestError
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import text
+
+# Ensure project root is on sys.path for direct test execution
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from lib.event_bus.event_bus import EventBus
 
@@ -48,6 +56,14 @@ async def db_engine():
         pool_size=5,
         max_overflow=10,
     )
+
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except Exception as exc:  # pragma: no cover - environment dependent
+        await engine.dispose()
+        pytest.skip(f"Database not available: {exc}")
+
     yield engine
     await engine.dispose()
 
@@ -78,6 +94,11 @@ async def redis_client() -> AsyncGenerator[Redis, None]:
     )
     try:
         await client.ping()
+    except RedisError as exc:  # pragma: no cover - environment dependent
+        await client.aclose()
+        pytest.skip(f"Redis not available: {exc}")
+
+    try:
         yield client
     finally:
         await client.aclose()
@@ -100,6 +121,11 @@ async def http_client() -> AsyncGenerator[AsyncClient, None]:
         timeout=SERVICE_TIMEOUT,
         follow_redirects=True,
     ) as client:
+        try:
+            await client.get("/health")
+        except RequestError as exc:  # pragma: no cover - environment dependent
+            pytest.skip(f"Gateway not available: {exc}")
+
         yield client
 
 

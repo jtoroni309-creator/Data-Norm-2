@@ -4,51 +4,33 @@ metadata:
   name: aura-api-ingress
   namespace: aura-audit-ai
   annotations:
-    # Application Gateway Ingress Controller annotations
-    kubernetes.io/ingress.class: azure/application-gateway
-    appgw.ingress.kubernetes.io/ssl-redirect: "true"
-    appgw.ingress.kubernetes.io/connection-draining: "true"
-    appgw.ingress.kubernetes.io/connection-draining-timeout: "30"
-    appgw.ingress.kubernetes.io/request-timeout: "60"
-    appgw.ingress.kubernetes.io/backend-path-prefix: "/"
-
-    # CORS
-    appgw.ingress.kubernetes.io/backend-protocol: "http"
-
-    # Health probe
-    appgw.ingress.kubernetes.io/health-probe-path: "/health"
-    appgw.ingress.kubernetes.io/health-probe-interval: "30"
-    appgw.ingress.kubernetes.io/health-probe-timeout: "30"
-    appgw.ingress.kubernetes.io/health-probe-unhealthy-threshold: "3"
-
-    # WAF
-    appgw.ingress.kubernetes.io/waf-policy-for-path: "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/aura-waf-policy"
-
-    # Rate limiting
-    appgw.ingress.kubernetes.io/backend-hostname: "api.aura-audit-ai.com"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 
   labels:
     app.kubernetes.io/name: aura-audit-ai
     app.kubernetes.io/component: ingress
 spec:
+  ingressClassName: nginx
   tls:
   - hosts:
-    - api.aura-audit-ai.com
+    - api.auraai.toroniandcompany.com
     secretName: aura-tls-cert
   rules:
-  - host: api.aura-audit-ai.com
+  - host: api.auraai.toroniandcompany.com
     http:
       paths:
       # Identity/Auth service
       - path: /api/auth/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: identity
             port:
               number: 80
       - path: /api/users/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: identity
@@ -57,7 +39,7 @@ spec:
 
       # Ingestion service
       - path: /api/ingestion/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: ingestion
@@ -66,7 +48,7 @@ spec:
 
       # Normalize service
       - path: /api/normalize/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: normalize
@@ -75,7 +57,7 @@ spec:
 
       # Analytics service
       - path: /api/analytics/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: analytics
@@ -84,14 +66,14 @@ spec:
 
       # LLM service
       - path: /api/llm/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: llm
             port:
               number: 80
       - path: /api/rag/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: llm
@@ -100,7 +82,7 @@ spec:
 
       # Engagement service
       - path: /api/engagements/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: engagement
@@ -109,7 +91,7 @@ spec:
 
       # Disclosures service
       - path: /api/disclosures/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: disclosures
@@ -118,7 +100,7 @@ spec:
 
       # Reporting service
       - path: /api/reports/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: reporting
@@ -127,7 +109,7 @@ spec:
 
       # QC service
       - path: /api/qc/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: qc
@@ -136,7 +118,7 @@ spec:
 
       # Connectors service
       - path: /api/connectors/*
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: connectors
@@ -152,43 +134,117 @@ spec:
             port:
               number: 80
 ---
-# Frontend Ingress (Next.js app)
+# Frontend Ingress (Marketing Site)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: aura-web-ingress
   namespace: aura-audit-ai
   annotations:
-    kubernetes.io/ingress.class: azure/application-gateway
-    appgw.ingress.kubernetes.io/ssl-redirect: "true"
-    appgw.ingress.kubernetes.io/backend-path-prefix: "/"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
   labels:
     app.kubernetes.io/name: aura-audit-ai
     app.kubernetes.io/component: frontend
 spec:
+  ingressClassName: nginx
   tls:
   - hosts:
-    - aura-audit-ai.com
-    - www.aura-audit-ai.com
+    - auraai.toroniandcompany.com
+    - www.auraai.toroniandcompany.com
     secretName: aura-web-tls-cert
   rules:
-  - host: aura-audit-ai.com
+  - host: auraai.toroniandcompany.com
     http:
       paths:
-      - path: /*
+      - path: /
         pathType: Prefix
         backend:
           service:
-            name: web
+            name: marketing
             port:
               number: 80
-  - host: www.aura-audit-ai.com
+  - host: www.auraai.toroniandcompany.com
     http:
       paths:
-      - path: /*
+      - path: /
         pathType: Prefix
         backend:
           service:
-            name: web
+            name: marketing
+            port:
+              number: 80
+---
+# Admin Portal Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aura-admin-ingress
+  namespace: aura-audit-ai
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  labels:
+    app.kubernetes.io/name: aura-audit-ai
+    app.kubernetes.io/component: admin
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - admin.auraai.toroniandcompany.com
+    secretName: aura-admin-tls-cert
+  rules:
+  - host: admin.auraai.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-portal
+            port:
+              number: 80
+---
+# Client Portal Ingress (CPA Portal)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aura-client-ingress
+  namespace: aura-audit-ai
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  labels:
+    app.kubernetes.io/name: aura-audit-ai
+    app.kubernetes.io/component: client
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - portal.auraai.toroniandcompany.com
+    - cpa.auraai.toroniandcompany.com
+    secretName: aura-client-tls-cert
+  rules:
+  - host: portal.auraai.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-portal
+            port:
+              number: 80
+  - host: cpa.auraai.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-portal
             port:
               number: 80
