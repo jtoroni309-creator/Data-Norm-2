@@ -1,11 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Google+Sans:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Premium Fintech Light Theme - Adobe/Apple Inspired */
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+    /* Material Design 3 Theme - Google Modern */
+    font-family: 'Roboto', 'Google Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     line-height: 1.5;
     font-weight: 400;
     color-scheme: light dark;
@@ -22,7 +24,7 @@
     display: flex;
     min-width: 320px;
     min-height: 100vh;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
   }
 
   #root {
@@ -71,26 +73,143 @@
   }
 }
 
+@layer components {
+  /* Material Design 3 Elevation System */
+  .elevation-0 { box-shadow: none; }
+  .elevation-1 { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+  .elevation-2 { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+  .elevation-3 { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+  .elevation-4 { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+  .elevation-5 { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+
+  /* Material Design 3 Buttons */
+  .md-button-filled {
+    @apply px-6 py-3 bg-primary-600 text-white font-medium rounded-full
+           hover:bg-primary-700 hover:elevation-3 active:elevation-1
+           disabled:opacity-50 disabled:cursor-not-allowed elevation-2;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-button-outlined {
+    @apply px-6 py-3 border-2 border-primary-600 text-primary-600 font-medium rounded-full
+           hover:bg-primary-50 active:bg-primary-100
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-button-text {
+    @apply px-6 py-3 text-primary-600 font-medium rounded-full
+           hover:bg-primary-50 active:bg-primary-100
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-button-elevated {
+    @apply px-6 py-3 bg-surface text-primary-600 font-medium rounded-full
+           hover:elevation-3 active:elevation-1 elevation-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-button-tonal {
+    @apply px-6 py-3 bg-secondary-100 text-secondary-700 font-medium rounded-full
+           hover:bg-secondary-200 hover:elevation-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Material Design 3 Cards */
+  .md-card-filled {
+    @apply bg-surface-container rounded-3xl p-6 elevation-0
+           hover:elevation-1 transition-all duration-200;
+  }
+
+  .md-card-elevated {
+    @apply bg-surface rounded-3xl p-6 elevation-1
+           hover:elevation-2 transition-all duration-200;
+  }
+
+  .md-card-outlined {
+    @apply bg-surface border border-neutral-300 rounded-3xl p-6
+           hover:elevation-1 transition-all duration-200;
+  }
+
+  /* Material Design 3 Input Fields */
+  .md-input-outlined {
+    @apply w-full px-4 py-3 border-2 border-neutral-400 rounded-lg
+           focus:outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-200
+           disabled:bg-neutral-100 disabled:cursor-not-allowed;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-input-filled {
+    @apply w-full px-4 py-3 bg-surface-container-high border-b-2 border-neutral-400
+           rounded-t-lg focus:outline-none focus:border-primary-600 focus:bg-surface-container-highest
+           disabled:bg-neutral-100 disabled:cursor-not-allowed;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Material Design 3 Chips */
+  .md-chip {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium
+           bg-surface-container-high hover:elevation-1 cursor-pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-chip-assist {
+    @apply md-chip border border-neutral-300;
+  }
+
+  .md-chip-filter {
+    @apply md-chip bg-surface-container-high hover:bg-surface-container-highest;
+  }
+
+  .md-chip-filter-selected {
+    @apply md-chip bg-secondary-100 text-secondary-700 elevation-1;
+  }
+
+  /* Material Design 3 Badges */
+  .md-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+}
+
 @layer utilities {
-  /* Premium glassmorphism */
-  .glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  /* Material Design 3 Surface Tint */
+  .surface-tint {
+    background: linear-gradient(135deg, rgba(26, 145, 235, 0.05) 0%, transparent 100%);
   }
 
-  .glass-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.1);
+  /* Material Design 3 State Layers */
+  .state-layer-hover:hover::before {
+    content: '';
+    @apply absolute inset-0 bg-primary-600 opacity-8 rounded-inherit pointer-events-none;
   }
 
-  /* Smooth transitions with Apple easing */
-  .transition-apple {
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  .state-layer-focus:focus::before {
+    content: '';
+    @apply absolute inset-0 bg-primary-600 opacity-12 rounded-inherit pointer-events-none;
+  }
+
+  .state-layer-pressed:active::before {
+    content: '';
+    @apply absolute inset-0 bg-primary-600 opacity-12 rounded-inherit pointer-events-none;
+  }
+
+  /* Material Motion */
+  .md-transition-standard {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md-transition-emphasized {
+    transition: all 0.5s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .md-transition-emphasized-decelerate {
+    transition: all 0.4s cubic-bezier(0.05, 0.7, 0.1, 1);
+  }
+
+  .md-transition-emphasized-accelerate {
+    transition: all 0.2s cubic-bezier(0.3, 0, 0.8, 0.15);
   }
 }
