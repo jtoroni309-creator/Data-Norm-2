@@ -1,19 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Google+Sans:wght@400;500;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-fluent-gray-50;
   }
 
   :root {
-    /* Material Design 3 Theme - Google Modern */
-    font-family: 'Roboto', 'Google Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* Microsoft Fluent Design System */
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
 
-    /* Sharp rendering for high-DPI displays */
+    /* Sharp rendering */
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -21,8 +19,8 @@
   }
 
   body {
-    @apply text-gray-900 antialiased;
-    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    @apply text-fluent-gray-160 antialiased;
+    background: linear-gradient(135deg, #faf9f8 0%, #f3f2f1 100%);
   }
 
   /* High-quality image rendering */
@@ -31,135 +29,351 @@
     image-rendering: crisp-edges;
   }
 
-  /* Apple-style focus ring */
+  /* Fluent Focus Style */
   *:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(12, 145, 234, 0.3);
-    transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #0078d4;
+    transition: box-shadow 0.1s ease;
   }
 
-  /* Selection color matching primary theme */
+  /* Selection color */
   ::selection {
-    background: rgba(12, 145, 234, 0.2);
+    background: rgba(0, 120, 212, 0.2);
     color: inherit;
   }
 }
 
 @layer components {
-  /* Material Design 3 Elevation System */
-  .elevation-0 { box-shadow: none; }
-  .elevation-1 { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-  .elevation-2 { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
-  .elevation-3 { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-  .elevation-4 { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-  .elevation-5 { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+  /* ===========================
+     FLUENT ACRYLIC MATERIAL
+     ========================== */
+  .acrylic {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  }
 
-  /* Material Design 3 Buttons */
+  .acrylic-dark {
+    background: rgba(44, 44, 44, 0.7);
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* ===========================
+     FLUENT BUTTONS
+     ========================== */
+  .fluent-button {
+    @apply px-5 py-2 rounded-fluent font-semibold text-body
+           transition-all duration-100 ease-out
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .fluent-button-primary {
+    @apply fluent-button bg-brand text-white
+           hover:bg-fluent-blue-700 active:bg-fluent-blue-800
+           shadow-fluent-4 hover:shadow-fluent-8;
+  }
+
+  .fluent-button-secondary {
+    @apply fluent-button bg-fluent-gray-20 text-fluent-gray-160
+           hover:bg-fluent-gray-30 active:bg-fluent-gray-40
+           border border-fluent-gray-60;
+  }
+
+  .fluent-button-outline {
+    @apply fluent-button bg-transparent text-brand
+           border-2 border-brand
+           hover:bg-fluent-blue-50 active:bg-fluent-blue-100;
+  }
+
+  .fluent-button-subtle {
+    @apply fluent-button bg-transparent text-fluent-gray-160
+           hover:bg-fluent-gray-20 active:bg-fluent-gray-30;
+  }
+
+  /* Legacy button classes for backward compatibility */
   .btn-primary {
-    @apply px-6 py-3 bg-primary-600 text-white font-medium rounded-full
-           hover:bg-primary-700 hover:elevation-3 active:elevation-1
-           disabled:opacity-50 disabled:cursor-not-allowed elevation-2;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply fluent-button-primary;
   }
 
   .btn-secondary {
-    @apply px-6 py-3 bg-secondary-100 text-secondary-700 font-medium rounded-full
-           hover:bg-secondary-200 hover:elevation-2
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply fluent-button-secondary;
   }
 
   .btn-outline {
-    @apply px-6 py-3 border-2 border-primary-600 text-primary-600 font-medium rounded-full
-           hover:bg-primary-50 active:bg-primary-100
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply fluent-button-outline;
   }
 
-  /* Material Design 3 Cards */
+  /* ===========================
+     FLUENT CARDS
+     ========================== */
+  .fluent-card {
+    @apply bg-white rounded-fluent-lg border border-fluent-gray-40
+           shadow-fluent-2 hover:shadow-fluent-8
+           transition-all duration-200 ease-out;
+  }
+
+  .fluent-card-interactive {
+    @apply fluent-card cursor-pointer
+           hover:border-fluent-gray-60 hover:scale-[1.01];
+  }
+
+  .fluent-card-acrylic {
+    @apply acrylic rounded-fluent-lg
+           shadow-fluent-4 hover:shadow-fluent-16
+           transition-all duration-200 ease-out;
+  }
+
+  /* Legacy card classes */
   .card {
-    @apply bg-white rounded-3xl elevation-1;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .card:hover {
-    @apply elevation-2;
+    @apply fluent-card p-6;
   }
 
   .card-interactive {
-    @apply card cursor-pointer hover:elevation-3;
+    @apply fluent-card-interactive p-6;
   }
 
-  .card-interactive:hover {
-    transform: translateY(-2px);
+  /* ===========================
+     FLUENT INPUTS
+     ========================== */
+  .fluent-input {
+    @apply w-full px-3 py-2 rounded-fluent
+           bg-white border border-fluent-gray-60
+           text-body text-fluent-gray-160
+           placeholder:text-fluent-gray-90
+           focus:outline-none focus:border-brand focus:shadow-[0_0_0_1px_#0078d4]
+           disabled:bg-fluent-gray-20 disabled:cursor-not-allowed
+           transition-all duration-100 ease-out;
   }
 
+  .fluent-input-underline {
+    @apply w-full px-0 py-2 rounded-none
+           bg-transparent border-b-2 border-fluent-gray-60
+           text-body text-fluent-gray-160
+           placeholder:text-fluent-gray-90
+           focus:outline-none focus:border-brand
+           transition-all duration-100 ease-out;
+  }
+
+  /* Legacy input classes */
   .input-field {
-    @apply w-full px-4 py-3 border-2 border-neutral-400 rounded-lg
-           focus:outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-200
-           disabled:bg-neutral-100 disabled:cursor-not-allowed;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply fluent-input;
   }
 
-  .progress-bar {
-    @apply h-2 bg-neutral-200 rounded-full overflow-hidden;
+  /* ===========================
+     FLUENT BADGES & PILLS
+     ========================== */
+  .fluent-badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-caption font-semibold;
   }
 
-  .progress-bar-fill {
-    @apply h-full bg-gradient-to-r from-primary-500 to-secondary-500
-           transition-all duration-500 ease-out;
+  .fluent-badge-info {
+    @apply fluent-badge bg-fluent-blue-100 text-fluent-blue-700;
   }
 
+  .fluent-badge-success {
+    @apply fluent-badge bg-fluent-green-100 text-fluent-green-700;
+  }
+
+  .fluent-badge-warning {
+    @apply fluent-badge bg-fluent-yellow-100 text-fluent-yellow-800;
+  }
+
+  .fluent-badge-error {
+    @apply fluent-badge bg-fluent-red-100 text-fluent-red-700;
+  }
+
+  .fluent-badge-neutral {
+    @apply fluent-badge bg-fluent-gray-30 text-fluent-gray-140;
+  }
+
+  /* Legacy badge classes */
   .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+    @apply fluent-badge;
   }
 
   .badge-success {
-    @apply badge bg-success-100 text-success-800;
+    @apply fluent-badge-success;
   }
 
   .badge-warning {
-    @apply badge bg-warning-100 text-warning-800;
+    @apply fluent-badge-warning;
   }
 
   .badge-error {
-    @apply badge bg-error-100 text-error-800;
+    @apply fluent-badge-error;
   }
 
   .badge-info {
-    @apply badge bg-primary-100 text-primary-800;
+    @apply fluent-badge-info;
+  }
+
+  /* ===========================
+     FLUENT REVEAL EFFECT
+     ========================== */
+  .reveal-hover {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .reveal-hover::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .reveal-hover:hover::before {
+    width: 300%;
+    height: 300%;
+  }
+
+  /* ===========================
+     FLUENT DIVIDERS
+     ========================== */
+  .fluent-divider {
+    @apply border-t border-fluent-gray-40;
+  }
+
+  /* ===========================
+     FLUENT PROGRESS
+     ========================== */
+  .fluent-progress {
+    @apply h-1 bg-fluent-gray-30 rounded-full overflow-hidden;
+  }
+
+  .fluent-progress-fill {
+    @apply h-full bg-brand rounded-full transition-all duration-300 ease-out;
+  }
+
+  /* Legacy progress classes */
+  .progress-bar {
+    @apply fluent-progress;
+  }
+
+  .progress-bar-fill {
+    @apply fluent-progress-fill;
+  }
+
+  /* ===========================
+     FLUENT COMMAND BAR
+     ========================== */
+  .command-bar {
+    @apply flex items-center gap-2 px-4 py-2
+           bg-fluent-gray-10 border-b border-fluent-gray-40;
+  }
+
+  /* ===========================
+     FLUENT NAVIGATION
+     ========================== */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-fluent
+           text-body text-fluent-gray-160 font-medium
+           hover:bg-fluent-gray-20 active:bg-fluent-gray-30
+           transition-colors duration-100;
+  }
+
+  .nav-item-active {
+    @apply nav-item bg-fluent-blue-50 text-brand
+           border-l-3 border-brand;
   }
 }
 
 @layer utilities {
+  /* Fluent Depth/Elevation */
+  .depth-4 {
+    box-shadow: 0 0.6px 1.8px rgba(0, 0, 0, 0.108), 0 3.2px 7.2px rgba(0, 0, 0, 0.132);
+  }
+
+  .depth-8 {
+    box-shadow: 0 1.2px 3.6px rgba(0, 0, 0, 0.108), 0 6.4px 14.4px rgba(0, 0, 0, 0.132);
+  }
+
+  .depth-16 {
+    box-shadow: 0 2.4px 7.2px rgba(0, 0, 0, 0.108), 0 12.8px 28.8px rgba(0, 0, 0, 0.132);
+  }
+
+  .depth-64 {
+    box-shadow: 0 9.6px 28.8px rgba(0, 0, 0, 0.108), 0 51.2px 115.2px rgba(0, 0, 0, 0.132);
+  }
+
+  /* Fluent Surfaces */
+  .surface {
+    @apply bg-white;
+  }
+
+  .surface-secondary {
+    @apply bg-fluent-gray-10;
+  }
+
+  .surface-tertiary {
+    @apply bg-fluent-gray-20;
+  }
+
+  /* Fluent Text */
+  .text-primary {
+    @apply text-fluent-gray-160;
+  }
+
+  .text-secondary {
+    @apply text-fluent-gray-110;
+  }
+
+  .text-tertiary {
+    @apply text-fluent-gray-90;
+  }
+
+  .text-brand {
+    @apply text-brand;
+  }
+
+  /* Fluent Motion */
+  .motion-fluent {
+    transition-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1);
+  }
+
+  .motion-reveal {
+    animation: reveal 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+  }
+
+  /* Legacy utilities */
   .text-gradient {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600
+    @apply bg-gradient-to-r from-brand to-fluent-purple-500
            bg-clip-text text-transparent;
   }
 
   .bg-gradient-primary {
-    @apply bg-gradient-to-br from-primary-500 to-primary-700;
+    @apply bg-gradient-to-br from-fluent-blue-500 to-fluent-blue-700;
   }
 
   .bg-gradient-secondary {
-    @apply bg-gradient-to-br from-secondary-500 to-secondary-700;
+    @apply bg-gradient-to-br from-fluent-purple-500 to-fluent-purple-700;
   }
 
   .surface-tint {
-    background: linear-gradient(135deg, rgba(26, 145, 235, 0.05) 0%, transparent 100%);
+    background: linear-gradient(135deg, rgba(0, 120, 212, 0.05) 0%, transparent 100%);
   }
 
-  /* Material Motion */
   .md-transition-standard {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
   }
 
   .md-transition-emphasized {
-    transition: all 0.5s cubic-bezier(0.2, 0, 0, 1);
+    transition: all 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
   }
 }
 
-/* Premium custom scrollbar - macOS inspired */
+/* Premium custom scrollbar - Windows inspired */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -170,34 +384,37 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-  border-radius: 9999px;
-  border: 3px solid transparent;
-  background-clip: content-box;
+  background: rgba(96, 94, 92, 0.5);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.6);
-  background-clip: content-box;
+  background: rgba(96, 94, 92, 0.7);
+  background-clip: padding-box;
 }
 
-/* Animation utilities */
-.animate-shimmer {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  background-size: 200% 100%;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
+/* Accessibility - High Contrast Support */
+@media (prefers-contrast: high) {
+  .fluent-card {
+    @apply border-2;
   }
-  100% {
-    background-position: 200% 0;
+
+  .fluent-button {
+    @apply border-2;
+  }
+}
+
+/* Responsive Typography */
+@media (max-width: 640px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    font-size: 16px;
   }
 }
