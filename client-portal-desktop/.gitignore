@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+dist-vite/
+out/
+build/
+
+# Electron
+*.log
+*.log.*
+
+# Development
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database (development)
+*.db
+*.db-shm
+*.db-wal
+
+# Certificates (never commit)
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Windows
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Misc
+*.swp
+*.swo
+*~
+.cache/

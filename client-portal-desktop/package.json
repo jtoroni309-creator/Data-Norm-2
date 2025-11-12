@@ -1,0 +1,108 @@
+{
+  "name": "aura-audit-client-desktop",
+  "version": "1.0.0",
+  "description": "Aura Audit AI - Smart Client for Windows",
+  "main": "electron/main.js",
+  "author": "Aura Audit AI",
+  "license": "proprietary",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:3000 && electron .",
+    "build": "tsc && vite build && electron-builder",
+    "build:win": "npm run build -- --win",
+    "build:dir": "npm run build -- --dir",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.1",
+    "@tanstack/react-query": "^5.14.2",
+    "axios": "^1.6.2",
+    "zustand": "^4.4.7",
+    "lucide-react": "^0.294.0",
+    "recharts": "^2.10.3",
+    "react-dropzone": "^14.2.3",
+    "framer-motion": "^10.16.16",
+    "date-fns": "^3.0.0",
+    "react-hot-toast": "^2.4.1",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.1.0",
+    "better-sqlite3": "^9.2.2",
+    "electron-store": "^8.1.0",
+    "electron-log": "^5.0.1",
+    "electron-updater": "^6.1.7",
+    "idb": "^7.1.1",
+    "dexie": "^3.2.4",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.auraaudit.client",
+    "productName": "Aura Audit Client",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "dist-vite/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "msi",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "Aura Audit AI",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Aura Audit Client",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "msi": {
+      "oneClick": false,
+      "perMachine": true
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://updates.auraaudit.ai"
+    }
+  }
+}
