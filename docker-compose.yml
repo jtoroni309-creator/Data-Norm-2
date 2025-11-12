@@ -9,9 +9,9 @@ services:
     image: pgvector/pgvector:pg15
     container_name: atlas-db
     environment:
-      POSTGRES_USER: atlas
-      POSTGRES_PASSWORD: atlas_secret
-      POSTGRES_DB: atlas
+      POSTGRES_USER: ${POSTGRES_USER:-atlas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atlas_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-atlas}
     ports:
       - "5432:5432"
     volumes:
@@ -45,8 +45,8 @@ services:
     image: minio/minio:latest
     container_name: atlas-minio
     environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -93,13 +93,13 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-ingestion
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - EDGAR_BASE_URL=https://data.sec.gov
-      - EDGAR_USER_AGENT=Aura Audit AI contact@aura-audit.ai
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+      - EDGAR_BASE_URL=${EDGAR_BASE_URL:-https://data.sec.gov}
+      - EDGAR_USER_AGENT=${EDGAR_USER_AGENT:-Aura Audit AI contact@aura-audit.ai}
     ports:
       - "8001:8000"
     depends_on:
@@ -120,8 +120,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-normalize
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8002:8000"
     depends_on:
@@ -140,9 +140,9 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-analytics
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow:5000}
     ports:
       - "8003:8000"
     depends_on:
@@ -161,12 +161,12 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-llm
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-placeholder}
-      - OPENAI_CHAT_MODEL=gpt-4-turbo-2024-04-09
-      - OPENAI_EMBEDDING_MODEL=text-embedding-3-large
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4-turbo-2024-04-09}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow:5000}
     ports:
       - "8004:8000"
     depends_on:
@@ -185,11 +185,11 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-engagement
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
     ports:
       - "8005:8000"
     depends_on:
@@ -210,8 +210,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-disclosures
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8006:8000"
     depends_on:
@@ -230,15 +230,15 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-reg-ab-audit
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-placeholder}
-      - AI_MODEL_VERSION=gpt-4-turbo
-      - STORAGE_ENDPOINT=http://minio:9000
-      - STORAGE_ACCESS_KEY=minio
-      - STORAGE_SECRET_KEY=minio123
-      - STORAGE_BUCKET=reg-ab-audit
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+      - AI_MODEL_VERSION=${AI_MODEL_VERSION:-gpt-4-turbo}
+      - STORAGE_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - STORAGE_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+      - STORAGE_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+      - STORAGE_BUCKET=${STORAGE_BUCKET:-reg-ab-audit}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:5173}
     ports:
       - "8011:8000"
     depends_on:
@@ -259,12 +259,12 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-reporting
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_WORM_BUCKET=atlas-worm
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+      - S3_WORM_BUCKET=${S3_WORM_BUCKET:-atlas-worm}
     ports:
       - "8007:8000"
     depends_on:
@@ -285,8 +285,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-qc
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8008:8000"
     depends_on:
@@ -305,11 +305,12 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-identity
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET=dev-secret-change-in-production
-      - JWT_ALGORITHM=HS256
-      - OIDC_ENABLED=false
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_MINUTES=${JWT_EXPIRATION_MINUTES:-480}
+      - OIDC_ENABLED=${OIDC_ENABLED:-false}
     ports:
       - "8009:8000"
     depends_on:
@@ -328,8 +329,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-connectors
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - QBO_CLIENT_ID=${QBO_CLIENT_ID:-placeholder}
       - QBO_CLIENT_SECRET=${QBO_CLIENT_SECRET:-placeholder}
     ports:
@@ -350,9 +351,9 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-audit-planning
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - IDENTITY_SERVICE_URL=http://api-identity:8000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - IDENTITY_SERVICE_URL=${IDENTITY_SERVICE_URL:-http://api-identity:8000}
     ports:
       - "8012:8000"
     depends_on:
@@ -371,8 +372,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-accounting-integrations
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - QBO_CLIENT_ID=${QBO_CLIENT_ID:-placeholder}
       - QBO_CLIENT_SECRET=${QBO_CLIENT_SECRET:-placeholder}
       - XERO_CLIENT_ID=${XERO_CLIENT_ID:-placeholder}
@@ -396,8 +397,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-data-anonymization
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-dev-encryption-key-32-characters}
     ports:
       - "8014:8000"
@@ -417,8 +418,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-financial-analysis
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - STRIPE_API_KEY=${STRIPE_API_KEY:-sk_test_placeholder}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
     ports:
@@ -439,9 +440,9 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-fraud-detection
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow:5000}
       - PLAID_CLIENT_ID=${PLAID_CLIENT_ID:-placeholder}
       - PLAID_SECRET=${PLAID_SECRET:-placeholder}
     ports:
@@ -462,8 +463,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-related-party
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8017:8000"
     depends_on:
@@ -482,8 +483,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-sampling
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8018:8000"
     depends_on:
@@ -502,13 +503,13 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-security
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - MASTER_KEY=${MASTER_KEY:-dev-master-key-change-in-production}
-      - KEY_ROTATION_DAYS=90
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
+      - KEY_ROTATION_DAYS=${KEY_ROTATION_DAYS:-90}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
     ports:
       - "8019:8000"
     depends_on:
@@ -529,8 +530,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-subsequent-events
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8020:8000"
     depends_on:
@@ -549,8 +550,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-substantive-testing
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8021:8000"
     depends_on:
@@ -569,12 +570,12 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-training-data
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow:5000}
     ports:
       - "8022:8000"
     depends_on:
@@ -595,8 +596,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-eo-insurance-portal
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8023:8000"
     depends_on:
@@ -615,8 +616,8 @@ services:
       dockerfile: Dockerfile
     container_name: atlas-api-estimates-evaluation
     environment:
-      - DATABASE_URL=postgresql://atlas:atlas_secret@db:5432/atlas
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://atlas:atlas_secret@db:5432/atlas}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "8024:8000"
     depends_on:
@@ -637,14 +638,14 @@ services:
     image: apache/airflow:2.9.0-python3.11
     container_name: atlas-airflow-init
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://atlas:atlas_secret@db:5432/airflow
-      - AIRFLOW__CORE__FERNET_KEY=UKM1qx8EQ9rJlPZo5YN5z0W2fN3h-HJTYbB_Qr2c7kM=
+      - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR:-LocalExecutor}
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://${POSTGRES_USER:-atlas}:${POSTGRES_PASSWORD:-atlas_secret}@db:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY:-UKM1qx8EQ9rJlPZo5YN5z0W2fN3h-HJTYbB_Qr2c7kM=}
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
       - _AIRFLOW_DB_MIGRATE=true
       - _AIRFLOW_WWW_USER_CREATE=true
-      - _AIRFLOW_WWW_USER_USERNAME=admin
-      - _AIRFLOW_WWW_USER_PASSWORD=admin
+      - _AIRFLOW_WWW_USER_USERNAME=${AIRFLOW_USER:-admin}
+      - _AIRFLOW_WWW_USER_PASSWORD=${AIRFLOW_PASSWORD:-admin}
     depends_on:
       db:
         condition: service_healthy
@@ -656,11 +657,11 @@ services:
     image: apache/airflow:2.9.0-python3.11
     container_name: atlas-airflow-webserver
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://atlas:atlas_secret@db:5432/airflow
-      - AIRFLOW__CORE__FERNET_KEY=UKM1qx8EQ9rJlPZo5YN5z0W2fN3h-HJTYbB_Qr2c7kM=
+      - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR:-LocalExecutor}
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://${POSTGRES_USER:-atlas}:${POSTGRES_PASSWORD:-atlas_secret}@db:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY:-UKM1qx8EQ9rJlPZo5YN5z0W2fN3h-HJTYbB_Qr2c7kM=}
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - AIRFLOW__WEBSERVER__SECRET_KEY=airflow_secret_key
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY:-airflow_secret_key}
     ports:
       - "8080:8080"
     depends_on:
@@ -683,9 +684,9 @@ services:
     image: apache/airflow:2.9.0-python3.11
     container_name: atlas-airflow-scheduler
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://atlas:atlas_secret@db:5432/airflow
-      - AIRFLOW__CORE__FERNET_KEY=UKM1qx8EQ9rJlPZo5YN5z0W2fN3h-HJTYbB_Qr2c7kM=
+      - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR:-LocalExecutor}
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://${POSTGRES_USER:-atlas}:${POSTGRES_PASSWORD:-atlas_secret}@db:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY:-UKM1qx8EQ9rJlPZo5YN5z0W2fN3h-HJTYbB_Qr2c7kM=}
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
     depends_on:
       - airflow-init
@@ -710,7 +711,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     volumes:
       - ./frontend:/app:ro
       - /app/node_modules
