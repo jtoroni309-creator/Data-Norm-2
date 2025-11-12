@@ -144,6 +144,62 @@ class EngagementTeamMember(Base):
     engagement = relationship("Engagement", back_populates="team_members")
 
 
+class EngagementCustomer(Base):
+    """
+    Customer (client user) assignment to engagement
+
+    Links customer users to specific engagements with granular permissions.
+    Allows CPA firms to grant customers access to their own engagement data,
+    upload documents, and connect integrations.
+    """
+    __tablename__ = "engagement_customers"
+    __table_args__ = (
+        Index("idx_engagement_customers_engagement", "engagement_id"),
+        Index("idx_engagement_customers_user", "customer_user_id"),
+        Index("idx_engagement_customers_active", "is_active"),
+        {"schema": "atlas"}
+    )
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    engagement_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("atlas.engagements.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    customer_user_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)  # References user from identity service
+
+    # Customer role on engagement
+    role = Column(String(100), default="primary_contact")  # primary_contact, secondary_contact, authorized_signer
+
+    # Granular permissions for this customer on this engagement
+    can_view_reports = Column(Boolean, default=True)
+    can_upload_documents = Column(Boolean, default=True)
+    can_manage_integrations = Column(Boolean, default=True)
+    can_view_financials = Column(Boolean, default=True)
+    can_complete_questionnaires = Column(Boolean, default=True)
+    can_approve_confirmations = Column(Boolean, default=False)
+
+    # Access control
+    is_active = Column(Boolean, default=True)
+    access_expires_at = Column(DateTime(timezone=True))
+
+    # Invitation tracking
+    invited_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    invited_by = Column(PGUUID(as_uuid=True), nullable=False)  # CPA user who granted access
+    access_granted_at = Column(DateTime(timezone=True))  # When customer accepted invitation
+    last_accessed_at = Column(DateTime(timezone=True))
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    # Additional context
+    notes = Column(Text)  # Internal notes about this customer's access
+
+    # Relationships
+    engagement = relationship("Engagement", backref="customers")
+
+
 class BinderNode(Base):
     """
     Hierarchical binder structure
