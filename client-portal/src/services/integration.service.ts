@@ -181,6 +181,21 @@ export class IntegrationService {
     const response = await axios.post(`${API_BASE_URL}/integrations/${connectionId}/test`);
     return response.data;
   }
+
+  /**
+   * Convenience helpers for UI layers that expect simplified method names
+   */
+  public async connect(integrationType: IntegrationType): Promise<{ authUrl: string; state: string }> {
+    return this.initiateConnection(integrationType);
+  }
+
+  public async disconnect(connectionId: string): Promise<void> {
+    return this.disconnectIntegration(connectionId);
+  }
+
+  public async syncData(connectionId: string): Promise<void> {
+    return this.syncIntegration(connectionId);
+  }
 }
 
 export const integrationService = new IntegrationService();
