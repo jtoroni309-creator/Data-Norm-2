@@ -4,39 +4,8 @@
  * Allows clients to submit CMBS deals for audit and track progress
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  LinearProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-  Chip,
-  Alert,
-  AlertTitle,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  CheckCircle as CheckCircleIcon,
-  HourglassEmpty as PendingIcon,
-  Assessment as AssessmentIcon,
-} from '@mui/icons-material';
+import { useState, useEffect } from 'react';
+import { Plus, CheckCircle, Clock, FileText } from 'lucide-react';
 
 interface CMBSDeal {
   id: string;
@@ -123,19 +92,23 @@ export default function RegABAuditPage() {
     }
   };
 
-  const getStatusChip = (status: string) => {
-    const statusMap: Record<string, { label: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' }> = {
-      active: { label: 'Active', color: 'success' },
-      pending_audit: { label: 'Pending Audit', color: 'warning' },
-      audit_complete: { label: 'Complete', color: 'success' },
-      draft: { label: 'Draft', color: 'default' },
-      ai_processing: { label: 'Processing', color: 'info' },
-      cpa_review: { label: 'CPA Review', color: 'primary' },
-      finalized: { label: 'Finalized', color: 'success' },
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; className: string }> = {
+      active: { label: 'Active', className: 'bg-green-100 text-green-800' },
+      pending_audit: { label: 'Pending Audit', className: 'bg-yellow-100 text-yellow-800' },
+      audit_complete: { label: 'Complete', className: 'bg-green-100 text-green-800' },
+      draft: { label: 'Draft', className: 'bg-gray-100 text-gray-800' },
+      ai_processing: { label: 'Processing', className: 'bg-blue-100 text-blue-800' },
+      cpa_review: { label: 'CPA Review', className: 'bg-purple-100 text-purple-800' },
+      finalized: { label: 'Finalized', className: 'bg-green-100 text-green-800' },
     };
 
-    const statusInfo = statusMap[status] || { label: status, color: 'default' };
-    return <Chip label={statusInfo.label} color={statusInfo.color} size="small" />;
+    const statusInfo = statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.className}`}>
+        {statusInfo.label}
+      </span>
+    );
   };
 
   const currentEngagement = engagements.find((e) => e.id === selectedEngagement);
@@ -145,179 +118,194 @@ export default function RegABAuditPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <LinearProgress />
-      </Container>
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Regulation A/B Audit
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
+        </h1>
+        <p className="text-gray-600">
           Submit and track CMBS deals for Regulation A/B compliance auditing
-        </Typography>
-      </Box>
+        </p>
+      </div>
 
       {engagements.length === 0 ? (
-        <Alert severity="info">
-          <AlertTitle>No Active Engagements</AlertTitle>
-          Contact your CPA firm to initiate a Regulation A/B audit engagement.
-        </Alert>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-blue-800 font-semibold mb-2">No Active Engagements</h3>
+          <p className="text-blue-700">
+            Contact your CPA firm to initiate a Regulation A/B audit engagement.
+          </p>
+        </div>
       ) : (
         <>
           {/* Engagement Summary */}
           {currentEngagement && (
-            <Card sx={{ mb: 4 }}>
-              <CardHeader
-                title={currentEngagement.audit_name}
-                subheader={`Status: ${currentEngagement.status}`}
-                action={getStatusChip(currentEngagement.status)}
-              />
-              <CardContent>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="h4" color="primary">
+            <div className="bg-white rounded-lg shadow-md mb-6">
+              <div className="border-b border-gray-200 p-6 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {currentEngagement.audit_name}
+                  </h2>
+                  <p className="text-sm text-gray-600">Status: {currentEngagement.status}</p>
+                </div>
+                {getStatusBadge(currentEngagement.status)}
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                  <div>
+                    <div className="text-3xl font-bold text-blue-600">
                       {currentEngagement.total_cmbs_deals}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Total Deals
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="h4" color="success.main">
+                    </div>
+                    <div className="text-sm text-gray-600">Total Deals</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-green-600">
                       {currentEngagement.processed_deals}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Processed
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="h4" color="info.main">
+                    </div>
+                    <div className="text-sm text-gray-600">Processed</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-blue-500">
                       {currentEngagement.passed_compliance_checks}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Checks Passed
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="h4" color="error.main">
+                    </div>
+                    <div className="text-sm text-gray-600">Checks Passed</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-red-600">
                       {currentEngagement.failed_compliance_checks}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Checks Failed
-                    </Typography>
-                  </Grid>
-                </Grid>
+                    </div>
+                    <div className="text-sm text-gray-600">Checks Failed</div>
+                  </div>
+                </div>
 
-                <Box sx={{ mt: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Processing Progress
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {Math.round(progress)}%
-                    </Typography>
-                  </Box>
-                  <LinearProgress variant="determinate" value={progress} />
-                </Box>
-              </CardContent>
-            </Card>
+                <div className="mt-4">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-600">Processing Progress</span>
+                    <span className="text-sm text-gray-600">{Math.round(progress)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Action Buttons */}
-          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
+          <div className="mb-6 flex justify-end">
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               onClick={() => setOpenDialog(true)}
             >
+              <Plus size={20} />
               Add CMBS Deal
-            </Button>
-          </Box>
+            </button>
+          </div>
 
           {/* Deals Table */}
-          <Paper>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Deal Name</TableCell>
-                    <TableCell>Deal Number</TableCell>
-                    <TableCell>CUSIP</TableCell>
-                    <TableCell align="right">Current Balance</TableCell>
-                    <TableCell align="right">DSCR</TableCell>
-                    <TableCell align="right">LTV</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Submitted</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal Number</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSIP</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Current Balance</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">DSCR</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">LTV</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
                   {deals.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                    <tr>
+                      <td colSpan={8} className="px-6 py-12 text-center">
+                        <p className="text-gray-500">
                           No CMBS deals submitted yet. Click "Add CMBS Deal" to get started.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
+                        </p>
+                      </td>
+                    </tr>
                   ) : (
                     deals.map((deal) => (
-                      <TableRow key={deal.id} hover>
-                        <TableCell>{deal.deal_name}</TableCell>
-                        <TableCell>{deal.deal_number}</TableCell>
-                        <TableCell>{deal.cusip || '—'}</TableCell>
-                        <TableCell align="right">
+                      <tr key={deal.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{deal.deal_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{deal.deal_number}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{deal.cusip || '—'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                           ${deal.current_balance.toLocaleString()}
-                        </TableCell>
-                        <TableCell align="right">
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           {deal.dscr ? deal.dscr.toFixed(2) : '—'}
-                        </TableCell>
-                        <TableCell align="right">
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           {deal.ltv ? `${deal.ltv.toFixed(1)}%` : '—'}
-                        </TableCell>
-                        <TableCell>{getStatusChip(deal.status)}</TableCell>
-                        <TableCell>
-                          {deal.submitted_at
-                            ? new Date(deal.submitted_at).toLocaleDateString()
-                            : '—'}
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(deal.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {deal.submitted_at ? new Date(deal.submitted_at).toLocaleDateString() : '—'}
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
 
       {/* Add Deal Dialog - Simplified for demo */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add CMBS Deal</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              This is a simplified form. In production, this would include comprehensive CMBS deal data entry.
-            </Alert>
-            <TextField fullWidth label="Deal Name" margin="normal" />
-            <TextField fullWidth label="Deal Number" margin="normal" />
-            <TextField fullWidth label="CUSIP" margin="normal" />
-            <TextField fullWidth label="Current Balance" type="number" margin="normal" />
-            <TextField fullWidth label="DSCR" type="number" margin="normal" />
-            <TextField fullWidth label="LTV (%)" type="number" margin="normal" />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => setOpenDialog(false)}>
-            Submit Deal
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+      {openDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Add CMBS Deal</h2>
+            </div>
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-blue-800 text-sm">
+                  This is a simplified form. In production, this would include comprehensive CMBS deal data entry.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <input type="text" placeholder="Deal Name" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input type="text" placeholder="Deal Number" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input type="text" placeholder="CUSIP" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input type="number" placeholder="Current Balance" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input type="number" placeholder="DSCR" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input type="number" placeholder="LTV (%)" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setOpenDialog(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setOpenDialog(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Submit Deal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
