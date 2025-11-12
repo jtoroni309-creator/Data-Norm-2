@@ -1,0 +1,27 @@
+# OAuth Configuration ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oauth-config
+  namespace: aura-audit-ai
+data:
+  # OAuth/OIDC Configuration
+  OIDC_ENABLED: "true"
+  OIDC_ISSUER: "https://login.microsoftonline.com/002fa7de-1afd-4945-86e1-79281af841ad/v2.0"
+  OIDC_AUDIENCE: "api://bd4c65f8-e6b1-4980-b47b-47b0ba9f8904"
+
+  # Microsoft Azure AD
+  AZURE_AD_TENANT_ID: "002fa7de-1afd-4945-86e1-79281af841ad"
+  AZURE_AD_TENANT_NAME: "toronico.onmicrosoft.com"
+
+  # OAuth Endpoints
+  OAUTH_AUTHORIZATION_ENDPOINT: "https://login.microsoftonline.com/002fa7de-1afd-4945-86e1-79281af841ad/oauth2/v2.0/authorize"
+  OAUTH_TOKEN_ENDPOINT: "https://login.microsoftonline.com/002fa7de-1afd-4945-86e1-79281af841ad/oauth2/v2.0/token"
+  OAUTH_JWKS_URI: "https://login.microsoftonline.com/002fa7de-1afd-4945-86e1-79281af841ad/discovery/v2.0/keys"
+  OAUTH_USERINFO_ENDPOINT: "https://graph.microsoft.com/v1.0/me"
+
+  # Scopes
+  OAUTH_SCOPES: "openid profile email User.Read"
+
+  # CORS Origins (for OAuth callbacks)
+  CORS_ORIGINS: "https://admin.auraai.toroniandcompany.com,https://portal.auraai.toroniandcompany.com,https://cpa.auraai.toroniandcompany.com,https://admin.auraa.toroniandcompany.com,https://cpa.auraa.toroniandcompany.com"
