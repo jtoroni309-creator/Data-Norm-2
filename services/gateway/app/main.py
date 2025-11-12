@@ -3,13 +3,14 @@ API Gateway for Aura Audit AI Platform
 
 Routes requests to appropriate microservices with:
 - Authentication middleware
-- Rate limiting
+- Rate limiting (Redis-backed)
 - Circuit breaker pattern
 - Request/response logging
 - Health check aggregation
 """
 
 import asyncio
+import os
 import time
 from datetime import datetime, timedelta
 from typing import Dict, Optional
@@ -20,7 +21,12 @@ from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.background import BackgroundTask
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 import uvicorn
+
+# Import Redis-backed rate limiter
+from .rate_limiter import limiter
 
 # Service registry with health check endpoints
 SERVICE_REGISTRY = {
@@ -135,9 +141,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration
-import os
+# Configure rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# CORS configuration
 # Get allowed origins from environment variable
 allowed_origins = os.getenv(
     "CORS_ORIGINS",
@@ -153,42 +161,12 @@ app.add_middleware(
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]
 )
 
-# Rate limiting storage (in-memory, use Redis in production)
-rate_limit_storage: Dict[str, list] = defaultdict(list)
-
 # Circuit breaker state
 circuit_breaker_state: Dict[str, dict] = defaultdict(lambda: {
     "failures": 0,
     "last_failure": None,
     "state": "closed"  # closed, open, half-open
 })
-
-
-class RateLimiter:
-    """Token bucket rate limiter"""
-
-    def __init__(self, requests_per_minute: int = 60):
-        self.requests_per_minute = requests_per_minute
-        self.window = 60  # seconds
-
-    def check_rate_limit(self, client_id: str) -> bool:
-        """Check if request is within rate limit"""
-        now = time.time()
-        window_start = now - self.window
-
-        # Clean old requests
-        rate_limit_storage[client_id] = [
-            req_time for req_time in rate_limit_storage[client_id]
-            if req_time > window_start
-        ]
-
-        # Check limit
-        if len(rate_limit_storage[client_id]) >= self.requests_per_minute:
-            return False
-
-        # Add current request
-        rate_limit_storage[client_id].append(now)
-        return True
 
 
 class CircuitBreaker:
@@ -230,17 +208,7 @@ class CircuitBreaker:
         return True
 
 
-rate_limiter = RateLimiter(requests_per_minute=120)
 circuit_breaker = CircuitBreaker(failure_threshold=5, timeout=60)
-
-
-def get_client_id(request: Request) -> str:
-    """Extract client identifier for rate limiting"""
-    # Use authorization token if available, otherwise IP
-    auth_header = request.headers.get("authorization")
-    if auth_header:
-        return auth_header[:50]  # Use token prefix
-    return request.client.host if request.client else "unknown"
 
 
 def resolve_service(path: str) -> Optional[str]:
@@ -303,19 +271,11 @@ async def proxy_request(
 
 @app.middleware("http")
 async def gateway_middleware(request: Request, call_next):
-    """Gateway middleware for rate limiting and routing"""
+    """Gateway middleware for request/response logging"""
 
     # Skip middleware for gateway health check
     if request.url.path == "/health":
         return await call_next(request)
-
-    # Rate limiting
-    client_id = get_client_id(request)
-    if not rate_limiter.check_rate_limit(client_id):
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Rate limit exceeded"}
-        )
 
     # Request logging
     start_time = time.time()
@@ -332,8 +292,9 @@ async def gateway_middleware(request: Request, call_next):
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@limiter.limit("120/minute")
 async def gateway(request: Request, path: str):
-    """Main gateway routing endpoint"""
+    """Main gateway routing endpoint with rate limiting"""
 
     # Resolve target service
     service_name = resolve_service(f"/{path}")
@@ -381,7 +342,8 @@ async def gateway(request: Request, path: str):
 
 
 @app.get("/health")
-async def health_check():
+@limiter.limit("300/minute")  # Higher limit for health checks
+async def health_check(request: Request):
     """Gateway health check"""
     return {
         "status": "healthy",
@@ -391,7 +353,8 @@ async def health_check():
 
 
 @app.get("/health/services")
-async def check_all_services():
+@limiter.limit("60/minute")  # Moderate limit for detailed health checks
+async def check_all_services(request: Request):
     """Check health of all backend services"""
 
     results = {}
@@ -431,13 +394,15 @@ async def check_all_services():
 
 
 @app.get("/metrics")
-async def get_metrics():
+@limiter.limit("60/minute")
+async def get_metrics(request: Request):
     """Get gateway metrics"""
 
     return {
-        "rate_limits": {
-            "active_clients": len(rate_limit_storage),
-            "total_requests": sum(len(reqs) for reqs in rate_limit_storage.values())
+        "rate_limiter": {
+            "backend": "redis",
+            "enabled": limiter.enabled,
+            "default_limits": limiter._default_limits
         },
         "circuit_breakers": {
             name: {

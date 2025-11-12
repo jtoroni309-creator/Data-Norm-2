@@ -67,6 +67,15 @@ FERNET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.ge
 # Generate Airflow webserver secret
 AIRFLOW_SECRET=$(openssl rand -hex 32)
 
+# Determine DATABASE_URL with SSL based on environment
+if [ "$ENVIRONMENT" = "production" ] || [ "$ENVIRONMENT" = "staging" ]; then
+    DATABASE_URL="postgresql://atlas:${POSTGRES_PASSWORD}@db:5432/atlas?sslmode=require"
+    DATABASE_SSL_MODE="require"
+else
+    DATABASE_URL="postgresql://atlas:${POSTGRES_PASSWORD}@db:5432/atlas"
+    DATABASE_SSL_MODE="disable"
+fi
+
 # Create .env file
 cat > "$OUTPUT_FILE" << EOF
 ################################################################################
@@ -98,8 +107,9 @@ POSTGRES_DB=atlas
 POSTGRES_HOST=db
 POSTGRES_PORT=5432
 
-# Connection string with SSL
-DATABASE_URL=postgresql://atlas:${POSTGRES_PASSWORD}@db:5432/atlas$([ "$ENVIRONMENT" != "development" ] && echo "?sslmode=require" || echo "")
+# Connection string (SSL enabled for production/staging)
+DATABASE_URL=${DATABASE_URL}
+DATABASE_SSL_MODE=${DATABASE_SSL_MODE}
 
 # ========================================
 # Redis Configuration
