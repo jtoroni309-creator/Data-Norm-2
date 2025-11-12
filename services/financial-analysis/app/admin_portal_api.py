@@ -828,3 +828,371 @@ async def export_data(exportType: str, format: str = "csv"):
         "estimatedTime": "2-3 minutes",
         "downloadUrl": None,  # Will be available when complete
     }
+
+
+# ============================================================================
+# USER MANAGEMENT ENDPOINTS
+# ============================================================================
+
+
+class UserListResponse(BaseModel):
+    """User list item response"""
+    id: str
+    email: str
+    firstName: Optional[str]
+    lastName: Optional[str]
+    role: str
+    tenantId: Optional[str]
+    tenantName: Optional[str]
+    isActive: bool
+    emailVerified: bool
+    lastLoginAt: Optional[str]
+    createdAt: str
+
+
+class CreateUserRequest(BaseModel):
+    """Create user request"""
+    email: EmailStr
+    firstName: str
+    lastName: str
+    role: str  # platform_admin, firm_admin, firm_user
+    tenantId: Optional[str]  # Required for non-platform-admin roles
+    password: Optional[str]  # If not provided, will send invitation
+    cpaLicenseNumber: Optional[str]
+    cpaLicenseState: Optional[str]
+    professionalTitle: Optional[str]
+    sendInvitation: bool = True
+
+
+class UpdateUserRequest(BaseModel):
+    """Update user request"""
+    firstName: Optional[str]
+    lastName: Optional[str]
+    role: Optional[str]
+    tenantId: Optional[str]
+    isActive: Optional[bool]
+    cpaLicenseNumber: Optional[str]
+    cpaLicenseState: Optional[str]
+    professionalTitle: Optional[str]
+
+
+class UserDetailResponse(BaseModel):
+    """Detailed user response"""
+    id: str
+    email: str
+    firstName: Optional[str]
+    lastName: Optional[str]
+    phone: Optional[str]
+    role: str
+    tenantId: Optional[str]
+    tenantName: Optional[str]
+    isActive: bool
+    emailVerified: bool
+    emailVerifiedAt: Optional[str]
+    twoFactorEnabled: bool
+    lastLoginAt: Optional[str]
+    lastLoginIp: Optional[str]
+    failedLoginAttempts: int
+    cpaLicenseNumber: Optional[str]
+    cpaLicenseState: Optional[str]
+    professionalTitle: Optional[str]
+    createdAt: str
+    updatedAt: Optional[str]
+    createdBy: Optional[str]
+
+
+@router.get("/tenants", response_model=List[dict])
+async def list_tenants(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+):
+    """
+    List all CPA firms (tenants).
+
+    Returns paginated list of tenants for firm selection in user creation.
+    """
+    # Mock data for now - in production, query from database
+    tenants = [
+        {
+            "id": str(uuid4()),
+            "firmName": "Anderson & Partners CPA",
+            "firmEin": "12-3456789",
+            "status": "active",
+            "subscriptionTier": "professional",
+            "userCount": 8,
+            "maxUsers": 20,
+            "createdAt": "2024-01-15T10:00:00Z",
+        },
+        {
+            "id": str(uuid4()),
+            "firmName": "Smith Accounting Group",
+            "firmEin": "98-7654321",
+            "status": "active",
+            "subscriptionTier": "starter",
+            "userCount": 3,
+            "maxUsers": 5,
+            "createdAt": "2024-02-20T10:00:00Z",
+        },
+        {
+            "id": str(uuid4()),
+            "firmName": "Jones & Associates",
+            "firmEin": "45-6789012",
+            "status": "trial",
+            "subscriptionTier": "trial",
+            "userCount": 1,
+            "maxUsers": 2,
+            "createdAt": "2024-11-01T10:00:00Z",
+        },
+    ]
+
+    # Filter by status
+    if status:
+        tenants = [t for t in tenants if t["status"] == status]
+
+    # Search by name
+    if search:
+        tenants = [t for t in tenants if search.lower() in t["firmName"].lower()]
+
+    # Pagination
+    start = (page - 1) * pageSize
+    end = start + pageSize
+
+    return tenants[start:end]
+
+
+@router.get("/users", response_model=List[UserListResponse])
+async def list_users(
+    tenantId: Optional[str] = None,
+    role: Optional[str] = None,
+    isActive: Optional[bool] = None,
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+):
+    """
+    List all users across all tenants or filter by tenant.
+
+    Platform admins can view all users.
+    Allows filtering by tenant, role, active status, and search.
+    """
+    # Mock data for now - in production, query from database
+    users = [
+        UserListResponse(
+            id=str(uuid4()),
+            email="john.admin@auraaudit.ai",
+            firstName="John",
+            lastName="Admin",
+            role="platform_admin",
+            tenantId=None,
+            tenantName=None,
+            isActive=True,
+            emailVerified=True,
+            lastLoginAt="2024-11-12T08:30:00Z",
+            createdAt="2024-01-01T00:00:00Z",
+        ),
+        UserListResponse(
+            id=str(uuid4()),
+            email="sarah.partner@andersoncp a.com",
+            firstName="Sarah",
+            lastName="Anderson",
+            role="firm_admin",
+            tenantId=str(uuid4()),
+            tenantName="Anderson & Partners CPA",
+            isActive=True,
+            emailVerified=True,
+            lastLoginAt="2024-11-12T09:15:00Z",
+            createdAt="2024-01-15T10:00:00Z",
+        ),
+        UserListResponse(
+            id=str(uuid4()),
+            email="mike.manager@andersoncpa.com",
+            firstName="Mike",
+            lastName="Johnson",
+            role="firm_user",
+            tenantId=str(uuid4()),
+            tenantName="Anderson & Partners CPA",
+            isActive=True,
+            emailVerified=True,
+            lastLoginAt="2024-11-11T16:45:00Z",
+            createdAt="2024-02-01T10:00:00Z",
+        ),
+    ]
+
+    # Filter by tenant
+    if tenantId:
+        users = [u for u in users if u.tenantId == tenantId]
+
+    # Filter by role
+    if role:
+        users = [u for u in users if u.role == role]
+
+    # Filter by active status
+    if isActive is not None:
+        users = [u for u in users if u.isActive == isActive]
+
+    # Search by name or email
+    if search:
+        search_lower = search.lower()
+        users = [
+            u for u in users
+            if (u.email and search_lower in u.email.lower())
+            or (u.firstName and search_lower in u.firstName.lower())
+            or (u.lastName and search_lower in u.lastName.lower())
+        ]
+
+    # Pagination
+    start = (page - 1) * pageSize
+    end = start + pageSize
+
+    return users[start:end]
+
+
+@router.post("/users", response_model=UserDetailResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    request: CreateUserRequest,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """
+    Create a new user and assign to a CPA firm.
+
+    Platform admins can create users for any tenant.
+    If password is not provided, sends an invitation email.
+    """
+    # Validate role and tenant assignment
+    if request.role != "platform_admin" and not request.tenantId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tenantId is required for non-platform-admin roles"
+        )
+
+    if request.role == "platform_admin" and request.tenantId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Platform admins cannot be assigned to a tenant"
+        )
+
+    # In production: Use PermissionService.create_user()
+    # For now, return mock response
+    user_id = str(uuid4())
+
+    # Send invitation if requested
+    if request.sendInvitation and not request.password:
+        # In production: Send invitation email via PermissionService.invite_user()
+        pass
+
+    return UserDetailResponse(
+        id=user_id,
+        email=request.email,
+        firstName=request.firstName,
+        lastName=request.lastName,
+        phone=None,
+        role=request.role,
+        tenantId=request.tenantId,
+        tenantName="Anderson & Partners CPA" if request.tenantId else None,
+        isActive=True,
+        emailVerified=False,
+        emailVerifiedAt=None,
+        twoFactorEnabled=False,
+        lastLoginAt=None,
+        lastLoginIp=None,
+        failedLoginAttempts=0,
+        cpaLicenseNumber=request.cpaLicenseNumber,
+        cpaLicenseState=request.cpaLicenseState,
+        professionalTitle=request.professionalTitle,
+        createdAt=datetime.utcnow().isoformat() + "Z",
+        updatedAt=None,
+        createdBy=None,
+    )
+
+
+@router.get("/users/{user_id}", response_model=UserDetailResponse)
+async def get_user(user_id: str):
+    """
+    Get detailed user information.
+
+    Returns comprehensive user details including permissions and activity.
+    """
+    # Mock response - in production, query from database
+    return UserDetailResponse(
+        id=user_id,
+        email="sarah.partner@andersoncpa.com",
+        firstName="Sarah",
+        lastName="Anderson",
+        phone="+1-555-0123",
+        role="firm_admin",
+        tenantId=str(uuid4()),
+        tenantName="Anderson & Partners CPA",
+        isActive=True,
+        emailVerified=True,
+        emailVerifiedAt="2024-01-15T12:00:00Z",
+        twoFactorEnabled=True,
+        lastLoginAt="2024-11-12T09:15:00Z",
+        lastLoginIp="192.168.1.100",
+        failedLoginAttempts=0,
+        cpaLicenseNumber="CPA-123456",
+        cpaLicenseState="California",
+        professionalTitle="Partner, CPA",
+        createdAt="2024-01-15T10:00:00Z",
+        updatedAt="2024-11-01T10:00:00Z",
+        createdBy=str(uuid4()),
+    )
+
+
+@router.patch("/users/{user_id}", response_model=UserDetailResponse)
+async def update_user(
+    user_id: str,
+    request: UpdateUserRequest,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """
+    Update user information.
+
+    Platform admins can update any user.
+    Can update role, tenant assignment, and user details.
+    """
+    # In production: Query user from database and update
+    # Validate role changes and tenant reassignments
+    # Use PermissionService for role/tenant changes
+
+    # Mock response
+    return UserDetailResponse(
+        id=user_id,
+        email="sarah.partner@andersoncpa.com",
+        firstName=request.firstName or "Sarah",
+        lastName=request.lastName or "Anderson",
+        phone="+1-555-0123",
+        role=request.role or "firm_admin",
+        tenantId=request.tenantId or str(uuid4()),
+        tenantName="Anderson & Partners CPA",
+        isActive=request.isActive if request.isActive is not None else True,
+        emailVerified=True,
+        emailVerifiedAt="2024-01-15T12:00:00Z",
+        twoFactorEnabled=True,
+        lastLoginAt="2024-11-12T09:15:00Z",
+        lastLoginIp="192.168.1.100",
+        failedLoginAttempts=0,
+        cpaLicenseNumber=request.cpaLicenseNumber or "CPA-123456",
+        cpaLicenseState=request.cpaLicenseState or "California",
+        professionalTitle=request.professionalTitle or "Partner, CPA",
+        createdAt="2024-01-15T10:00:00Z",
+        updatedAt=datetime.utcnow().isoformat() + "Z",
+        createdBy=str(uuid4()),
+    )
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """
+    Deactivate a user (soft delete).
+
+    Sets is_active to False instead of hard deleting.
+    User can be reactivated later if needed.
+    """
+    # In production: Update user.is_active = False
+    # Use PermissionService with audit logging
+    return None

@@ -27,6 +27,9 @@ import { LoginPage } from './pages/LoginPage';
 import FirmDashboard from './pages/FirmDashboard';
 import FirmSettings from './pages/FirmSettings';
 import EmployeeManagement from './pages/EmployeeManagement';
+import { DashboardPage } from './pages/DashboardPage';
+import { DocumentsPage } from './pages/DocumentsPage';
+import { IntegrationsPage } from './pages/IntegrationsPage';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/firm/dashboard' },
@@ -303,6 +306,11 @@ const App: React.FC = () => {
             </AppLayout>
           }
         />
+
+        {/* Customer Portal Routes */}
+        <Route path="/customer/dashboard" element={<DashboardPage />} />
+        <Route path="/customer/documents" element={<DocumentsPage />} />
+        <Route path="/customer/integrations" element={<IntegrationsPage />} />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/firm/dashboard" replace />} />

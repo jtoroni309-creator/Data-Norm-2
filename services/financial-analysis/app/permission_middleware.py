@@ -32,10 +32,16 @@ async def create_user(current_user: User = Depends(get_current_user)):
 from functools import wraps
 from typing import Callable, Optional
 from uuid import UUID
+import logging
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from .config import settings
+from .database import get_db
 from .permission_service import PermissionService
 from .permissions_models import (
     PermissionScope,
@@ -43,6 +49,9 @@ from .permissions_models import (
     User,
     UserRole,
 )
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 # HTTP Bearer token authentication
@@ -55,51 +64,87 @@ security = HTTPBearer()
 
 
 async def get_current_user(
-    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Get the current authenticated user from JWT token.
 
-    This is a simplified implementation. In production:
-    1. Verify JWT signature
-    2. Check token expiration
-    3. Validate token against revocation list
-    4. Extract user_id from token
-    5. Load user from database
+    Production-ready implementation that:
+    1. Verifies JWT signature
+    2. Checks token expiration
+    3. Extracts user_id from token
+    4. Loads user from database
+    5. Validates user is active
 
     Args:
-        request: FastAPI request
         credentials: HTTP Bearer token
+        db: Database session
 
     Returns:
-        Current user
+        Current authenticated user
 
     Raises:
         HTTPException: If authentication fails
     """
-    token = credentials.credentials
-
-    # TODO: Implement proper JWT verification
-    # For now, this is a placeholder
-    # In production, use python-jose or PyJWT:
-    #
-    # from jose import jwt, JWTError
-    #
-    # try:
-    #     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    #     user_id = payload.get("sub")
-    #     if user_id is None:
-    #         raise HTTPException(status_code=401, detail="Invalid token")
-    # except JWTError:
-    #     raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Placeholder: Extract user_id from token
-    # In real implementation, this comes from JWT payload
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="JWT authentication not yet implemented. See permission_middleware.py",
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
+
+    try:
+        token = credentials.credentials
+
+        # Decode JWT token
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+
+        # Extract user_id from 'sub' claim
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            logger.warning("JWT token missing 'sub' claim")
+            raise credentials_exception
+
+    except JWTError as e:
+        logger.error(f"JWT decode error: {e}")
+        raise credentials_exception
+
+    # Fetch user from database
+    try:
+        result = await db.execute(
+            select(User).where(
+                and_(
+                    User.id == UUID(user_id),
+                    User.is_active == True,
+                    User.deleted_at == None
+                )
+            )
+        )
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            logger.warning(f"User not found or inactive: {user_id}")
+            raise credentials_exception
+
+        # Update last login timestamp
+        # Note: This is done asynchronously without committing to avoid
+        # slowing down every request. Consider using a background task
+        # or periodic batch update for better performance.
+        # user.last_login_at = datetime.utcnow()
+        # await db.commit()
+
+        return user
+
+    except Exception as e:
+        logger.error(f"Database error while fetching user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during authentication"
+        )
 
 
 async def get_current_tenant(
@@ -132,21 +177,18 @@ async def get_current_tenant(
 
 
 async def get_permission_service(
-    request: Request,
+    db: AsyncSession = Depends(get_db),
 ) -> PermissionService:
     """
     Get permission service instance.
 
     Args:
-        request: FastAPI request
+        db: Database session
 
     Returns:
         PermissionService instance
     """
-    # Get database session from request state
-    # In production, this should be injected via dependency
-    session = request.state.db_session
-    return PermissionService(session)
+    return PermissionService(db)
 
 
 # ============================================================================
@@ -187,6 +229,14 @@ def require_permission(scope: PermissionScope, tenant_id_param: Optional[str] = 
                     detail="Authentication required",
                 )
 
+            # Get database session from kwargs
+            db = kwargs.get("db")
+            if not db:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Database session not found",
+                )
+
             # Get tenant_id from parameters if specified
             tenant_id = None
             if tenant_id_param and tenant_id_param in kwargs:
@@ -195,14 +245,7 @@ def require_permission(scope: PermissionScope, tenant_id_param: Optional[str] = 
                 tenant_id = current_user.tenant_id
 
             # Get permission service
-            request = kwargs.get("request")
-            if not request:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Request object not found",
-                )
-
-            permission_service = await get_permission_service(request)
+            permission_service = PermissionService(db)
 
             # Check permission
             has_permission = await permission_service.check_permission(
