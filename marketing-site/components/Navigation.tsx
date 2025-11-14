@@ -75,6 +75,12 @@ const Navigation = () => {
               Contact
             </Link>
             <Link
+              href="/faq"
+              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
               href="#demo"
               className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-accent-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all"
             >
@@ -140,6 +146,13 @@ const Navigation = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Contact
+              </Link>
+              <Link
+                href="/faq"
+                className="block px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                FAQ
               </Link>
               <Link
                 href="#demo"

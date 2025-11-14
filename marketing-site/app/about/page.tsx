@@ -32,13 +32,13 @@ export default function About() {
             </h2>
             <div className="prose prose-lg max-w-none text-gray-700 space-y-6">
               <p>
-                Aura Audit AI was founded by a team of auditors, data scientists, and engineers who experienced firsthand the pain of manual audit work. After spending countless hours on repetitive tasks—manually mapping accounts, testing transactions one by one, and drafting disclosure notes—we knew there had to be a better way.
+                Aura Audit AI was founded in 2022 by Jon Toroni, a visionary entrepreneur who recognized that the auditing profession was ripe for transformation. Having witnessed the inefficiencies and manual processes that plagued traditional audit firms, Jon assembled a world-class team of auditors, data scientists, and engineers to build a revolutionary AI-powered platform.
               </p>
               <p>
-                In 2022, we assembled a world-class team to build the audit platform we always wished we had. Our goal was simple: leverage AI and machine learning to automate the tedious, time-consuming parts of auditing while keeping auditors in control of professional judgment.
+                Jon's vision was clear: leverage cutting-edge artificial intelligence and machine learning to automate the tedious, time-consuming aspects of auditing while empowering CPAs to focus on what matters most—professional judgment, client relationships, and strategic insights. Under his leadership, Aura has grown from a bold idea into the leading audit automation platform trusted by CPA firms nationwide.
               </p>
               <p>
-                Today, Aura serves over 500 CPA firms across North America, processing millions of transactions and helping auditors deliver higher-quality work in less time. But we're just getting started.
+                Today, Aura serves over 500 CPA firms across North America, processing millions of transactions and helping auditors deliver higher-quality work in dramatically less time. With Jon at the helm, we're not just improving audits—we're redefining what's possible in the profession. But we're just getting started on our mission to democratize world-class audit capabilities for every firm, regardless of size.
               </p>
             </div>
           </div>
@@ -120,9 +120,9 @@ export default function About() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                name: 'Jennifer Thompson',
-                role: 'CEO & Co-Founder',
-                background: 'Former Big 4 Partner, 20 years in audit',
+                name: 'Jon Toroni',
+                role: 'Founder & CEO',
+                background: 'Visionary entrepreneur with deep expertise in AI, automation, and financial technology',
                 initial: 'JT',
               },
               {
