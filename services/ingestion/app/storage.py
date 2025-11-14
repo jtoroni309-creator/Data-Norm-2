@@ -51,6 +51,10 @@ class StorageClient:
             else:
                 logger.error(f"Error checking bucket: {e}")
                 raise
+        except Exception as e:
+            # Handle connection errors gracefully (e.g., MinIO not available)
+            logger.warning(f"Could not connect to storage endpoint: {e}")
+            logger.warning("Storage operations will be disabled")
 
     def upload_file(
         self,
