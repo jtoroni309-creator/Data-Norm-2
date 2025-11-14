@@ -48,7 +48,7 @@ const faqs: FAQItem[] = [
   {
     category: 'Features',
     question: 'Can Aura handle different types of audits?',
-    answer: 'Yes. Aura supports: Financial statement audits (GAAP), Benefit plan audits (ERISA), Review and compilation engagements, Regulation A/B audits for CMBS loans, Government and nonprofit audits, SOC 1 and SOC 2 audits, and Internal audit projects. The platform is flexible and can be customized for your firm's specific needs.',
+    answer: 'Yes. Aura supports: Financial statement audits (GAAP), Benefit plan audits (ERISA), Review and compilation engagements, Regulation AB audits for CMBS loans, Government and nonprofit audits, SOC 1 and SOC 2 audits, and Internal audit projects. The platform is flexible and can be customized for your firm\'s specific needs.',
   },
 
   // Compliance & Security
@@ -82,7 +82,7 @@ const faqs: FAQItem[] = [
   {
     category: 'Pricing',
     question: 'Is there a free trial?',
-    answer: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required to start. During the trial, you'll have access to our support team, onboarding assistance, and sample data to explore the platform. After the trial, you can choose the plan that best fits your needs.',
+    answer: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required to start. During the trial, you will have access to our support team, onboarding assistance, and sample data to explore the platform. After the trial, you can choose the plan that best fits your needs.',
   },
   {
     category: 'Pricing',
@@ -109,7 +109,7 @@ const faqs: FAQItem[] = [
   {
     category: 'Implementation',
     question: 'What if I need help after implementation?',
-    answer: 'Support is always available: Email support: support@auraaudit.ai (4-hour response time), Chat support within the platform, Phone support for urgent issues (Enterprise plans), Knowledge base with 100+ articles, Video tutorials and webinars, and Community forum for peer support. Our goal is to ensure you're never stuck.',
+    answer: 'Support is always available: Email support: support@auraaudit.ai (4-hour response time), Chat support within the platform, Phone support for urgent issues (Enterprise plans), Knowledge base with 100+ articles, Video tutorials and webinars, and Community forum for peer support. Our goal is to ensure you are never stuck.',
   },
 
   // AI & Technology

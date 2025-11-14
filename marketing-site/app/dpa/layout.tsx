@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 export default function DPALayout({
   children,
 }: {
-  children: React.NodeNode
+  children: React.ReactNode
 }) {
   return <>{children}</>
 }
