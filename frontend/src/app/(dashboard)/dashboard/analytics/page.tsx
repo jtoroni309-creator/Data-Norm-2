@@ -96,14 +96,18 @@ export default function AnalyticsPage() {
     },
   });
 
-  const filteredJEResults = jeResults.filter(
+  const jeResultsArray = (jeResults as any[]) || [];
+  const anomaliesArray = (anomalies as any[]) || [];
+  const engagementsArray = (engagements as any[]) || [];
+
+  const filteredJEResults = jeResultsArray.filter(
     (result: any) =>
-      result.entry_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.reason.toLowerCase().includes(searchQuery.toLowerCase())
+      result.entry_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      result.reason?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const flaggedJECount = jeResults.filter((r: any) => r.flagged).length;
-  const criticalAnomaliesCount = anomalies.filter((a: any) => a.severity === 'critical').length;
+  const flaggedJECount = jeResultsArray.filter((r: any) => r.flagged).length;
+  const criticalAnomaliesCount = anomaliesArray.filter((a: any) => a.severity === 'critical').length;
 
   return (
     <div className="space-y-6">
@@ -122,7 +126,7 @@ export default function AnalyticsPage() {
             className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Select engagement...</option>
-            {engagements.map((eng: any) => (
+            {engagementsArray.map((eng: any) => (
               <option key={eng.id} value={eng.id}>
                 {eng.client_name}
               </option>
