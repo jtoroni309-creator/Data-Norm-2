@@ -121,6 +121,21 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#eef5ff,_#f8fafc_45%,_#f4f6fb)] px-6 py-10">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
+        {/* Header Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="bg-gradient-to-r from-[#0f5ed5] to-[#2563eb] rounded-2xl px-8 py-4 text-white text-center shadow-lg"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-5 h-5" />
+            <h1 className="text-xl font-semibold tracking-wide">
+              AUDIT CLIENT DASHBOARD - FOR COMPANIES BEING AUDITED
+            </h1>
+          </div>
+        </motion.div>
+
         {/* Hero */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}

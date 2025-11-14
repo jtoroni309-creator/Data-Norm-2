@@ -159,6 +159,21 @@ const FirmDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-[1600px]">
+      {/* CPA Firm Header Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="bg-gradient-to-r from-[#10893e] to-[#16a34a] rounded-2xl px-8 py-4 text-white text-center shadow-lg"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Building2 className="w-5 h-5" />
+          <h1 className="text-xl font-semibold tracking-wide">
+            CPA FIRM PORTAL - MANAGE YOUR CLIENTS & ENGAGEMENTS
+          </h1>
+        </div>
+      </motion.div>
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

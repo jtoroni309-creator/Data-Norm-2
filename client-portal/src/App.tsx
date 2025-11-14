@@ -39,6 +39,46 @@ const navigation = [
   { id: 'settings', label: 'Settings', icon: Settings, path: '/firm/settings' },
 ];
 
+const SmartRedirect: React.FC = () => {
+  const isCpaPortal = window.location.hostname.startsWith('cpa.');
+  const targetPath = isCpaPortal ? "/firm/dashboard" : "/client/dashboard";
+
+  return <Navigate to={targetPath} replace />;
+};
+
+// Route guard component to ensure correct portal access based on subdomain
+const RouteGuard: React.FC<{ children: React.ReactNode; portalType: 'firm' | 'client' }> = ({ children, portalType }) => {
+  const navigate = useNavigate();
+  const isCpaPortal = window.location.hostname.startsWith('cpa.');
+
+  React.useEffect(() => {
+    // If on CPA subdomain but trying to access client routes, redirect to firm dashboard
+    if (isCpaPortal && portalType === 'client') {
+      console.log('RouteGuard: Redirecting from client route to firm dashboard');
+      navigate('/firm/dashboard', { replace: true });
+      return;
+    }
+
+    // If NOT on CPA subdomain but trying to access firm routes, redirect to client dashboard
+    if (!isCpaPortal && portalType === 'firm') {
+      console.log('RouteGuard: Redirecting from firm route to client dashboard');
+      navigate('/client/dashboard', { replace: true });
+      return;
+    }
+  }, [isCpaPortal, portalType, navigate]);
+
+  // Block rendering during redirect
+  if (isCpaPortal && portalType === 'client') {
+    return null;
+  }
+
+  if (!isCpaPortal && portalType === 'firm') {
+    return null;
+  }
+
+  return <>{children}</>;
+};
+
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -278,43 +318,52 @@ const App: React.FC = () => {
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Firm Portal Routes with Layout */}
-        <Route path="/firm/dashboard" element={<AppLayout><FirmDashboard /></AppLayout>} />
-        <Route path="/firm/settings" element={<AppLayout><FirmSettings /></AppLayout>} />
-        <Route path="/firm/employees" element={<AppLayout><EmployeeManagement /></AppLayout>} />
+        {/* Firm Portal Routes with Layout - Protected by RouteGuard */}
+        <Route path="/firm/dashboard" element={<RouteGuard portalType="firm"><AppLayout><FirmDashboard /></AppLayout></RouteGuard>} />
+        <Route path="/firm/settings" element={<RouteGuard portalType="firm"><AppLayout><FirmSettings /></AppLayout></RouteGuard>} />
+        <Route path="/firm/employees" element={<RouteGuard portalType="firm"><AppLayout><EmployeeManagement /></AppLayout></RouteGuard>} />
         <Route
           path="/firm/audits"
           element={
-            <AppLayout>
-              <div className="text-center py-20">
-                <FileText className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-                <h2 className="text-title-large text-neutral-900 mb-2">Audits Coming Soon</h2>
-                <p className="text-body text-neutral-600">This feature is currently in development</p>
-              </div>
-            </AppLayout>
+            <RouteGuard portalType="firm">
+              <AppLayout>
+                <div className="text-center py-20">
+                  <FileText className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+                  <h2 className="text-title-large text-neutral-900 mb-2">Audits Coming Soon</h2>
+                  <p className="text-body text-neutral-600">This feature is currently in development</p>
+                </div>
+              </AppLayout>
+            </RouteGuard>
           }
         />
         <Route
           path="/firm/reports"
           element={
-            <AppLayout>
-              <div className="text-center py-20">
-                <BarChart3 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-                <h2 className="text-title-large text-neutral-900 mb-2">Reports Coming Soon</h2>
-                <p className="text-body text-neutral-600">This feature is currently in development</p>
-              </div>
-            </AppLayout>
+            <RouteGuard portalType="firm">
+              <AppLayout>
+                <div className="text-center py-20">
+                  <BarChart3 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+                  <h2 className="text-title-large text-neutral-900 mb-2">Reports Coming Soon</h2>
+                  <p className="text-body text-neutral-600">This feature is currently in development</p>
+                </div>
+              </AppLayout>
+            </RouteGuard>
           }
         />
 
-        {/* Customer Portal Routes */}
-        <Route path="/customer/dashboard" element={<DashboardPage />} />
-        <Route path="/customer/documents" element={<DocumentsPage />} />
-        <Route path="/customer/integrations" element={<IntegrationsPage />} />
+        {/* Customer Portal Routes - Protected by RouteGuard */}
+        <Route path="/customer/dashboard" element={<RouteGuard portalType="client"><DashboardPage /></RouteGuard>} />
+        <Route path="/customer/documents" element={<RouteGuard portalType="client"><DocumentsPage /></RouteGuard>} />
+        <Route path="/customer/integrations" element={<RouteGuard portalType="client"><IntegrationsPage /></RouteGuard>} />
 
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/firm/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/firm/dashboard" replace />} />
+        {/* Client Portal Routes (Audit Client Portal - alias for /customer/*) - Protected by RouteGuard */}
+        <Route path="/client/dashboard" element={<RouteGuard portalType="client"><DashboardPage /></RouteGuard>} />
+        <Route path="/client/documents" element={<RouteGuard portalType="client"><DocumentsPage /></RouteGuard>} />
+        <Route path="/client/integrations" element={<RouteGuard portalType="client"><IntegrationsPage /></RouteGuard>} />
+
+        {/* Default redirect - route based on subdomain */}
+        <Route path="/" element={<SmartRedirect />} />
+        <Route path="*" element={<SmartRedirect />} />
       </Routes>
     </BrowserRouter>
   );
