@@ -71,9 +71,9 @@ jobs:
           docker push ${{ env.ACR_NAME }}.azurecr.io/aura/${{ matrix.service }}:${{ steps.vars.outputs.SHORT_SHA }}
           docker push ${{ env.ACR_NAME }}.azurecr.io/aura/${{ matrix.service }}:latest
 
-  # Build and push frontend
-  build-frontend:
-    name: Build & Push Frontend
+  # Build and push CPA Portal (frontend)
+  build-cpa-portal:
+    name: Build & Push CPA Portal
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,14 +95,14 @@ jobs:
         id: vars
         run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build and push frontend image
+      - name: Build and push CPA portal image
         run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/aura/web:${{ steps.vars.outputs.SHORT_SHA }} \
-            -t ${{ env.ACR_NAME }}.azurecr.io/aura/web:latest \
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest \
             frontend/
 
-          docker push ${{ env.ACR_NAME }}.azurecr.io/aura/web:${{ steps.vars.outputs.SHORT_SHA }}
-          docker push ${{ env.ACR_NAME }}.azurecr.io/aura/web:latest
+          docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest
 
   # Build and push marketing site
   build-marketing:
@@ -141,7 +141,7 @@ jobs:
   deploy-infrastructure:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
-    needs: [build-and-push, build-frontend, build-marketing]
+    needs: [build-and-push, build-cpa-portal, build-marketing]
     permissions:
       contents: read
       id-token: write
@@ -283,6 +283,7 @@ jobs:
           envsubst < infra/k8s/base/deployment-identity.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployments-all-services.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployment-marketing.yaml | kubectl apply -f -
+          envsubst < infra/k8s/base/deployment-client-portal.yaml | kubectl apply -f -
 
       - name: Apply Ingress
         run: |
@@ -295,6 +296,7 @@ jobs:
           kubectl rollout status deployment/analytics -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/normalize -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/marketing -n aura-audit-ai --timeout=5m
+          kubectl rollout status deployment/client-portal -n aura-audit-ai --timeout=5m
 
       - name: Get deployment status
         run: |
