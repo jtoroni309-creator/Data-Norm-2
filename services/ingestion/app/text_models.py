@@ -14,7 +14,8 @@ from sqlalchemy import (
     ForeignKey,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID, VECTOR
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from pgvector.sqlalchemy import Vector as VECTOR
 from sqlalchemy.orm import relationship
 
 from .database import Base
