@@ -570,6 +570,276 @@ async def create_binder_node(
     return BinderNodeResponse.model_validate(new_node)
 
 
+# ========================================
+# AI-Enhanced Materiality & Risk Assessment
+# ========================================
+
+from .ai_materiality_service import ai_materiality_service
+from .ai_risk_service import ai_risk_service
+
+
+class AIAnalysisRequest(BaseModel):
+    """Request for AI-powered analysis"""
+    financial_statements: Dict[str, Any]
+    prior_period_statements: Optional[Dict[str, Any]] = None
+    industry: Optional[str] = None
+    entity_type: Optional[str] = None
+
+
+@app.post("/engagements/{engagement_id}/ai/materiality")
+async def calculate_ai_materiality(
+    engagement_id: UUID,
+    request: AIAnalysisRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id)
+):
+    """
+    Calculate AI-enhanced materiality for engagement.
+
+    Uses AI to dynamically adjust materiality based on:
+    - Risk assessment results
+    - Industry context
+    - Financial trends and volatility
+    - Engagement-specific factors
+
+    Returns comprehensive materiality analysis with AI recommendations.
+    """
+    if not settings.ENABLE_AI_MATERIALITY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI materiality feature is currently disabled"
+        )
+
+    await set_rls_context(db, current_user_id)
+
+    # Verify engagement exists and user has access
+    result = await db.execute(
+        select(Engagement).where(Engagement.id == engagement_id)
+    )
+    engagement = result.scalar_one_or_none()
+
+    if not engagement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Engagement not found or access denied"
+        )
+
+    try:
+        # Calculate AI-enhanced materiality
+        materiality_result = await ai_materiality_service.calculate_ai_enhanced_materiality(
+            db=db,
+            engagement_id=engagement_id,
+            financial_statements=request.financial_statements,
+            risk_assessment=None,  # Will be calculated separately
+            industry=request.industry,
+            prior_period_statements=request.prior_period_statements
+        )
+
+        logger.info(
+            f"AI materiality calculated for engagement {engagement_id}: "
+            f"${materiality_result['recommended_materiality']:,.0f}"
+        )
+
+        return materiality_result
+
+    except Exception as e:
+        logger.error(f"Error calculating AI materiality for engagement {engagement_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to calculate AI materiality: {str(e)}"
+        )
+
+
+@app.post("/engagements/{engagement_id}/ai/risk-assessment")
+async def perform_ai_risk_assessment(
+    engagement_id: UUID,
+    request: AIAnalysisRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id)
+):
+    """
+    Perform AI-enhanced risk assessment for engagement.
+
+    Uses AI to:
+    - Detect complex risk patterns and correlations
+    - Identify industry-specific risk factors
+    - Assess going concern indicators
+    - Generate key audit matters (KAMs)
+    - Recommend audit strategy
+
+    Returns comprehensive risk assessment with AI insights.
+    """
+    if not settings.ENABLE_AI_RISK_ASSESSMENT:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI risk assessment feature is currently disabled"
+        )
+
+    await set_rls_context(db, current_user_id)
+
+    # Verify engagement exists and user has access
+    result = await db.execute(
+        select(Engagement).where(Engagement.id == engagement_id)
+    )
+    engagement = result.scalar_one_or_none()
+
+    if not engagement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Engagement not found or access denied"
+        )
+
+    try:
+        # Perform AI-enhanced risk assessment
+        risk_result = await ai_risk_service.perform_comprehensive_risk_assessment(
+            db=db,
+            engagement_id=engagement_id,
+            financial_statements=request.financial_statements,
+            prior_period_statements=request.prior_period_statements,
+            industry=request.industry,
+            entity_type=request.entity_type,
+            materiality=None  # Can be provided if already calculated
+        )
+
+        logger.info(
+            f"AI risk assessment completed for engagement {engagement_id}: "
+            f"Risk Level = {risk_result['overall_risk_assessment']['risk_level']}"
+        )
+
+        return risk_result
+
+    except Exception as e:
+        logger.error(f"Error performing AI risk assessment for engagement {engagement_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to perform AI risk assessment: {str(e)}"
+        )
+
+
+@app.post("/engagements/{engagement_id}/ai/comprehensive-analysis")
+async def perform_comprehensive_ai_analysis(
+    engagement_id: UUID,
+    request: AIAnalysisRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id)
+):
+    """
+    Perform comprehensive AI-powered analysis including both materiality and risk assessment.
+
+    This endpoint:
+    1. Calculates AI-enhanced risk assessment
+    2. Uses risk results to inform materiality calculation
+    3. Assesses alignment between risk and materiality
+    4. Provides integrated recommendations
+
+    Returns complete engagement analysis with AI-powered insights.
+    """
+    if not (settings.ENABLE_AI_MATERIALITY and settings.ENABLE_AI_RISK_ASSESSMENT):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI analysis features are currently disabled"
+        )
+
+    await set_rls_context(db, current_user_id)
+
+    # Verify engagement exists and user has access
+    result = await db.execute(
+        select(Engagement).where(Engagement.id == engagement_id)
+    )
+    engagement = result.scalar_one_or_none()
+
+    if not engagement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Engagement not found or access denied"
+        )
+
+    try:
+        # Step 1: Perform risk assessment first
+        logger.info(f"Starting comprehensive AI analysis for engagement {engagement_id}")
+
+        risk_result = await ai_risk_service.perform_comprehensive_risk_assessment(
+            db=db,
+            engagement_id=engagement_id,
+            financial_statements=request.financial_statements,
+            prior_period_statements=request.prior_period_statements,
+            industry=request.industry,
+            entity_type=request.entity_type,
+            materiality=None
+        )
+
+        # Step 2: Calculate materiality using risk assessment results
+        materiality_result = await ai_materiality_service.calculate_ai_enhanced_materiality(
+            db=db,
+            engagement_id=engagement_id,
+            financial_statements=request.financial_statements,
+            risk_assessment=risk_result["overall_risk_assessment"],
+            industry=request.industry,
+            prior_period_statements=request.prior_period_statements
+        )
+
+        # Step 3: Update risk assessment with materiality for final alignment check
+        risk_result_with_materiality = await ai_risk_service.perform_comprehensive_risk_assessment(
+            db=db,
+            engagement_id=engagement_id,
+            financial_statements=request.financial_statements,
+            prior_period_statements=request.prior_period_statements,
+            industry=request.industry,
+            entity_type=request.entity_type,
+            materiality=materiality_result
+        )
+
+        # Compile comprehensive result
+        comprehensive_result = {
+            "engagement_id": str(engagement_id),
+            "analysis_date": datetime.utcnow().isoformat(),
+
+            # Executive summary
+            "executive_summary": {
+                "overall_risk_level": risk_result_with_materiality["overall_risk_assessment"]["risk_level"],
+                "risk_score": risk_result_with_materiality["overall_risk_assessment"]["risk_score"],
+                "recommended_materiality": materiality_result["recommended_materiality"],
+                "recommended_performance_materiality": materiality_result["recommended_performance_materiality"],
+                "going_concern_risk": risk_result_with_materiality["going_concern_assessment"]["risk_level"],
+                "key_audit_matters_count": len(risk_result_with_materiality.get("key_audit_matters", []))
+            },
+
+            # Detailed results
+            "materiality_analysis": materiality_result,
+            "risk_assessment": risk_result_with_materiality,
+
+            # Integrated recommendations
+            "integrated_recommendations": {
+                "materiality_risk_alignment": risk_result_with_materiality.get("materiality_risk_alignment", {}),
+                "audit_strategy": risk_result_with_materiality.get("recommended_audit_strategy", {}),
+                "priority_areas": [
+                    kam["matter"] for kam in risk_result_with_materiality.get("key_audit_matters", [])[:3]
+                ]
+            },
+
+            # AI confidence metrics
+            "ai_confidence": {
+                "materiality_confidence": materiality_result["ai_adjusted_materiality"]["confidence_score"],
+                "risk_assessment_confidence": risk_result_with_materiality["overall_risk_assessment"]["confidence_score"]
+            }
+        }
+
+        logger.info(
+            f"Comprehensive AI analysis completed for engagement {engagement_id}: "
+            f"Risk={comprehensive_result['executive_summary']['overall_risk_level']}, "
+            f"Materiality=${comprehensive_result['executive_summary']['recommended_materiality']:,.0f}"
+        )
+
+        return comprehensive_result
+
+    except Exception as e:
+        logger.error(f"Error performing comprehensive AI analysis for engagement {engagement_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to perform comprehensive AI analysis: {str(e)}"
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

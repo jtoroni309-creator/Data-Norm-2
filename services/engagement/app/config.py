@@ -42,6 +42,25 @@ class Settings(BaseSettings):
     AUDITOR_FIRM_STATE: str = "USA"
     AUDITOR_FIRM_POSTAL_CODE: str = "12345"
 
+    # AI/LLM Configuration
+    OPENAI_API_KEY: str = "your-openai-api-key-here"
+    OPENAI_CHAT_MODEL: str = "gpt-4-turbo-preview"
+    OPENAI_TEMPERATURE: float = 0.2
+    OPENAI_MAX_TOKENS: int = 2000
+
+    # AI-Enhanced Materiality & Risk Settings
+    DEFAULT_MATERIALITY_PERCENTAGE: float = 0.05  # 5% of net income
+    PERFORMANCE_MATERIALITY_PERCENTAGE: float = 0.75  # 75% of materiality
+    TRIVIAL_THRESHOLD_PERCENTAGE: float = 0.05  # 5% of materiality
+
+    HIGH_RISK_DEBT_TO_EQUITY: float = 2.0
+    LOW_LIQUIDITY_CURRENT_RATIO: float = 1.0
+    GOING_CONCERN_RISK_THRESHOLD: float = 0.75
+
+    # Feature Flags
+    ENABLE_AI_MATERIALITY: bool = True
+    ENABLE_AI_RISK_ASSESSMENT: bool = True
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
