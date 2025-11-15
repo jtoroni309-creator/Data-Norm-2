@@ -36,7 +36,7 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: customers = [], isLoading, refetch } = useQuery({
+  const { data: customers , isLoading, refetch } = useQuery({
     queryKey: ['admin-customers', statusFilter],
     queryFn: () => api.admin.customers.list({ status: statusFilter !== 'all' ? statusFilter : undefined }),
   });

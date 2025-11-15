@@ -26,12 +26,14 @@ export default function EngagementsPage() {
   const [statusFilter, setStatusFilter] = useState<EngagementStatus | 'all'>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: engagements = [], isLoading, refetch } = useQuery({
+  const { data: engagements, isLoading, refetch } = useQuery({
     queryKey: ['engagements'],
     queryFn: api.engagements.list,
   });
 
-  const filteredEngagements = engagements.filter((engagement: Engagement) => {
+  const engagementsArray = (engagements as any[]) || [];
+
+  const filteredEngagements = engagementsArray.filter((engagement: Engagement) => {
     const matchesSearch =
       engagement.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       engagement.engagement_type.toLowerCase().includes(searchQuery.toLowerCase());
@@ -41,16 +43,16 @@ export default function EngagementsPage() {
 
   const getStatusVariant = (status: EngagementStatus) => {
     switch (status) {
+      case EngagementStatus.DRAFT:
+        return 'secondary';
       case EngagementStatus.PLANNING:
         return 'default';
       case EngagementStatus.FIELDWORK:
         return 'info';
       case EngagementStatus.REVIEW:
         return 'warning';
-      case EngagementStatus.COMPLETED:
+      case EngagementStatus.FINALIZED:
         return 'success';
-      case EngagementStatus.ARCHIVED:
-        return 'secondary';
       default:
         return 'default';
     }
@@ -64,8 +66,6 @@ export default function EngagementsPage() {
         return 'text-purple-600 bg-purple-100 dark:bg-purple-900/20';
       case EngagementType.COMPILATION:
         return 'text-green-600 bg-green-100 dark:bg-green-900/20';
-      case EngagementType.TAX:
-        return 'text-orange-600 bg-orange-100 dark:bg-orange-900/20';
       default:
         return 'text-gray-600 bg-gray-100 dark:bg-gray-900/20';
     }
@@ -74,24 +74,24 @@ export default function EngagementsPage() {
   const stats = [
     {
       label: 'Total Engagements',
-      value: engagements.length,
+      value: engagementsArray.length,
       color: 'text-blue-600',
     },
     {
       label: 'In Progress',
-      value: engagements.filter((e: Engagement) =>
+      value: engagementsArray.filter((e: Engagement) =>
         [EngagementStatus.PLANNING, EngagementStatus.FIELDWORK].includes(e.status)
       ).length,
       color: 'text-orange-600',
     },
     {
       label: 'In Review',
-      value: engagements.filter((e: Engagement) => e.status === EngagementStatus.REVIEW).length,
+      value: engagementsArray.filter((e: Engagement) => e.status === EngagementStatus.REVIEW).length,
       color: 'text-yellow-600',
     },
     {
       label: 'Completed',
-      value: engagements.filter((e: Engagement) => e.status === EngagementStatus.COMPLETED).length,
+      value: engagementsArray.filter((e: Engagement) => e.status === EngagementStatus.FINALIZED).length,
       color: 'text-green-600',
     },
   ];
@@ -144,7 +144,7 @@ export default function EngagementsPage() {
             <div>
               <CardTitle>All Engagements</CardTitle>
               <CardDescription>
-                {filteredEngagements.length} of {engagements.length} engagements
+                {filteredEngagements.length} of {engagementsArray.length} engagements
               </CardDescription>
             </div>
             <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
@@ -163,11 +163,11 @@ export default function EngagementsPage() {
                 className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="all">All Status</option>
+                <option value={EngagementStatus.DRAFT}>Draft</option>
                 <option value={EngagementStatus.PLANNING}>Planning</option>
                 <option value={EngagementStatus.FIELDWORK}>Fieldwork</option>
                 <option value={EngagementStatus.REVIEW}>Review</option>
-                <option value={EngagementStatus.COMPLETED}>Completed</option>
-                <option value={EngagementStatus.ARCHIVED}>Archived</option>
+                <option value={EngagementStatus.FINALIZED}>Finalized</option>
               </select>
             </div>
           </div>

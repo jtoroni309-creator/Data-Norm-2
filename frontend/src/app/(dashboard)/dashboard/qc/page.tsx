@@ -53,20 +53,22 @@ export default function QualityControlPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Fetch engagements
-  const { data: engagements = [] } = useQuery({
+  const { data: engagements } = useQuery({
     queryKey: ['engagements'],
     queryFn: api.engagements.list,
   });
+  const engagementsArray = (engagements as any[]) || [];
 
   // Fetch QC policies
-  const { data: policies = [] } = useQuery({
+  const { data: policies } = useQuery({
     queryKey: ['qc-policies'],
     queryFn: api.qc.policies.list,
   });
+  const policiesArray = (policies as any[]) || [];
 
   // Fetch QC results
   const {
-    data: results = [],
+    data: results,
     isLoading,
     refetch,
   } = useQuery({
@@ -74,6 +76,7 @@ export default function QualityControlPage() {
     queryFn: () => api.qc.results.list(selectedEngagement),
     enabled: !!selectedEngagement,
   });
+  const resultsArray = (results as any[]) || [];
 
   // Execute QC policies mutation
   const executePoliciesMutation = useMutation({
@@ -89,7 +92,7 @@ export default function QualityControlPage() {
   });
 
   // Filter results
-  const filteredResults = results.filter((result: QCResult) => {
+  const filteredResults = resultsArray.filter((result: QCResult) => {
     const matchesSearch =
       result.policy_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       result.message.toLowerCase().includes(searchQuery.toLowerCase());
@@ -100,11 +103,11 @@ export default function QualityControlPage() {
   });
 
   // Calculate stats
-  const passedCount = results.filter((r: QCResult) => r.status === 'passed').length;
-  const failedCount = results.filter((r: QCResult) => r.status === 'failed').length;
-  const warningCount = results.filter((r: QCResult) => r.status === 'warning').length;
+  const passedCount = resultsArray.filter((r: QCResult) => r.status === 'passed').length;
+  const failedCount = resultsArray.filter((r: QCResult) => r.status === 'failed').length;
+  const warningCount = resultsArray.filter((r: QCResult) => r.status === 'warning').length;
   const complianceRate =
-    results.length > 0 ? (passedCount / results.length) * 100 : 0;
+    resultsArray.length > 0 ? (passedCount / resultsArray.length) * 100 : 0;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -164,7 +167,7 @@ export default function QualityControlPage() {
             className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Select engagement...</option>
-            {engagements.map((eng: any) => (
+            {engagementsArray.map((eng: any) => (
               <option key={eng.id} value={eng.id}>
                 {eng.client_name}
               </option>
@@ -243,13 +246,13 @@ export default function QualityControlPage() {
                 <div>
                   <CardTitle>Quality Control Policies</CardTitle>
                   <CardDescription>
-                    {policies.filter((p: QCPolicy) => p.active).length} active policies
+                    {policiesArray.filter((p: QCPolicy) => p.active).length} active policies
                   </CardDescription>
                 </div>
                 <Button
                   onClick={() =>
                     executePoliciesMutation.mutate(
-                      policies.filter((p: QCPolicy) => p.active).map((p: QCPolicy) => p.id)
+                      policiesArray.filter((p: QCPolicy) => p.active).map((p: QCPolicy) => p.id)
                     )
                   }
                   loading={executePoliciesMutation.isPending}
@@ -261,7 +264,7 @@ export default function QualityControlPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
-                {policies.map((policy: QCPolicy) => (
+                {policiesArray.map((policy: QCPolicy) => (
                   <div
                     key={policy.id}
                     className="flex items-start justify-between rounded-lg border p-4"
@@ -290,7 +293,7 @@ export default function QualityControlPage() {
                 <div>
                   <CardTitle>Policy Execution Results</CardTitle>
                   <CardDescription>
-                    {filteredResults.length} of {results.length} results
+                    {filteredResults.length} of {resultsArray.length} results
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-2">

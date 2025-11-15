@@ -33,7 +33,7 @@ export default function LicensesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const { data: licenses = [], isLoading } = useQuery({
+  const { data: licenses , isLoading } = useQuery({
     queryKey: ['admin-licenses', statusFilter],
     queryFn: () => api.admin.licenses.list(),
   });

@@ -35,6 +35,8 @@ export default function EngagementDetailPage() {
     enabled: !!engagementId,
   });
 
+  const engagementData = (engagement as any) || {};
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -56,16 +58,16 @@ export default function EngagementDetailPage() {
 
   const getStatusVariant = (status: EngagementStatus) => {
     switch (status) {
+      case EngagementStatus.DRAFT:
+        return 'secondary';
       case EngagementStatus.PLANNING:
         return 'default';
       case EngagementStatus.FIELDWORK:
         return 'info';
       case EngagementStatus.REVIEW:
         return 'warning';
-      case EngagementStatus.COMPLETED:
+      case EngagementStatus.FINALIZED:
         return 'success';
-      case EngagementStatus.ARCHIVED:
-        return 'secondary';
       default:
         return 'default';
     }
@@ -80,15 +82,15 @@ export default function EngagementDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{engagement.client_name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{engagementData.client_name}</h1>
             <p className="text-muted-foreground">
-              {engagement.engagement_type} • FYE: {formatDate(engagement.fiscal_year_end, 'short')}
+              {engagementData.engagement_type} • FYE: {formatDate(engagementData.fiscal_year_end, 'short')}
             </p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant={getStatusVariant(engagement.status)} className="text-sm">
-            {engagement.status}
+          <Badge variant={getStatusVariant(engagementData.status)} className="text-sm">
+            {engagementData.status}
           </Badge>
           <Button variant="outline">
             <Edit className="mr-2 h-4 w-4" />
@@ -169,7 +171,7 @@ export default function EngagementDetailPage() {
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Client Name</p>
-                    <p className="text-sm text-muted-foreground">{engagement.client_name}</p>
+                    <p className="text-sm text-muted-foreground">{engagementData.client_name}</p>
                   </div>
                 </div>
 
@@ -179,7 +181,7 @@ export default function EngagementDetailPage() {
                   <FileText className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Engagement Type</p>
-                    <p className="text-sm text-muted-foreground">{engagement.engagement_type}</p>
+                    <p className="text-sm text-muted-foreground">{engagementData.engagement_type}</p>
                   </div>
                 </div>
 
@@ -190,7 +192,7 @@ export default function EngagementDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">Fiscal Year End</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(engagement.fiscal_year_end, 'long')}
+                      {formatDate(engagementData.fiscal_year_end, 'long')}
                     </p>
                   </div>
                 </div>
@@ -201,7 +203,7 @@ export default function EngagementDetailPage() {
                   <Clock className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Status</p>
-                    <Badge variant={getStatusVariant(engagement.status)}>{engagement.status}</Badge>
+                    <Badge variant={getStatusVariant(engagementData.status)}>{engagementData.status}</Badge>
                   </div>
                 </div>
               </CardContent>
@@ -218,7 +220,7 @@ export default function EngagementDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">Created</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(engagement.created_at, 'long')}
+                      {formatDate(engagementData.created_at, 'long')}
                     </p>
                   </div>
                 </div>
@@ -230,7 +232,7 @@ export default function EngagementDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">Last Updated</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(engagement.updated_at, 'relative')}
+                      {formatDate(engagementData.updated_at, 'relative')}
                     </p>
                   </div>
                 </div>

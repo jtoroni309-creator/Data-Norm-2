@@ -74,18 +74,7 @@ export default function CustomerDetailPage() {
     );
   }
 
-  if (!customer) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h2 className="text-2xl font-bold">Customer not found</h2>
-        <Button className="mt-4" onClick={() => router.push('/admin/customers')}>
-          Back to Customers
-        </Button>
-      </div>
-    );
-  }
-
-  const mockCustomer: Customer = customer || {
+  const mockCustomer: Customer = (customer as Customer) || {
     id: customerId,
     company_name: 'Acme Corporation',
     contact_name: 'John Smith',

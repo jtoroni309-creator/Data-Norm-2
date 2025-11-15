@@ -36,14 +36,16 @@ export default function NormalizePage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Fetch engagements
-  const { data: engagements = [] } = useQuery({
+  const { data: engagements } = useQuery({
     queryKey: ['engagements'],
     queryFn: api.engagements.list,
   });
 
+  const engagementsArray = (engagements as any[]) || [];
+
   // Fetch mapping suggestions
   const {
-    data: suggestions = [],
+    data: suggestions,
     isLoading,
     refetch,
   } = useQuery({
@@ -51,6 +53,8 @@ export default function NormalizePage() {
     queryFn: () => api.normalize.mappings.list(selectedEngagement),
     enabled: !!selectedEngagement,
   });
+
+  const suggestionsArray = (suggestions as any[]) || [];
 
   // Generate suggestions mutation
   const generateSuggestionsMutation = useMutation({
@@ -91,7 +95,7 @@ export default function NormalizePage() {
   });
 
   // Filter suggestions
-  const filteredSuggestions = suggestions.filter((suggestion: MappingSuggestion) => {
+  const filteredSuggestions = suggestionsArray.filter((suggestion: MappingSuggestion) => {
     const matchesSearch =
       suggestion.source_account_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       suggestion.source_account_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -107,16 +111,16 @@ export default function NormalizePage() {
   });
 
   // Calculate stats
-  const confirmedCount = suggestions.filter((s: MappingSuggestion) => s.status === 'confirmed')
+  const confirmedCount = suggestionsArray.filter((s: MappingSuggestion) => s.status === 'confirmed')
     .length;
-  const pendingCount = suggestions.filter((s: MappingSuggestion) => s.status === 'suggested')
+  const pendingCount = suggestionsArray.filter((s: MappingSuggestion) => s.status === 'suggested')
     .length;
-  const rejectedCount = suggestions.filter((s: MappingSuggestion) => s.status === 'rejected')
+  const rejectedCount = suggestionsArray.filter((s: MappingSuggestion) => s.status === 'rejected')
     .length;
   const avgConfidence =
-    suggestions.length > 0
-      ? suggestions.reduce((acc: number, s: MappingSuggestion) => acc + s.confidence_score, 0) /
-        suggestions.length
+    suggestionsArray.length > 0
+      ? suggestionsArray.reduce((acc: number, s: MappingSuggestion) => acc + s.confidence_score, 0) /
+        suggestionsArray.length
       : 0;
 
   const getConfidenceBadgeVariant = (level: string) => {
@@ -164,7 +168,7 @@ export default function NormalizePage() {
             className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Select engagement...</option>
-            {engagements.map((eng: any) => (
+            {engagementsArray.map((eng: any) => (
               <option key={eng.id} value={eng.id}>
                 {eng.client_name}
               </option>
@@ -191,7 +195,7 @@ export default function NormalizePage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">{suggestions.length}</p>
+                    <p className="text-2xl font-bold">{suggestionsArray.length}</p>
                     <p className="text-sm text-muted-foreground">Total Mappings</p>
                   </div>
                   <GitCompare className="h-8 w-8 text-blue-600" />
@@ -243,7 +247,7 @@ export default function NormalizePage() {
                 <div>
                   <CardTitle>Account Mapping Suggestions</CardTitle>
                   <CardDescription>
-                    {filteredSuggestions.length} of {suggestions.length} suggestions
+                    {filteredSuggestions.length} of {suggestionsArray.length} suggestions
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-2">

@@ -99,6 +99,7 @@ export default function AnalyticsPage() {
   const jeResultsArray = (jeResults as any[]) || [];
   const anomaliesArray = (anomalies as any[]) || [];
   const engagementsArray = (engagements as any[]) || [];
+  const ratiosArray = (ratios as any[]) || [];
 
   const filteredJEResults = jeResultsArray.filter(
     (result: any) =>
@@ -153,7 +154,7 @@ export default function AnalyticsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">{jeResults.length}</p>
+                    <p className="text-2xl font-bold">{jeResultsArray.length}</p>
                     <p className="text-sm text-muted-foreground">JEs Tested</p>
                   </div>
                   <BarChart3 className="h-8 w-8 text-blue-600" />
@@ -189,7 +190,7 @@ export default function AnalyticsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold text-green-600">{ratios.length}</p>
+                    <p className="text-2xl font-bold text-green-600">{ratiosArray.length}</p>
                     <p className="text-sm text-muted-foreground">Ratios Calculated</p>
                   </div>
                   <TrendingUp className="h-8 w-8 text-green-600" />
@@ -339,7 +340,7 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-center py-8">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
-                  ) : anomalies.length === 0 ? (
+                  ) : anomaliesArray.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <AlertTriangle className="h-12 w-12 text-muted-foreground" />
                       <h3 className="mt-4 text-lg font-semibold">No anomalies detected yet</h3>
@@ -349,7 +350,7 @@ export default function AnalyticsPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {anomalies.map((anomaly: any, index: number) => (
+                      {anomaliesArray.map((anomaly: any, index: number) => (
                         <div
                           key={index}
                           className="flex items-start justify-between rounded-lg border p-4"
@@ -411,7 +412,7 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-center py-8">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
-                  ) : ratios.length === 0 ? (
+                  ) : ratiosArray.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <TrendingUp className="h-12 w-12 text-muted-foreground" />
                       <h3 className="mt-4 text-lg font-semibold">No ratios calculated yet</h3>
@@ -421,7 +422,7 @@ export default function AnalyticsPage() {
                     </div>
                   ) : (
                     <div className="grid gap-4 md:grid-cols-2">
-                      {ratios.map((ratio: any, index: number) => (
+                      {ratiosArray.map((ratio: any, index: number) => (
                         <div key={index} className="rounded-lg border p-4">
                           <div className="flex items-center justify-between">
                             <div>
