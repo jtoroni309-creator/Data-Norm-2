@@ -125,42 +125,53 @@ export default function EngagementsPage() {
         </Dialog>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
+      {/* Premium Stats Grid */}
+      <div className="grid gap-6 md:grid-cols-4">
+        {stats.map((stat, index) => (
+          <Card
+            key={stat.label}
+            className="group relative overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-300 hover-lift bg-gradient-to-br from-white to-purple-50/20 dark:from-gray-900 dark:to-purple-950/20"
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-full"></div>
+            <CardContent className="pt-6 relative z-10">
+              <div className="space-y-2">
+                <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
+                <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
+                <div className="h-1 w-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"></div>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Filters and Search */}
-      <Card>
-        <CardHeader>
+      <Card className="border-none shadow-lg bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-500/5 to-blue-500/5">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <div>
-              <CardTitle>All Engagements</CardTitle>
-              <CardDescription>
-                {filteredEngagements.length} of {engagementsArray.length} engagements
+              <CardTitle className="text-xl flex items-center">
+                <FolderOpen className="mr-2 h-5 w-5 text-purple-600" />
+                All Engagements
+              </CardTitle>
+              <CardDescription className="mt-1">
+                <span className="font-semibold text-purple-600">{filteredEngagements.length}</span> of {engagementsArray.length} engagements
               </CardDescription>
             </div>
-            <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
+            <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-3 md:space-y-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search engagements..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 md:w-[300px]"
+                  className="pl-9 md:w-[300px] border-gray-300 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as EngagementStatus | 'all')}
-                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
               >
                 <option value="all">All Status</option>
                 <option value={EngagementStatus.DRAFT}>Draft</option>
@@ -194,51 +205,65 @@ export default function EngagementsPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Client Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Fiscal Year End</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 hover:bg-gradient-to-r">
+                    <TableHead className="font-semibold">Client Name</TableHead>
+                    <TableHead className="font-semibold">Type</TableHead>
+                    <TableHead className="font-semibold">Fiscal Year End</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Created</TableHead>
+                    <TableHead className="text-right font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEngagements.map((engagement: Engagement) => (
-                    <TableRow key={engagement.id}>
-                      <TableCell className="font-medium">{engagement.client_name}</TableCell>
+                    <TableRow
+                      key={engagement.id}
+                      className="group hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-blue-50/50 dark:hover:from-purple-950/20 dark:hover:to-blue-950/20 transition-all duration-200"
+                    >
+                      <TableCell className="font-semibold text-foreground group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
+                        {engagement.client_name}
+                      </TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeColor(
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${getTypeColor(
                             engagement.engagement_type
                           )}`}
                         >
                           {engagement.engagement_type}
                         </span>
                       </TableCell>
-                      <TableCell>{formatDate(engagement.fiscal_year_end, 'short')}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(engagement.fiscal_year_end, 'short')}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusVariant(engagement.status)}>
+                        <Badge variant={getStatusVariant(engagement.status)} className="shadow-sm">
                           {engagement.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{formatDate(engagement.created_at, 'short')}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(engagement.created_at, 'short')}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="hover:bg-purple-100 hover:text-purple-700 dark:hover:bg-purple-950 dark:hover:text-purple-300 transition-colors"
                             onClick={() => window.location.href = `/dashboard/engagements/${engagement.id}`}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </div>

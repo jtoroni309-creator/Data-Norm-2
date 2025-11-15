@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-test-user
+  namespace: aura-audit-ai
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: create-test-user
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: create-user
+        image: python:3.11-slim
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Installing dependencies..."
+          pip install -q 'passlib==1.7.4' 'bcrypt==4.0.1' 'psycopg2-binary' 'sqlalchemy'
+
+          echo "Creating test users..."
+          python3 /scripts/create_user.py
+
+          echo "Done!"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+      volumes:
+      - name: script
+        configMap:
+          name: create-test-user-script

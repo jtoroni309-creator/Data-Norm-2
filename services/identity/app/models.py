@@ -30,29 +30,30 @@ class RoleEnum(str, Enum):
 
 
 class Organization(Base):
-    """Organization (CPA firm or client company)"""
-    __tablename__ = "organizations"
+    """CPA Firm (renamed from organizations to match actual schema)"""
+    __tablename__ = "cpa_firms"
     __table_args__ = {"schema": "atlas"}
 
     id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    name = Column(String, nullable=False)
-    tax_id = Column(String)
-    industry_code = Column(String)
-
-    # Firm branding
-    logo_url = Column(String)  # URL/path to uploaded logo
-    primary_color = Column(String, default="#2563eb")  # Brand primary color
-    secondary_color = Column(String, default="#7c3aed")  # Brand secondary color
+    firm_name = Column(String, nullable=False)
+    legal_name = Column(String)
+    ein = Column(String)
 
     # Contact information
-    address = Column(Text)
-    phone = Column(String)
-    website = Column(String)
+    primary_contact_name = Column(String)
+    primary_contact_email = Column(String, nullable=False)
+    primary_contact_phone = Column(String)
+
+    # Firm branding
+    logo_url = Column(Text)
+    primary_color = Column(String)
+    secondary_color = Column(String)
 
     # Settings
-    timezone = Column(String, default="America/New_York")
-    date_format = Column(String, default="MM/DD/YYYY")
+    require_two_factor_auth = Column(Boolean, default=False)
+    session_timeout_minutes = Column(String, default=30)
 
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
@@ -66,19 +67,58 @@ class User(Base):
     __table_args__ = {"schema": "atlas"}
 
     id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    cpa_firm_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.cpa_firms.id"))
+    client_id = Column(PGUUID(as_uuid=True))
     email = Column(String, nullable=False, unique=True, index=True)
-    full_name = Column(String, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    organization_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.organizations.id"))
-    role = Column(SQLEnum(RoleEnum, name="user_role"), nullable=False)
+    username = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    phone = Column(String)
+    password_hash = Column(String)
+    require_password_change = Column(Boolean, default=False)
+    last_password_change = Column(DateTime(timezone=True))
+    failed_login_attempts = Column(String, default=0)
+    locked_until = Column(DateTime(timezone=True))
+    two_factor_enabled = Column(Boolean, default=False)
+    two_factor_secret = Column(String)
+    last_login_at = Column(DateTime(timezone=True))
+    last_activity_at = Column(DateTime(timezone=True))
     is_active = Column(Boolean, nullable=False, default=True)
-    oidc_subject = Column(String, index=True)  # OIDC 'sub' claim
+    is_email_verified = Column(Boolean, default=False)
+    email_verification_token = Column(String)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
-    last_login_at = Column(DateTime(timezone=True))
+    created_by = Column(PGUUID(as_uuid=True))
 
     # Relationships
     organization = relationship("Organization", back_populates="users")
+
+    @property
+    def full_name(self):
+        """Computed property for backwards compatibility"""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.first_name or self.last_name or self.email
+
+    @property
+    def hashed_password(self):
+        """Alias for backwards compatibility"""
+        return self.password_hash
+
+    @hashed_password.setter
+    def hashed_password(self, value):
+        """Alias setter for backwards compatibility"""
+        self.password_hash = value
+
+    @property
+    def organization_id(self):
+        """Alias for backwards compatibility"""
+        return self.cpa_firm_id
+
+    @organization_id.setter
+    def organization_id(self, value):
+        """Alias setter for backwards compatibility"""
+        self.cpa_firm_id = value
 
 
 class LoginAuditLog(Base):

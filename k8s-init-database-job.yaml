@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-database
+  namespace: aura-audit-ai
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: init-database
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: init-db
+        image: postgres:15
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Initializing database schema..."
+
+          # Parse connection string components
+          # postgresql+asyncpg://user:pass@host:port/db?params
+          CONN=$(echo "$DATABASE_URL" | sed 's/postgresql+asyncpg:\/\///')
+
+          # Extract parts
+          USERPASS=$(echo "$CONN" | cut -d'@' -f1)
+          HOSTPART=$(echo "$CONN" | cut -d'@' -f2)
+
+          USER=$(echo "$USERPASS" | cut -d':' -f1)
+          PASS=$(echo "$USERPASS" | cut -d':' -f2-)
+
+          HOST=$(echo "$HOSTPART" | cut -d':' -f1)
+          PORTDB=$(echo "$HOSTPART" | cut -d':' -f2)
+          PORT=$(echo "$PORTDB" | cut -d'/' -f1)
+          DB=$(echo "$PORTDB" | cut -d'/' -f2 | cut -d'?' -f1)
+
+          echo "Connecting to $HOST:$PORT/$DB as $USER..."
+          export PGPASSWORD="$PASS"
+
+          # Run the initial migration
+          psql -h "$HOST" -p "$PORT" -U "$USER" -d "$DB" -f /migrations/0001_init.sql
+
+          echo "✓ Database schema initialized successfully!"
+          echo
+          echo "Tables created:"
+          psql -h "$HOST" -p "$PORT" -U "$USER" -d "$DB" -c "\dt atlas.*"
+
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        volumeMounts:
+        - name: migrations
+          mountPath: /migrations
+      volumes:
+      - name: migrations
+        configMap:
+          name: database-migrations

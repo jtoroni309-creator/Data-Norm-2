@@ -111,28 +111,35 @@ export default function AnalyticsPage() {
   const criticalAnomaliesCount = anomaliesArray.filter((a: any) => a.severity === 'critical').length;
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground">
-            AI-powered analysis and testing for your engagements
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <select
-            value={selectedEngagement}
-            onChange={(e) => setSelectedEngagement(e.target.value)}
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">Select engagement...</option>
-            {engagementsArray.map((eng: any) => (
-              <option key={eng.id} value={eng.id}>
-                {eng.client_name}
-              </option>
-            ))}
-          </select>
+    <div className="space-y-8 pb-8">
+      {/* Premium Page Header with Gradient */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-8 text-white shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl"></div>
+
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="h-8 w-8" />
+              <h1 className="text-4xl font-bold tracking-tight">Analytics</h1>
+            </div>
+            <p className="text-blue-100 text-lg">AI-powered analysis and testing for your engagements</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <select
+              value={selectedEngagement}
+              onChange={(e) => setSelectedEngagement(e.target.value)}
+              className="flex h-12 min-w-[250px] rounded-xl border-2 border-white/30 bg-white/10 backdrop-blur-md px-4 py-2 text-sm text-white placeholder:text-white/60 focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+            >
+              <option value="" className="text-gray-900">Select engagement...</option>
+              {engagementsArray.map((eng: any) => (
+                <option key={eng.id} value={eng.id} className="text-gray-900">
+                  {eng.client_name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -148,72 +155,106 @@ export default function AnalyticsPage() {
         </Card>
       ) : (
         <>
-          {/* Stats Grid */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{jeResultsArray.length}</p>
-                    <p className="text-sm text-muted-foreground">JEs Tested</p>
+          {/* Premium Stats Grid */}
+          <div className="grid gap-6 md:grid-cols-4">
+            <Card className="group relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 hover-lift bg-gradient-to-br from-white via-blue-50/30 to-cyan-50/40 dark:from-gray-900 dark:via-blue-950/30 dark:to-cyan-950/40">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full"></div>
+              <CardContent className="pt-6 pb-6 relative z-10">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">JEs Tested</p>
+                    <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">{jeResultsArray.length}</p>
+                    <div className="h-1 w-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"></div>
                   </div>
-                  <BarChart3 className="h-8 w-8 text-blue-600" />
+                  <div className="rounded-2xl p-3 bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <BarChart3 className="h-6 w-6 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">{flaggedJECount}</p>
-                    <p className="text-sm text-muted-foreground">Flagged Entries</p>
+            <Card className="group relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 hover-lift bg-gradient-to-br from-white via-orange-50/30 to-amber-50/40 dark:from-gray-900 dark:via-orange-950/30 dark:to-amber-950/40">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-500/10 to-transparent rounded-bl-full"></div>
+              <CardContent className="pt-6 pb-6 relative z-10">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Flagged Entries</p>
+                    <p className="text-4xl font-bold text-orange-600 dark:text-orange-400">{flaggedJECount}</p>
+                    <div className="h-1 w-16 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"></div>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-orange-600" />
+                  <div className="rounded-2xl p-3 bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg group-hover:scale-110 transition-transform duration-300 pulse-glow">
+                    <AlertTriangle className="h-6 w-6 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-red-600">{criticalAnomaliesCount}</p>
-                    <p className="text-sm text-muted-foreground">Critical Anomalies</p>
+            <Card className="group relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 hover-lift bg-gradient-to-br from-white via-red-50/30 to-pink-50/40 dark:from-gray-900 dark:via-red-950/30 dark:to-pink-950/40">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-500/10 to-transparent rounded-bl-full"></div>
+              <CardContent className="pt-6 pb-6 relative z-10">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Critical Anomalies</p>
+                    <p className="text-4xl font-bold text-red-600 dark:text-red-400">{criticalAnomaliesCount}</p>
+                    <div className="h-1 w-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-full"></div>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                  <div className="rounded-2xl p-3 bg-gradient-to-br from-red-500 to-pink-500 shadow-lg group-hover:scale-110 transition-transform duration-300 pulse-glow">
+                    <AlertTriangle className="h-6 w-6 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-green-600">{ratiosArray.length}</p>
-                    <p className="text-sm text-muted-foreground">Ratios Calculated</p>
+            <Card className="group relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 hover-lift bg-gradient-to-br from-white via-green-50/30 to-emerald-50/40 dark:from-gray-900 dark:via-green-950/30 dark:to-emerald-950/40">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-green-500/10 to-transparent rounded-bl-full"></div>
+              <CardContent className="pt-6 pb-6 relative z-10">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Ratios Calculated</p>
+                    <p className="text-4xl font-bold text-green-600 dark:text-green-400">{ratiosArray.length}</p>
+                    <div className="h-1 w-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"></div>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-green-600" />
+                  <div className="rounded-2xl p-3 bg-gradient-to-br from-green-500 to-emerald-500 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="je-testing">JE Testing</TabsTrigger>
-              <TabsTrigger value="anomalies">Anomaly Detection</TabsTrigger>
-              <TabsTrigger value="ratios">Ratio Analysis</TabsTrigger>
+          {/* Premium Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-1.5 rounded-2xl border shadow-sm">
+              <TabsTrigger
+                value="je-testing"
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+              >
+                JE Testing
+              </TabsTrigger>
+              <TabsTrigger
+                value="anomalies"
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+              >
+                Anomaly Detection
+              </TabsTrigger>
+              <TabsTrigger
+                value="ratios"
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+              >
+                Ratio Analysis
+              </TabsTrigger>
             </TabsList>
 
             {/* JE Testing Tab */}
             <TabsContent value="je-testing" className="space-y-4">
-              <Card>
-                <CardHeader>
+              <Card className="border-none shadow-lg bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+                <CardHeader className="border-b bg-gradient-to-r from-purple-500/5 to-blue-500/5">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Journal Entry Testing</CardTitle>
+                    <div className="space-y-1">
+                      <CardTitle className="text-xl flex items-center">
+                        <BarChart3 className="mr-2 h-5 w-5 text-purple-600" />
+                        Journal Entry Testing
+                      </CardTitle>
                       <CardDescription>
                         AI-powered testing of journal entries for unusual patterns
                       </CardDescription>
@@ -222,11 +263,12 @@ export default function AnalyticsPage() {
                       <Button
                         onClick={() => runJETestingMutation.mutate()}
                         loading={runJETestingMutation.isPending}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover-lift"
                       >
                         <Play className="mr-2 h-4 w-4" />
                         Run Testing
                       </Button>
-                      <Button variant="outline">
+                      <Button variant="outline" className="hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300">
                         <Download className="mr-2 h-4 w-4" />
                         Export
                       </Button>
