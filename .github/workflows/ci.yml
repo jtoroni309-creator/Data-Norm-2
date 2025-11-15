@@ -18,17 +18,47 @@ jobs:
     strategy:
       matrix:
         service:
+          # Core Services
           - identity
-          - analytics
-          - normalize
-          - engagement
-          - qc
           - ingestion
+          - normalize
+          - analytics
+          - llm
+          - engagement
           - disclosures
-          - security
-          - reg-ab-audit
-          - fraud-detection
+          - reporting
+          - qc
+          - gateway
+          # Audit Services
+          - audit-planning
+          - sampling
+          - related-party
+          - subsequent-events
+          - substantive-testing
+          - estimates-evaluation
+          # Integration Services
+          - accounting-integrations
+          - connectors
+          # Financial Services
           - financial-analysis
+          - fraud-detection
+          - reg-ab-audit
+          # Tax Services
+          - tax-engine
+          - tax-forms
+          - tax-ocr-intake
+          - tax-review
+          # AI/ML Services
+          - advanced-report-generation
+          - ai-chat
+          - ai-explainability
+          - ai-feedback
+          - intelligent-sampling
+          # Support Services
+          - security
+          - training-data
+          - data-anonymization
+          - eo-insurance-portal
 
     services:
       postgres:
