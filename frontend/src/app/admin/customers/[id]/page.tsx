@@ -46,25 +46,28 @@ export default function CustomerDetailPage() {
     queryFn: () => api.admin.customers.get(customerId),
   });
 
-  const { data: licenses = [] } = useQuery({
-    queryKey: ['admin-customer-licenses', customerId],
-    queryFn: () => api.admin.licenses.list(customerId),
-  });
-
   const { data: usage } = useQuery({
     queryKey: ['admin-customer-usage', customerId],
     queryFn: () => api.admin.usage.getByCustomer(customerId),
   });
 
-  const { data: invoices = [] } = useQuery({
+  const { data: licenses } = useQuery({
+    queryKey: ['admin-customer-licenses', customerId],
+    queryFn: () => api.admin.licenses.list(customerId),
+  });
+  const licensesArray = (licenses as any[]) || [];
+
+  const { data: invoices } = useQuery({
     queryKey: ['admin-customer-invoices', customerId],
     queryFn: () => api.admin.invoices.list(customerId),
   });
+  const invoicesArray = (invoices as any[]) || [];
 
-  const { data: activity = [] } = useQuery({
+  const { data: activity } = useQuery({
     queryKey: ['admin-customer-activity', customerId],
     queryFn: () => api.admin.activity.list(customerId),
   });
+  const activityArray = (activity as any[]) || [];
 
   if (isLoading) {
     return (
@@ -74,7 +77,7 @@ export default function CustomerDetailPage() {
     );
   }
 
-  const mockCustomer: Customer = (customer as Customer) || {
+  const mockCustomer = (customer as any) || {
     id: customerId,
     company_name: 'Acme Corporation',
     contact_name: 'John Smith',
@@ -266,7 +269,7 @@ export default function CustomerDetailPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{licenses.length || 1}</p>
+                  <p className="text-3xl font-bold">{licensesArray.length || 1}</p>
                   <p className="text-sm text-muted-foreground">Active Licenses</p>
                 </div>
               </CardContent>

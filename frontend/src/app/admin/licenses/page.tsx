@@ -36,9 +36,10 @@ export default function LicensesPage() {
   const { data: licenses , isLoading } = useQuery({
     queryKey: ['admin-licenses', statusFilter],
     queryFn: () => api.admin.licenses.list(),
+  const licensesArray = (licenses as any[]) || [];
   });
 
-  const filteredLicenses = licenses.filter((license: License) => {
+  const filteredLicenses = licensesArray.filter((license: License) => {
     const matchesStatus = statusFilter === 'all' || license.status === statusFilter;
     return matchesStatus;
   });
@@ -78,21 +79,21 @@ export default function LicensesPage() {
   const stats = [
     {
       label: 'Total Licenses',
-      value: licenses.length,
+      value: licensesArray.length,
       icon: CreditCard,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
     },
     {
       label: 'Active',
-      value: licenses.filter((l: License) => l.status === LicenseStatus.ACTIVE).length,
+      value: licensesArray.filter((l: License) => l.status === LicenseStatus.ACTIVE).length,
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-100 dark:bg-green-900/20',
     },
     {
       label: 'Trial',
-      value: licenses.filter((l: License) => l.status === LicenseStatus.TRIAL).length,
+      value: licensesArray.filter((l: License) => l.status === LicenseStatus.TRIAL).length,
       icon: AlertCircle,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100 dark:bg-orange-900/20',

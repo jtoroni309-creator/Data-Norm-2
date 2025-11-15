@@ -39,6 +39,7 @@ export default function CustomersPage() {
   const { data: customers , isLoading, refetch } = useQuery({
     queryKey: ['admin-customers', statusFilter],
     queryFn: () => api.admin.customers.list({ status: statusFilter !== 'all' ? statusFilter : undefined }),
+  const customersArray = (customers as any[]) || [];
   });
 
   const suspendMutation = useMutation({
@@ -63,7 +64,7 @@ export default function CustomersPage() {
     },
   });
 
-  const filteredCustomers = customers.filter((customer: Customer) =>
+  const filteredCustomers = customersArray.filter((customer: Customer) =>
     customer.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     customer.contact_email.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -88,28 +89,28 @@ export default function CustomersPage() {
   const stats = [
     {
       label: 'Total Customers',
-      value: customers.length,
+      value: customersArray.length,
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
     },
     {
       label: 'Active',
-      value: customers.filter((c: Customer) => c.status === CustomerStatus.ACTIVE).length,
+      value: customersArray.filter((c: Customer) => c.status === CustomerStatus.ACTIVE).length,
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-100 dark:bg-green-900/20',
     },
     {
       label: 'Trial',
-      value: customers.filter((c: Customer) => c.status === CustomerStatus.TRIAL).length,
+      value: customersArray.filter((c: Customer) => c.status === CustomerStatus.TRIAL).length,
       icon: Users,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100 dark:bg-orange-900/20',
     },
     {
       label: 'Suspended',
-      value: customers.filter((c: Customer) => c.status === CustomerStatus.SUSPENDED).length,
+      value: customersArray.filter((c: Customer) => c.status === CustomerStatus.SUSPENDED).length,
       icon: Ban,
       color: 'text-red-600',
       bgColor: 'bg-red-100 dark:bg-red-900/20',
@@ -170,7 +171,7 @@ export default function CustomersPage() {
             <div>
               <CardTitle>All Customers</CardTitle>
               <CardDescription>
-                {filteredCustomers.length} of {customers.length} customers
+                {filteredCustomers.length} of {customersArray.length} customers
               </CardDescription>
             </div>
             <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
