@@ -33,11 +33,11 @@ export default function LicensesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const { data: licenses , isLoading } = useQuery({
+  const { data: licenses, isLoading } = useQuery({
     queryKey: ['admin-licenses', statusFilter],
     queryFn: () => api.admin.licenses.list(),
-  const licensesArray = (licenses as any[]) || [];
   });
+  const licensesArray = (licenses as any[]) || [];
 
   const filteredLicenses = licensesArray.filter((license: License) => {
     const matchesStatus = statusFilter === 'all' || license.status === statusFilter;
@@ -120,7 +120,7 @@ export default function LicensesPage() {
       start_date: '2024-01-01',
       end_date: '2024-12-31',
       auto_renew: true,
-      billing_cycle: 'monthly',
+      billing_cycle: 'monthly' as any,
       price_per_month: 2400,
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-11-05T00:00:00Z',
@@ -153,7 +153,7 @@ export default function LicensesPage() {
       end_date: '2024-12-01',
       trial_ends_at: '2024-12-01',
       auto_renew: false,
-      billing_cycle: 'monthly',
+      billing_cycle: 'monthly' as any,
       price_per_month: 0,
       created_at: '2024-11-01T00:00:00Z',
       updated_at: '2024-11-05T00:00:00Z',

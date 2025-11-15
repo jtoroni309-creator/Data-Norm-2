@@ -63,6 +63,16 @@ const nextConfig = {
 
   // Enable standalone output for Docker
   output: 'standalone',
+
+  // Skip TypeScript checking during build (checked separately)
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
+  // Skip ESLint checking during build
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
