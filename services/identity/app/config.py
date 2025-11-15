@@ -14,6 +14,17 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://atlas:atlas_secret@db:5432/atlas"
 
+    @field_validator('DATABASE_URL')
+    @classmethod
+    def fix_asyncpg_ssl(cls, v: str) -> str:
+        """
+        Fix SSL mode for asyncpg driver
+        PostgreSQL uses sslmode=require but asyncpg uses ssl=require
+        """
+        if 'sslmode=' in v:
+            v = v.replace('sslmode=', 'ssl=')
+        return v
+
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
 
@@ -73,7 +84,16 @@ class Settings(BaseSettings):
 
         return v
 
-    # OIDC Configuration (Optional)
+    # Azure AD Configuration for Admin Portal
+    AZURE_AD_ENABLED: bool = True
+    AZURE_AD_TENANT_ID: str = "002fa7de-1afd-4945-86e1-79281af841ad"
+    AZURE_AD_CLIENT_ID: str = "a5608ed5-c6f8-4db9-b50f-b62e2b24c966"
+    AZURE_AD_CLIENT_SECRET: str = ""  # Set via environment variable
+    AZURE_AD_AUTHORITY: str = "https://login.microsoftonline.com/002fa7de-1afd-4945-86e1-79281af841ad"
+    AZURE_AD_REDIRECT_URI: str = "https://admin.auraai.toroniandcompany.com/auth/callback"
+    AZURE_AD_SCOPES: List[str] = ["User.Read", "openid", "profile", "email"]
+
+    # OIDC Configuration (Optional - for other providers)
     OIDC_ENABLED: bool = False
     OIDC_ISSUER: str = "https://login.microsoftonline.com/<tenant-id>/v2.0"
     OIDC_CLIENT_ID: str = ""
@@ -81,7 +101,16 @@ class Settings(BaseSettings):
     OIDC_AUDIENCE: str = "api://atlas"
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://cpa.auraai.toroniandcompany.com",
+        "https://client.auraai.toroniandcompany.com",
+        "https://portal.auraai.toroniandcompany.com",
+        "https://admin.auraai.toroniandcompany.com",
+        "https://auraai.toroniandcompany.com",
+        "https://www.auraai.toroniandcompany.com"
+    ]
 
     # Logging
     LOG_LEVEL: str = "INFO"

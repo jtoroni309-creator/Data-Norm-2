@@ -32,7 +32,7 @@ class UserBase(BaseModel):
     """Base user fields"""
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=200)
-    role: RoleEnum
+    role: Optional[RoleEnum] = None
 
 
 class UserCreate(UserBase):
@@ -92,6 +92,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = Field(..., description="Token expiry in seconds")
+    user: "UserResponse"  # Forward reference for circular dependency
 
 
 class TokenPayload(BaseModel):

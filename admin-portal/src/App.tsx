@@ -17,6 +17,7 @@ import { UserManagement } from './components/UserManagement';
 import { SystemAnalytics } from './components/SystemAnalytics';
 import { SystemSettings } from './components/SystemSettings';
 import { TicketManagement } from './components/TicketManagement';
+import { authAPI } from './services/api';
 
 type Page = 'dashboard' | 'users' | 'analytics' | 'tickets' | 'settings';
 
@@ -31,6 +32,16 @@ function App() {
     { id: 'tickets' as const, label: 'Support Tickets', icon: Ticket },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      // Reload the page to clear state and return to login
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -139,7 +150,10 @@ function App() {
                 )}
               </AnimatePresence>
             </div>
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors mt-2">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors mt-2"
+            >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               <AnimatePresence mode="wait">
                 {sidebarOpen && (

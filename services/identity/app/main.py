@@ -203,16 +203,21 @@ async def log_login_attempt(
     error_message: Optional[str] = None
 ):
     """Log authentication attempt for audit trail"""
-    log_entry = LoginAuditLog(
-        email=email,
-        success=success,
-        ip_address=ip_address,
-        user_agent=user_agent,
-        error_message=error_message,
-        attempted_at=datetime.utcnow()
-    )
-    db.add(log_entry)
-    await db.commit()
+    try:
+        log_entry = LoginAuditLog(
+            email=email,
+            success=success,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            error_message=error_message,
+            attempted_at=datetime.utcnow()
+        )
+        db.add(log_entry)
+        await db.commit()
+    except Exception as e:
+        # Don't fail login if audit logging fails
+        logger.warning(f"Failed to log login attempt for {email}: {str(e)}")
+        await db.rollback()
 
 
 # ========================================
@@ -293,27 +298,30 @@ async def register_user(
 
 @app.post("/auth/login", response_model=TokenResponse)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    credentials: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Authenticate user and return JWT token
+    Authenticate user and return JWT token (JSON)
 
     - Validates credentials
     - Logs login attempt
     - Returns access token
     """
+    email = credentials.email
+    password = credentials.password
+
     # Fetch user by email
     result = await db.execute(
-        select(User).where(User.email == form_data.username)
+        select(User).where(User.email == email)
     )
     user = result.scalar_one_or_none()
 
     # Validate credentials
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not verify_password(password, user.hashed_password):
         await log_login_attempt(
             db=db,
-            email=form_data.username,
+            email=email,
             success=False,
             error_message="Invalid credentials"
         )
@@ -327,7 +335,7 @@ async def login(
     if not user.is_active:
         await log_login_attempt(
             db=db,
-            email=form_data.username,
+            email=email,
             success=False,
             error_message="Account inactive"
         )
@@ -342,8 +350,8 @@ async def login(
         data={
             "sub": str(user.id),
             "email": user.email,
-            "role": user.role.value,
-            "organization_id": str(user.organization_id) if user.organization_id else None
+            "cpa_firm_id": str(user.cpa_firm_id) if user.cpa_firm_id else None,
+            "client_id": str(user.client_id) if user.client_id else None
         }
     )
 
@@ -363,7 +371,8 @@ async def login(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=settings.JWT_EXPIRY_HOURS * 3600
+        expires_in=settings.JWT_EXPIRY_HOURS * 3600,
+        user=UserResponse.model_validate(user)
     )
 
 
@@ -911,3 +920,134 @@ async def update_user_permissions(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# ========================================
+# Azure AD Authentication
+# ========================================
+
+@app.get("/auth/azure/login")
+async def azure_ad_login():
+    """Initiate Azure AD login flow"""
+    if not settings.AZURE_AD_ENABLED:
+        raise HTTPException(status_code=404, detail="Azure AD authentication not enabled")
+    
+    # Build authorization URL
+    auth_url = (
+        f"{settings.AZURE_AD_AUTHORITY}/oauth2/v2.0/authorize?"
+        f"client_id={settings.AZURE_AD_CLIENT_ID}&"
+        f"response_type=code&"
+        f"redirect_uri={settings.AZURE_AD_REDIRECT_URI}&"
+        f"response_mode=query&"
+        f"scope={'+'.join(settings.AZURE_AD_SCOPES)}&"
+        f"state=admin_portal"
+    )
+    
+    return {"authorization_url": auth_url}
+
+
+@app.get("/auth/azure/callback")
+async def azure_ad_callback(
+    code: str,
+    state: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Handle Azure AD callback and create/login user"""
+    if not settings.AZURE_AD_ENABLED:
+        raise HTTPException(status_code=404, detail="Azure AD authentication not enabled")
+    
+    try:
+        import msal
+        
+        # Create MSAL confidential client
+        app = msal.ConfidentialClientApplication(
+            settings.AZURE_AD_CLIENT_ID,
+            authority=settings.AZURE_AD_AUTHORITY,
+            client_credential=settings.AZURE_AD_CLIENT_SECRET,
+        )
+        
+        # Acquire token by authorization code
+        result = app.acquire_token_by_authorization_code(
+            code,
+            scopes=settings.AZURE_AD_SCOPES,
+            redirect_uri=settings.AZURE_AD_REDIRECT_URI
+        )
+        
+        if "error" in result:
+            logger.error(f"Azure AD error: {result.get('error_description')}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Azure AD authentication failed: {result.get('error_description')}"
+            )
+        
+        # Extract user info from ID token
+        id_token_claims = result.get("id_token_claims", {})
+        email = id_token_claims.get("preferred_username") or id_token_claims.get("email")
+        name = id_token_claims.get("name", "")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="No email found in Azure AD response")
+        
+        # Check if user exists
+        user_result = await db.execute(
+            select(User).where(User.email == email)
+        )
+        user = user_result.scalar_one_or_none()
+        
+        # Create user if doesn't exist
+        if not user:
+            name_parts = name.split(" ", 1)
+            first_name = name_parts[0] if name_parts else email.split("@")[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+            
+            user = User(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                is_active=True,
+                is_email_verified=True,  # Azure AD verified
+                password_hash=None  # No password for Azure AD users
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+            
+            logger.info(f"Created new Azure AD user: {email}")
+        
+        # Create access token
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "email": user.email,
+                "cpa_firm_id": str(user.cpa_firm_id) if user.cpa_firm_id else None,
+                "auth_method": "azure_ad"
+            }
+        )
+        
+        # Update last login
+        user.last_login_at = datetime.utcnow()
+        await db.commit()
+        
+        logger.info(f"Azure AD user logged in: {user.email}")
+        
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=settings.JWT_EXPIRY_HOURS * 3600,
+            user=UserResponse.model_validate(user)
+        )
+        
+    except Exception as e:
+        logger.error(f"Azure AD callback error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+
+
+@app.post("/auth/azure/logout")
+async def azure_ad_logout():
+    """Azure AD logout"""
+    logout_url = (
+        f"{settings.AZURE_AD_AUTHORITY}/oauth2/v2.0/logout?"
+        f"post_logout_redirect_uri=https://admin.auraai.toroniandcompany.com"
+    )
+    
+    return {"logout_url": logout_url}
