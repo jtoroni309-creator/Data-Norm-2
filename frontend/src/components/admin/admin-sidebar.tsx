@@ -12,11 +12,15 @@ import {
   FileText,
   Shield,
   Activity,
+  Building2,
+  Server,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'CPA Firms', href: '/admin/firms', icon: Building2 },
+  { name: 'Services', href: '/admin/services', icon: Server },
   { name: 'Customers', href: '/admin/customers', icon: Users },
   { name: 'Licenses', href: '/admin/licenses', icon: CreditCard },
   { name: 'Usage & Analytics', href: '/admin/analytics', icon: BarChart3 },
