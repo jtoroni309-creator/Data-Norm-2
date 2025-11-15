@@ -13,7 +13,8 @@ aiohttp==3.9.3
 requests==2.31.0
 # ERP-specific libraries
 intuit-oauth==1.2.4
-quickbooks-python==2.4.0
+# quickbooks-python==2.4.0  # Package not available - use python-quickbooks or intuit-oauth instead
+# python-quickbooks==0.9.5  # Alternative QuickBooks SDK (commented until needed)
 netsuitesdk==1.24.0
 # General utilities
 python-dateutil==2.8.2
