@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  advanced-report-generation:
+    build: .
+    container_name: advanced-report-generation
+    ports:
+      - "8019:8019"
+      - "9090:9090"  # Metrics port
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./rules:/app/rules
+    networks:
+      - aura-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8019/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  aura-network:
+    external: true
