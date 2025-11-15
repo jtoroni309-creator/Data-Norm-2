@@ -9,8 +9,8 @@ httpx==0.26.0
 python-multipart==0.0.6
 
 # Database
-sqlalchemy[asyncio]>=2.0.23
-asyncpg>=0.29.0
+sqlalchemy==2.0.25
+asyncpg==0.29.0
 
 # Utilities
 python-dateutil>=2.8.2
