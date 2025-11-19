@@ -155,7 +155,7 @@ export function AIChatInterface({ engagementId }: AIChatInterfaceProps) {
           AI Audit Assistant
         </h2>
         <p className="text-gray-600 mt-1">
-          Powered by your firm's knowledge base and industry standards
+          Powered by your firm&apos;s knowledge base and industry standards
         </p>
       </div>
 

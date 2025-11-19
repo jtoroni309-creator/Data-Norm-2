@@ -109,7 +109,7 @@ export default function DashboardPage() {
               <Sparkles className="h-6 w-6" />
               <h1 className="text-4xl font-bold tracking-tight">Welcome Back</h1>
             </div>
-            <p className="text-blue-100 text-lg">Here's what's happening with your audits today</p>
+            <p className="text-blue-100 text-lg">Here&apos;s what&apos;s happening with your audits today</p>
           </div>
           <Button size="lg" className="bg-white text-purple-600 hover:bg-blue-50 shadow-xl hover-lift">
             <FolderOpen className="mr-2 h-5 w-5" />

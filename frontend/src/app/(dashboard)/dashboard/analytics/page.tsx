@@ -298,7 +298,7 @@ export default function AnalyticsPage() {
                       <BarChart3 className="h-12 w-12 text-muted-foreground" />
                       <h3 className="mt-4 text-lg font-semibold">No test results yet</h3>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Click "Run Testing" to analyze journal entries
+                        Click &quot;Run Testing&quot; to analyze journal entries
                       </p>
                     </div>
                   ) : (
@@ -387,7 +387,7 @@ export default function AnalyticsPage() {
                       <AlertTriangle className="h-12 w-12 text-muted-foreground" />
                       <h3 className="mt-4 text-lg font-semibold">No anomalies detected yet</h3>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Click "Run Detection" to analyze for anomalies
+                        Click &quot;Run Detection&quot; to analyze for anomalies
                       </p>
                     </div>
                   ) : (

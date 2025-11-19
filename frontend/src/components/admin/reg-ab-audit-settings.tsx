@@ -52,6 +52,7 @@ export function RegABAuditSettings({ organizationId }: RegABAuditSettingsProps) 
 
   useEffect(() => {
     fetchSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   const fetchSettings = async () => {
