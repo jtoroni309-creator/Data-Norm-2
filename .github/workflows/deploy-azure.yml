@@ -130,7 +130,7 @@ jobs:
         run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }} \
             -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest \
-            frontend/
+            client-portal/
 
           docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }}
           docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest
@@ -312,6 +312,7 @@ jobs:
           export IMAGE_TAG=${{ steps.vars.outputs.SHORT_SHA }}
 
           envsubst < infra/k8s/base/deployment-identity.yaml | kubectl apply -f -
+          envsubst < infra/k8s/base/deployment-gateway.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployments-all-services.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployment-marketing.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployment-client-portal.yaml | kubectl apply -f -
@@ -323,6 +324,7 @@ jobs:
       - name: Wait for deployments
         run: |
           kubectl rollout status deployment/identity -n aura-audit-ai --timeout=5m
+          kubectl rollout status deployment/gateway -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/llm -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/analytics -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/normalize -n aura-audit-ai --timeout=5m

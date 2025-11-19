@@ -18,6 +18,20 @@ SERVICES=(
   "disclosures"
   "qc"
   "connectors"
+  "reg-ab-audit"
+  "audit-planning"
+  "accounting-integrations"
+  "data-anonymization"
+  "financial-analysis"
+  "fraud-detection"
+  "related-party"
+  "sampling"
+  "security"
+  "subsequent-events"
+  "substantive-testing"
+  "training-data"
+  "eo-insurance-portal"
+  "estimates-evaluation"
 )
 
 echo "Building and pushing Docker images to ACR..."
@@ -47,6 +61,24 @@ for service in "${SERVICES[@]}"; do
   echo "✓ $service complete"
   echo ""
 done
+
+echo "=========================================="
+echo "Building CPA Portal (client-portal)..."
+echo "=========================================="
+
+docker build \
+  -t $ACR_LOGIN_SERVER/aura/cpa-portal:$IMAGE_TAG \
+  -t $ACR_LOGIN_SERVER/aura/cpa-portal:latest \
+  ./client-portal
+
+echo "Pushing cpa-portal:$IMAGE_TAG..."
+docker push $ACR_LOGIN_SERVER/aura/cpa-portal:$IMAGE_TAG
+
+echo "Pushing cpa-portal:latest..."
+docker push $ACR_LOGIN_SERVER/aura/cpa-portal:latest
+
+echo "✓ CPA Portal complete"
+echo ""
 
 echo "=========================================="
 echo "All services built and pushed successfully!"

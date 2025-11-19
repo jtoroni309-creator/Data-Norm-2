@@ -258,11 +258,14 @@ deploy_kubernetes() {
     export IMAGE_TAG=${IMAGE_TAG:-latest}
 
     envsubst < infra/k8s/base/deployment-identity.yaml | kubectl apply -f -
+    envsubst < infra/k8s/base/deployment-gateway.yaml | kubectl apply -f -
     envsubst < infra/k8s/base/deployments-all-services.yaml | kubectl apply -f -
+    envsubst < infra/k8s/base/deployment-client-portal.yaml | kubectl apply -f -
 
     # Apply Ingress
     log_info "Applying Ingress..."
     kubectl apply -f infra/k8s/base/ingress.yaml
+    kubectl apply -f infra/k8s/base/ingress-auraa.yaml
 
     log_success "Kubernetes deployment complete"
 }
@@ -271,7 +274,7 @@ deploy_kubernetes() {
 wait_for_deployments() {
     log_info "Waiting for deployments to be ready..."
 
-    DEPLOYMENTS=("identity" "llm" "analytics" "normalize" "ingestion" "engagement")
+    DEPLOYMENTS=("identity" "gateway" "llm" "analytics" "normalize" "ingestion" "engagement" "client-portal")
 
     for deployment in "${DEPLOYMENTS[@]}"; do
         log_info "Waiting for $deployment..."
