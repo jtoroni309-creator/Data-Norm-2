@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl get:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix deployment configuration - resolve CPA portal 404 errors\n\nCritical fixes to resolve 404 errors in CPA firm portal after login:\n\n## Issues Fixed:\n1. Client Portal Dockerfile Mismatch\n   - Changed container port from 3000 (Next.js) to 80 (nginx)\n   - Updated service targetPort to match\n   - Fixed environment variables for Vite React app\n\n2. Missing API Gateway Deployment\n   - Created deployment-gateway.yaml with HPA\n   - Added gateway to CI/CD pipeline\n   - Configured CORS for all portal domains\n\n3. 14 Missing Backend Service Deployments\n   - Added: reg-ab-audit, audit-planning, accounting-integrations\n   - Added: data-anonymization, financial-analysis, fraud-detection\n   - Added: related-party, sampling, security, subsequent-events\n   - Added: substantive-testing, training-data, eo-insurance-portal\n   - Added: estimates-evaluation\n\n4. Incorrect Ingress Routing\n   - Simplified API routing to use gateway\n   - All API requests now route through gateway service\n\n5. CI/CD Pipeline Fixes\n   - Fixed CPA portal build directory (client-portal/ not frontend/)\n   - Added gateway deployment step\n   - Updated all 24 services in build script\n\n## Files Modified:\n- infra/k8s/base/deployment-client-portal.yaml\n- infra/k8s/base/ingress.yaml\n- infra/k8s/base/deployments-all-services.yaml\n- .github/workflows/deploy-azure.yml\n- infra/azure/deploy.sh\n- build-and-push.sh\n\n## Files Created:\n- infra/k8s/base/deployment-gateway.yaml\n- DEPLOYMENT_FIXES.md (comprehensive documentation)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(gh run list:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
