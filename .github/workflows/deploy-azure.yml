@@ -58,7 +58,7 @@ jobs:
           # Financial Services
           - financial-analysis
           - fraud-detection
-          - reg-ab-audit
+          # - reg-ab-audit  # DISABLED - dependency conflicts
           # Tax Services
           - tax-engine
           - tax-forms
@@ -102,38 +102,38 @@ jobs:
           docker push ${{ env.ACR_NAME }}.azurecr.io/aura/${{ matrix.service }}:${{ steps.vars.outputs.SHORT_SHA }}
           docker push ${{ env.ACR_NAME }}.azurecr.io/aura/${{ matrix.service }}:latest
 
-  # Build and push CPA Portal (frontend)
-  build-cpa-portal:
-    name: Build & Push CPA Portal
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # Build and push CPA Portal (frontend) - DISABLED
+  # build-cpa-portal:
+  #   name: Build & Push CPA Portal
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #     - name: Azure Login
+  #       uses: azure/login@v1
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Login to ACR
-        run: |
-          az acr login --name ${{ env.ACR_NAME }}
+  #     - name: Login to ACR
+  #       run: |
+  #         az acr login --name ${{ env.ACR_NAME }}
 
-      - name: Get short SHA
-        id: vars
-        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+  #     - name: Get short SHA
+  #       id: vars
+  #       run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build and push CPA portal image
-        run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }} \
-            -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest \
-            client-portal/
+  #     - name: Build and push CPA portal image
+  #       run: |
+  #         docker build -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }} \
+  #           -t ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest \
+  #           client-portal/
 
-          docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }}
-          docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest
+  #         docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:${{ steps.vars.outputs.SHORT_SHA }}
+  #         docker push ${{ env.ACR_NAME }}.azurecr.io/aura/cpa-portal:latest
 
   # Build and push marketing site
   build-marketing:
@@ -172,7 +172,7 @@ jobs:
   deploy-infrastructure:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
-    needs: [build-and-push, build-cpa-portal, build-marketing]
+    needs: [build-and-push, build-marketing]  # Removed build-cpa-portal
     permissions:
       contents: read
       id-token: write
@@ -315,7 +315,7 @@ jobs:
           envsubst < infra/k8s/base/deployment-gateway.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployments-all-services.yaml | kubectl apply -f -
           envsubst < infra/k8s/base/deployment-marketing.yaml | kubectl apply -f -
-          envsubst < infra/k8s/base/deployment-client-portal.yaml | kubectl apply -f -
+          # envsubst < infra/k8s/base/deployment-client-portal.yaml | kubectl apply -f -  # DISABLED
 
       - name: Apply Ingress
         run: |
@@ -329,7 +329,7 @@ jobs:
           kubectl rollout status deployment/analytics -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/normalize -n aura-audit-ai --timeout=5m
           kubectl rollout status deployment/marketing -n aura-audit-ai --timeout=5m
-          kubectl rollout status deployment/client-portal -n aura-audit-ai --timeout=5m
+          # kubectl rollout status deployment/client-portal -n aura-audit-ai --timeout=5m  # DISABLED
 
       - name: Get deployment status
         run: |
