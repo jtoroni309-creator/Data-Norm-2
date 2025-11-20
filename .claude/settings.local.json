@@ -20,7 +20,11 @@
       "Bash(az aks get-credentials:*)",
       "Bash(npm run type-check:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(cd:*)",
+      "Bash(for dir in services/*/)",
+      "Bash(do [ ! -f \"$dir/Dockerfile\" ])",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
