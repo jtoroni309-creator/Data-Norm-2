@@ -52,15 +52,15 @@ export default function HomePage() {
         <div className="mt-12 flex justify-center gap-4">
           <Link
             href="/login"
-            className="rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl"
+            className="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-3 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
           >
-            Get Started
+            Login
           </Link>
           <Link
-            href="/demo"
-            className="rounded-lg border border-border bg-background px-8 py-3 font-semibold shadow-lg transition-all hover:bg-accent hover:shadow-xl"
+            href="/register"
+            className="rounded-lg border-2 border-primary bg-background px-8 py-3 font-semibold shadow-lg transition-all hover:bg-accent hover:shadow-xl"
           >
-            View Demo
+            Sign Up Free
           </Link>
         </div>
 

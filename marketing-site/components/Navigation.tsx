@@ -45,18 +45,6 @@ const Navigation = () => {
               Features
             </Link>
             <Link
-              href="#benefits"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              Benefits
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              How It Works
-            </Link>
-            <Link
               href="#pricing"
               className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
             >
@@ -81,10 +69,16 @@ const Navigation = () => {
               FAQ
             </Link>
             <Link
+              href="https://portal.auraai.toroniandcompany.com/login"
+              className="px-6 py-2.5 border-2 border-primary-600 text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-all"
+            >
+              Login
+            </Link>
+            <Link
               href="#demo"
               className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-accent-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all"
             >
-              Request Demo
+              Get Started
             </Link>
           </div>
 
@@ -111,20 +105,6 @@ const Navigation = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Features
-              </Link>
-              <Link
-                href="#benefits"
-                className="block px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-lg font-medium transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Benefits
-              </Link>
-              <Link
-                href="#how-it-works"
-                className="block px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-lg font-medium transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                How It Works
               </Link>
               <Link
                 href="#pricing"
@@ -155,11 +135,18 @@ const Navigation = () => {
                 FAQ
               </Link>
               <Link
+                href="https://portal.auraai.toroniandcompany.com/login"
+                className="block px-4 py-3 border-2 border-primary-600 text-primary-600 font-semibold rounded-lg text-center"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
+              <Link
                 href="#demo"
                 className="block px-4 py-3 bg-gradient-to-r from-primary-600 to-accent-600 text-white font-semibold rounded-lg text-center"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Request Demo
+                Get Started
               </Link>
             </div>
           </div>

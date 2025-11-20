@@ -15,12 +15,12 @@ interface CreateEngagementFormProps {
 
 export default function CreateEngagementForm({ onSuccess }: CreateEngagementFormProps) {
   const [formData, setFormData] = useState({
-    client_name: '',
+    client_id: '', // UUID of the client
+    name: '', // Engagement name
     engagement_type: EngagementType.AUDIT,
     fiscal_year_end: '',
     partner_id: '',
     manager_id: '',
-    status: EngagementStatus.PLANNING,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,16 +53,16 @@ export default function CreateEngagementForm({ onSuccess }: CreateEngagementForm
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.client_name.trim()) {
-      newErrors.client_name = 'Client name is required';
+    if (!formData.client_id.trim()) {
+      newErrors.client_id = 'Client is required';
+    }
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Engagement name is required';
     }
 
     if (!formData.fiscal_year_end) {
       newErrors.fiscal_year_end = 'Fiscal year end is required';
-    }
-
-    if (!formData.partner_id) {
-      newErrors.partner_id = 'Partner is required';
     }
 
     setErrors(newErrors);
@@ -100,19 +100,48 @@ export default function CreateEngagementForm({ onSuccess }: CreateEngagementForm
   const partners = users.filter((u: any) => u.role === 'partner');
   const managers = users.filter((u: any) => u.role === 'manager');
 
+  // Mock clients - in production this would fetch from /clients endpoint
+  const mockClients = [
+    { id: '11111111-1111-1111-1111-111111111111', name: 'ABC Corporation' },
+    { id: '22222222-2222-2222-2222-222222222222', name: 'XYZ Industries' },
+    { id: '33333333-3333-3333-3333-333333333333', name: 'Acme Inc' },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="client_name">
-            Client Name <span className="text-destructive">*</span>
+          <Label htmlFor="client_id">
+            Client <span className="text-destructive">*</span>
+          </Label>
+          <select
+            id="client_id"
+            value={formData.client_id}
+            onChange={(e) => handleChange('client_id', e.target.value)}
+            className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              errors.client_id ? 'border-destructive' : 'border-input'
+            }`}
+          >
+            <option value="">Select client...</option>
+            {mockClients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+          {errors.client_id && <p className="text-sm text-destructive">{errors.client_id}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="name">
+            Engagement Name <span className="text-destructive">*</span>
           </Label>
           <Input
-            id="client_name"
-            value={formData.client_name}
-            onChange={(e) => handleChange('client_name', e.target.value)}
-            placeholder="ABC Corporation"
-            error={errors.client_name}
+            id="name"
+            value={formData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            placeholder="FY 2024 Audit"
+            error={errors.name}
           />
         </div>
 
@@ -147,32 +176,12 @@ export default function CreateEngagementForm({ onSuccess }: CreateEngagementForm
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <select
-            id="status"
-            value={formData.status}
-            onChange={(e) => handleChange('status', e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value={EngagementStatus.PLANNING}>Planning</option>
-            <option value={EngagementStatus.FIELDWORK}>Fieldwork</option>
-            <option value={EngagementStatus.REVIEW}>Review</option>
-            <option value={EngagementStatus.COMPLETED}>Completed</option>
-            <option value={EngagementStatus.ARCHIVED}>Archived</option>
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="partner_id">
-            Partner <span className="text-destructive">*</span>
-          </Label>
+          <Label htmlFor="partner_id">Partner (Optional)</Label>
           <select
             id="partner_id"
             value={formData.partner_id}
             onChange={(e) => handleChange('partner_id', e.target.value)}
-            className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              errors.partner_id ? 'border-destructive' : 'border-input'
-            }`}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Select partner...</option>
             {partners.map((partner: any) => (
@@ -181,7 +190,6 @@ export default function CreateEngagementForm({ onSuccess }: CreateEngagementForm
               </option>
             ))}
           </select>
-          {errors.partner_id && <p className="text-sm text-destructive">{errors.partner_id}</p>}
         </div>
 
         <div className="space-y-2">
