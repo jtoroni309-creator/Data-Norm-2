@@ -13,7 +13,11 @@
       "Bash(MSYS_NO_PATHCONV=1 az ad sp create-for-rbac:*)",
       "Bash(gh secret set:*)",
       "Bash(gh auth:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(cut:*)",
+      "Bash(az aks get-credentials:*)"
     ],
     "deny": [],
     "ask": []
