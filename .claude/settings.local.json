@@ -38,7 +38,15 @@
       "Bash(az acr repository show-tags:*)",
       "Bash(python -c \"import sys, json; repos = json.load(sys.stdin); missing = [''''eo-insurance-portal'''', ''''tax-engine'''', ''''ai-feedback'''', ''''ai-explainability'''', ''''intelligent-sampling'''', ''''ai-chat'''', ''''advanced-report-generation'''', ''''fraud-detection'''', ''''financial-analysis'''', ''''security'''', ''''training-data'''']; print(''''Missing services:'''', [s for s in missing if f''''aura/{s}'''' not in repos])\")",
       "Bash(findstr:*)",
-      "Bash(az acr login:*)"
+      "Bash(az acr login:*)",
+      "Bash(az acr build:*)",
+      "Bash(az acr task list-runs --registry auraauditaiprodacr --output table --top 5)",
+      "Bash(kubectl rollout:*)",
+      "Bash(\"C:\\Users\\jtoroni\\.azure-kubectl\\kubectl.exe\" rollout restart deployment/analytics -n aura-audit-ai)",
+      "Bash(\"C:\\Users\\jtoroni\\.azure-kubectl\\kubectl.exe\" rollout restart deployment/normalize -n aura-audit-ai)",
+      "Bash(\"C:\\Users\\jtoroni\\.azure-kubectl\\kubectl.exe\" get deployment eo-insurance-portal -n aura-audit-ai)",
+      "Bash(timeout /t 30 /nobreak)",
+      "Bash(az acr task list-runs:*)"
     ],
     "deny": [],
     "ask": []
