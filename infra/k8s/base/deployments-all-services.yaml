@@ -1460,3 +1460,583 @@ spec:
     targetPort: 8000
   selector:
     app: estimates-evaluation
+---
+# AI Feedback Service (Top Priority AI Enhancement #2)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-feedback
+  namespace: aura-audit-ai
+  labels:
+    app: ai-feedback
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-feedback
+  template:
+    metadata:
+      labels:
+        app: ai-feedback
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: ai-feedback
+        image: ${ACR_NAME}.azurecr.io/aura/ai-feedback:${IMAGE_TAG}
+        ports:
+        - containerPort: 8015
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8015
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8015
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-feedback
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8015
+  selector:
+    app: ai-feedback
+---
+# AI Explainability Service (Top Priority AI Enhancement #3)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-explainability
+  namespace: aura-audit-ai
+  labels:
+    app: ai-explainability
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-explainability
+  template:
+    metadata:
+      labels:
+        app: ai-explainability
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: ai-explainability
+        image: ${ACR_NAME}.azurecr.io/aura/ai-explainability:${IMAGE_TAG}
+        ports:
+        - containerPort: 8016
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: openai-api-key
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8016
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8016
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-explainability
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8016
+  selector:
+    app: ai-explainability
+---
+# Intelligent Sampling Service (Top Priority AI Enhancement #4)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intelligent-sampling
+  namespace: aura-audit-ai
+  labels:
+    app: intelligent-sampling
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: intelligent-sampling
+  template:
+    metadata:
+      labels:
+        app: intelligent-sampling
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: intelligent-sampling
+        image: ${ACR_NAME}.azurecr.io/aura/intelligent-sampling:${IMAGE_TAG}
+        ports:
+        - containerPort: 8017
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8017
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: intelligent-sampling
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8017
+  selector:
+    app: intelligent-sampling
+---
+# AI Chat Service (Top Priority AI Enhancement #5)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-chat
+  namespace: aura-audit-ai
+  labels:
+    app: ai-chat
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-chat
+  template:
+    metadata:
+      labels:
+        app: ai-chat
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: ai-chat
+        image: ${ACR_NAME}.azurecr.io/aura/ai-chat:${IMAGE_TAG}
+        ports:
+        - containerPort: 8018
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: openai-api-key
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8018
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8018
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-chat
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8018
+  selector:
+    app: ai-chat
+---
+# Advanced Report Generation Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-report-generation
+  namespace: aura-audit-ai
+  labels:
+    app: advanced-report-generation
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: advanced-report-generation
+  template:
+    metadata:
+      labels:
+        app: advanced-report-generation
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: advanced-report-generation
+        image: ${ACR_NAME}.azurecr.io/aura/advanced-report-generation:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: openai-api-key
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 3Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: advanced-report-generation
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: advanced-report-generation
+---
+# Tax Engine Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-engine
+  namespace: aura-audit-ai
+  labels:
+    app: tax-engine
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tax-engine
+  template:
+    metadata:
+      labels:
+        app: tax-engine
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-engine
+        image: ${ACR_NAME}.azurecr.io/aura/tax-engine:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-engine
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-engine
+---
+# Tax Forms Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-forms
+  namespace: aura-audit-ai
+  labels:
+    app: tax-forms
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tax-forms
+  template:
+    metadata:
+      labels:
+        app: tax-forms
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-forms
+        image: ${ACR_NAME}.azurecr.io/aura/tax-forms:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-forms
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-forms
+---
+# Tax OCR Intake Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-ocr-intake
+  namespace: aura-audit-ai
+  labels:
+    app: tax-ocr-intake
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tax-ocr-intake
+  template:
+    metadata:
+      labels:
+        app: tax-ocr-intake
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-ocr-intake
+        image: ${ACR_NAME}.azurecr.io/aura/tax-ocr-intake:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-ocr-intake
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-ocr-intake
+---
+# Tax Review Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-review
+  namespace: aura-audit-ai
+  labels:
+    app: tax-review
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tax-review
+  template:
+    metadata:
+      labels:
+        app: tax-review
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-review
+        image: ${ACR_NAME}.azurecr.io/aura/tax-review:${IMAGE_TAG}
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-review
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-review
