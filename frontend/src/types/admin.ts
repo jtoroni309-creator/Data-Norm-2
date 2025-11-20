@@ -45,6 +45,7 @@ export enum PlanType {
   PROFESSIONAL = 'professional',
   ENTERPRISE = 'enterprise',
   CUSTOM = 'custom',
+  TRIAL = 'trial',
 }
 
 export enum LicenseStatus {

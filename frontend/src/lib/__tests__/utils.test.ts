@@ -219,11 +219,12 @@ describe('Utility Functions', () => {
       expect(sorted[2].value).toBe(3)
     })
 
-    it('should sort array by key descending', () => {
-      const items = [{ value: 1 }, { value: 3 }, { value: 2 }]
-      const sorted = sortBy(items, 'value', 'desc')
-      expect(sorted[0].value).toBe(3)
-      expect(sorted[2].value).toBe(1)
+    it('should sort array by multiple keys', () => {
+      const items = [{ a: 1, b: 3 }, { a: 2, b: 1 }, { a: 1, b: 2 }]
+      const sorted = sortBy(items, 'a', 'b')
+      expect(sorted[0]).toEqual({ a: 1, b: 2 })
+      expect(sorted[1]).toEqual({ a: 1, b: 3 })
+      expect(sorted[2]).toEqual({ a: 2, b: 1 })
     })
   })
 

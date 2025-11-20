@@ -14,11 +14,15 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatCurrency, formatNumber, formatPercentage } from '@/lib/utils';
+import { CustomerMetrics } from '@/types/admin';
 
 export default function AdminDashboardPage() {
-  const { data: metrics, isLoading } = useQuery({
+  const { data: metrics, isLoading } = useQuery<CustomerMetrics>({
     queryKey: ['admin-metrics'],
-    queryFn: api.admin.metrics.overview,
+    queryFn: async () => {
+      const result = await api.admin.metrics.overview();
+      return result as CustomerMetrics;
+    },
   });
 
   if (isLoading) {

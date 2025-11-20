@@ -49,6 +49,7 @@ export enum EngagementType {
   AUDIT = 'audit',
   REVIEW = 'review',
   COMPILATION = 'compilation',
+  TAX = 'tax',
 }
 
 export enum EngagementStatus {
@@ -57,6 +58,8 @@ export enum EngagementStatus {
   FIELDWORK = 'fieldwork',
   REVIEW = 'review',
   FINALIZED = 'finalized',
+  COMPLETED = 'completed',
+  ARCHIVED = 'archived',
 }
 
 // ========================================

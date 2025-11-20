@@ -57,7 +57,7 @@ export function AIChatInterface({ engagementId }: AIChatInterfaceProps) {
   }, [messages]);
 
   // Send message mutation
-  const sendMessageMutation = useMutation({
+  const sendMessageMutation = useMutation<{ data: { response: string; sources?: string[] } }, unknown, string>({
     mutationFn: async (message: string) => {
       return api.post(`/llm/chat`, {
         engagement_id: engagementId,

@@ -1,6 +1,5 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@/lib/__tests__/test-utils'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import CreateEngagementForm from '../create-engagement-form'
 
 // Mock the API
@@ -22,19 +21,6 @@ jest.mock('sonner', () => ({
   },
 }))
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-  Wrapper.displayName = 'TestWrapper'
-  return Wrapper
-}
 
 describe('CreateEngagementForm', () => {
   const mockOnSuccess = jest.fn()
@@ -45,7 +31,7 @@ describe('CreateEngagementForm', () => {
 
   describe('Form Rendering', () => {
     it('should render all form fields', () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       expect(screen.getByLabelText(/Client Name/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/Engagement Type/i)).toBeInTheDocument()
@@ -56,14 +42,14 @@ describe('CreateEngagementForm', () => {
     })
 
     it('should render submit and cancel buttons', () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       expect(screen.getByText('Create Engagement')).toBeInTheDocument()
       expect(screen.getByText('Cancel')).toBeInTheDocument()
     })
 
     it('should show required indicators', () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const requiredMarkers = screen.getAllByText('*')
       expect(requiredMarkers.length).toBeGreaterThan(0)
@@ -72,7 +58,7 @@ describe('CreateEngagementForm', () => {
 
   describe('Form Validation', () => {
     it('should show error when client name is empty', async () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const submitButton = screen.getByText('Create Engagement')
       fireEvent.click(submitButton)
@@ -83,7 +69,7 @@ describe('CreateEngagementForm', () => {
     })
 
     it('should show error when fiscal year end is empty', async () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const clientNameInput = screen.getByLabelText(/Client Name/i)
       fireEvent.change(clientNameInput, { target: { value: 'ABC Corp' } })
@@ -97,7 +83,7 @@ describe('CreateEngagementForm', () => {
     })
 
     it('should show error when partner is not selected', async () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const clientNameInput = screen.getByLabelText(/Client Name/i)
       fireEvent.change(clientNameInput, { target: { value: 'ABC Corp' } })
@@ -114,7 +100,7 @@ describe('CreateEngagementForm', () => {
     })
 
     it('should clear error when user starts typing', async () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const submitButton = screen.getByText('Create Engagement')
       fireEvent.click(submitButton)
@@ -139,7 +125,7 @@ describe('CreateEngagementForm', () => {
         client_name: 'ABC Corp',
       })
 
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       // Fill in form
       const clientNameInput = screen.getByLabelText(/Client Name/i)
@@ -172,7 +158,7 @@ describe('CreateEngagementForm', () => {
         client_name: 'ABC Corp',
       })
 
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       // Fill in required fields
       const clientNameInput = screen.getByLabelText(/Client Name/i)
@@ -194,7 +180,7 @@ describe('CreateEngagementForm', () => {
     })
 
     it('should not submit form with invalid data', async () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const submitButton = screen.getByText('Create Engagement')
       fireEvent.click(submitButton)
@@ -208,7 +194,7 @@ describe('CreateEngagementForm', () => {
 
   describe('Engagement Type Selection', () => {
     it('should allow selecting different engagement types', () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const typeSelect = screen.getByLabelText(/Engagement Type/i)
 
@@ -228,7 +214,7 @@ describe('CreateEngagementForm', () => {
 
   describe('Cancel Action', () => {
     it('should call onSuccess when cancel button is clicked', () => {
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       const cancelButton = screen.getByText('Cancel')
       fireEvent.click(cancelButton)
@@ -243,7 +229,7 @@ describe('CreateEngagementForm', () => {
         () => new Promise(resolve => setTimeout(resolve, 1000))
       )
 
-      render(<CreateEngagementForm onSuccess={mockOnSuccess} />, { wrapper: createWrapper() })
+      render(<CreateEngagementForm onSuccess={mockOnSuccess} />)
 
       // Fill in required fields
       const clientNameInput = screen.getByLabelText(/Client Name/i)

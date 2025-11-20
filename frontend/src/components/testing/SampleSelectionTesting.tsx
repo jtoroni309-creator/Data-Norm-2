@@ -65,7 +65,7 @@ export function SampleSelectionTesting({ engagementId }: SampleSelectionTestingP
     queryKey: ['trial-balance', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/trial-balance`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
@@ -74,7 +74,7 @@ export function SampleSelectionTesting({ engagementId }: SampleSelectionTestingP
     queryKey: ['samples', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/samples`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
@@ -84,7 +84,7 @@ export function SampleSelectionTesting({ engagementId }: SampleSelectionTestingP
     queryFn: async () => {
       if (!viewingSample) return [];
       const response = await api.get(`/engagements/${engagementId}/samples/${viewingSample.id}/results`);
-      return response.data;
+      return (response as any).data;
     },
     enabled: !!viewingSample,
   });

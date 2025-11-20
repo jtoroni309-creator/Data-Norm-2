@@ -2,6 +2,7 @@ import React, { ReactElement } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/providers/theme-provider'
+import { UserRole } from '@/types'
 
 // Create a custom render function that includes providers
 const createTestQueryClient = () =>
@@ -9,7 +10,7 @@ const createTestQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
+        gcTime: 0,
       },
       mutations: {
         retry: false,
@@ -46,7 +47,7 @@ export const mockUser = {
   id: 'user-1',
   email: 'test@example.com',
   full_name: 'Test User',
-  role: 'partner' as const,
+  role: UserRole.PARTNER,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 }

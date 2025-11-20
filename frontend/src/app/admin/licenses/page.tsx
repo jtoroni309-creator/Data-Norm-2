@@ -26,7 +26,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { License, LicenseStatus, PlanType } from '@/types/admin';
+import { License, LicenseStatus, PlanType, BillingCycle } from '@/types/admin';
 import { formatDate, formatCurrency, formatNumber } from '@/lib/utils';
 
 export default function LicensesPage() {
@@ -136,7 +136,7 @@ export default function LicensesPage() {
       start_date: '2024-03-15',
       end_date: '2025-03-15',
       auto_renew: true,
-      billing_cycle: 'annually',
+      billing_cycle: BillingCycle.ANNUALLY,
       price_per_month: 800,
       created_at: '2024-03-15T00:00:00Z',
       updated_at: '2024-11-05T00:00:00Z',

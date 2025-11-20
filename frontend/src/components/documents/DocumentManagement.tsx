@@ -51,12 +51,12 @@ export function DocumentManagement({ engagementId }: DocumentManagementProps) {
   const queryClient = useQueryClient();
 
   // Fetch documents
-  const { data: documents = [], isLoading, refetch } = useQuery({
+  const { data: documents = [], isLoading, refetch } = useQuery<Document[]>({
     queryKey: ['documents', engagementId, selectedCategory],
     queryFn: async () => {
       const params = selectedCategory !== 'all' ? `?category=${selectedCategory}` : '';
       const response = await api.get(`/engagements/${engagementId}/documents${params}`);
-      return response.data;
+      return (response as any).data as Document[];
     },
   });
 
@@ -92,7 +92,7 @@ export function DocumentManagement({ engagementId }: DocumentManagementProps) {
   });
 
   // Download document mutation
-  const downloadMutation = useMutation({
+  const downloadMutation = useMutation<{ data: Blob }, unknown, string>({
     mutationFn: async (documentId: string) => {
       return api.get(`/engagements/${engagementId}/documents/${documentId}/download`, {
         responseType: 'blob',
@@ -101,10 +101,10 @@ export function DocumentManagement({ engagementId }: DocumentManagementProps) {
     onSuccess: (response, documentId) => {
       const document = documents.find((d: Document) => d.id === documentId);
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.setAttribute('download', document?.file_name || 'document');
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
@@ -222,14 +222,12 @@ export function DocumentManagement({ engagementId }: DocumentManagementProps) {
               className="hidden"
               disabled={uploadMutation.isPending}
             />
-            <Button
-              as="span"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center gap-2 cursor-pointer"
-              disabled={uploadMutation.isPending}
+            <span
+              className={`inline-flex h-10 items-center justify-center rounded-md bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-medium text-white ring-offset-background transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 gap-2 cursor-pointer ${uploadMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}
             >
               <Upload className="w-4 h-4" />
               {uploadMutation.isPending ? 'Uploading...' : 'Upload Documents'}
-            </Button>
+            </span>
           </label>
         </div>
       </div>

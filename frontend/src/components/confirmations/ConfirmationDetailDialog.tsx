@@ -93,7 +93,7 @@ export function ConfirmationDetailDialog({
   });
 
   // Generate PDF mutation
-  const generatePdfMutation = useMutation({
+  const generatePdfMutation = useMutation<{ data: Blob }, unknown, void>({
     mutationFn: () =>
       api.get(`/engagements/${engagementId}/confirmations/${confirmation.id}/generate-pdf`, {
         responseType: 'blob',
@@ -101,10 +101,10 @@ export function ConfirmationDetailDialog({
     onSuccess: (response) => {
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.setAttribute('download', `confirmation-${confirmation.entity_name.replace(/\s+/g, '-')}.pdf`);
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);

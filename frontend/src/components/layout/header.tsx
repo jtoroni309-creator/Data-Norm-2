@@ -6,16 +6,18 @@ import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { getInitials } from '@/lib/utils';
+import type { User as UserType } from '@/types';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
+  const typedUser = user as UserType | null;
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
       {/* Left side - could add breadcrumbs here */}
       <div className="flex-1">
-        <h2 className="text-xl font-semibold">Welcome back, {user?.full_name?.split(' ')[0] || 'User'}!</h2>
+        <h2 className="text-xl font-semibold">Welcome back, {typedUser?.full_name?.split(' ')[0] || 'User'}!</h2>
       </div>
 
       {/* Right side - actions */}
@@ -38,14 +40,14 @@ export function Header() {
         {/* User Menu */}
         <div className="flex items-center space-x-3">
           <div className="hidden text-right md:block">
-            <p className="text-sm font-medium">{user?.full_name || 'User'}</p>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <p className="text-sm font-medium">{typedUser?.full_name || 'User'}</p>
+            <p className="text-xs text-muted-foreground">{typedUser?.email}</p>
           </div>
 
           <div className="relative group">
             <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent transition-all group-hover:ring-primary">
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(user?.full_name || 'User')}
+                {getInitials(typedUser?.full_name || 'User')}
               </AvatarFallback>
             </Avatar>
 

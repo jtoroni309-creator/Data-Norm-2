@@ -49,7 +49,7 @@ export function WorkpaperGenerator({ engagementId }: WorkpaperGeneratorProps) {
     queryKey: ['engagement', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
@@ -58,7 +58,7 @@ export function WorkpaperGenerator({ engagementId }: WorkpaperGeneratorProps) {
     queryKey: ['workpapers', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/workpapers`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
@@ -67,12 +67,12 @@ export function WorkpaperGenerator({ engagementId }: WorkpaperGeneratorProps) {
     queryKey: ['trial-balance', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/trial-balance`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
   // Generate workpaper mutation
-  const generateMutation = useMutation({
+  const generateMutation = useMutation<{ data: any }, unknown, { type: string; account: string }>({
     mutationFn: async (data: { type: string; account: string }) => {
       return api.post(`/engagements/${engagementId}/workpapers/generate`, data);
     },
@@ -101,7 +101,7 @@ export function WorkpaperGenerator({ engagementId }: WorkpaperGeneratorProps) {
   });
 
   // Download workpaper mutation
-  const downloadMutation = useMutation({
+  const downloadMutation = useMutation<{ data: Blob }, unknown, string>({
     mutationFn: async (workpaperId: string) => {
       return api.get(`/engagements/${engagementId}/workpapers/${workpaperId}/download`, {
         responseType: 'blob',
@@ -110,10 +110,10 @@ export function WorkpaperGenerator({ engagementId }: WorkpaperGeneratorProps) {
     onSuccess: (response, workpaperId) => {
       const workpaper = workpapers.find((w: Workpaper) => w.id === workpaperId);
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.setAttribute('download', `${workpaper?.title || 'workpaper'}.xlsx`);
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);

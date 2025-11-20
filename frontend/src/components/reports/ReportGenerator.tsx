@@ -44,7 +44,7 @@ export function ReportGenerator({ engagementId }: ReportGeneratorProps) {
     queryKey: ['engagement', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
@@ -53,12 +53,12 @@ export function ReportGenerator({ engagementId }: ReportGeneratorProps) {
     queryKey: ['reports', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/reports`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
   // Generate report mutation
-  const generateMutation = useMutation({
+  const generateMutation = useMutation<{ data: any }, unknown, string>({
     mutationFn: async (reportType: string) => {
       return api.post(`/engagements/${engagementId}/reports/generate`, {
         report_type: reportType,
@@ -75,7 +75,7 @@ export function ReportGenerator({ engagementId }: ReportGeneratorProps) {
   });
 
   // Download report mutation
-  const downloadMutation = useMutation({
+  const downloadMutation = useMutation<{ data: Blob }, unknown, string>({
     mutationFn: async (reportId: string) => {
       return api.get(`/engagements/${engagementId}/reports/${reportId}/download`, {
         responseType: 'blob',
@@ -84,10 +84,10 @@ export function ReportGenerator({ engagementId }: ReportGeneratorProps) {
     onSuccess: (response, reportId) => {
       const report = reports.find((r: Report) => r.id === reportId);
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.setAttribute('download', `${report?.title || 'report'}.pdf`);
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);

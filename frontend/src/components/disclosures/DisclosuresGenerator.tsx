@@ -42,25 +42,25 @@ export function DisclosuresGenerator({ engagementId }: DisclosuresGeneratorProps
   const [previewDisclosure, setPreviewDisclosure] = useState<Disclosure | null>(null);
 
   // Fetch engagement data
-  const { data: engagement } = useQuery({
+  const { data: engagement } = useQuery<any>({
     queryKey: ['engagement', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
   // Fetch existing disclosures
-  const { data: disclosures = [], isLoading, refetch } = useQuery({
+  const { data: disclosures = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ['disclosures', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/disclosures`);
-      return response.data;
+      return (response as any).data as any[];
     },
   });
 
   // Generate disclosure mutation
-  const generateMutation = useMutation({
+  const generateMutation = useMutation<{ data: Disclosure }, unknown, string>({
     mutationFn: async (standard: string) => {
       return api.post(`/engagements/${engagementId}/disclosures/generate`, {
         standard,

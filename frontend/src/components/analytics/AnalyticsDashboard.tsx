@@ -18,36 +18,43 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
+import { Engagement } from '@/types';
 
 interface AnalyticsDashboardProps {
   engagementId: string;
 }
 
+interface TrialBalanceItem {
+  account_type: string;
+  balance: number;
+  [key: string]: any;
+}
+
 export function AnalyticsDashboard({ engagementId }: AnalyticsDashboardProps) {
   // Fetch engagement data
-  const { data: engagement } = useQuery({
+  const { data: engagement } = useQuery<Engagement>({
     queryKey: ['engagement', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}`);
-      return response.data;
+      return (response as any).data as Engagement;
     },
   });
 
   // Fetch analytics data
-  const { data: analytics, isLoading, refetch } = useQuery({
+  const { data: analytics, isLoading, refetch } = useQuery<any>({
     queryKey: ['analytics', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/analytics`);
-      return response.data;
+      return (response as any).data;
     },
   });
 
   // Fetch trial balance
-  const { data: trialBalance = [] } = useQuery({
+  const { data: trialBalance = [] } = useQuery<TrialBalanceItem[]>({
     queryKey: ['trial-balance', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/trial-balance`);
-      return response.data;
+      return (response as any).data as TrialBalanceItem[];
     },
   });
 

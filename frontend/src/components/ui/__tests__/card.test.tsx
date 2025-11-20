@@ -115,9 +115,9 @@ describe('Card Components', () => {
         </Card>
       )
 
-      const card = container.querySelector('[data-testid="card"]')
-      const header = container.querySelector('[data-testid="header"]')
-      const content = container.querySelector('[data-testid="content"]')
+      const card = container.querySelector('[data-testid="card"]') as HTMLElement
+      const header = container.querySelector('[data-testid="header"]') as HTMLElement
+      const content = container.querySelector('[data-testid="content"]') as HTMLElement
 
       expect(card).toContainElement(header)
       expect(card).toContainElement(content)

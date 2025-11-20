@@ -55,11 +55,11 @@ export function ConfirmationsList({ engagementId }: ConfirmationsListProps) {
   const queryClient = useQueryClient();
 
   // Fetch confirmations
-  const { data: confirmations = [], isLoading } = useQuery({
+  const { data: confirmations = [], isLoading } = useQuery<any[]>({
     queryKey: ['confirmations', engagementId],
     queryFn: async () => {
       const response = await api.get(`/engagements/${engagementId}/confirmations`);
-      return response.data;
+      return (response as any).data as any[];
     },
   });
 

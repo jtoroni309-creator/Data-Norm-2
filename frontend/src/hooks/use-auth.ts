@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
+import { AuthResponse, User } from '@/types';
 
 // Type for API error responses
 interface ApiErrorResponse {
@@ -28,12 +29,12 @@ export function useAuth() {
   const { user, token, isAuthenticated, login, logout, setLoading } = useAuthStore();
 
   // Login mutation
-  const loginMutation = useMutation({
+  const loginMutation = useMutation<AuthResponse, unknown, { email: string; password: string }>({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
       setLoading(true);
       try {
         const response = await api.auth.login({ email, password });
-        return response;
+        return response as AuthResponse;
       } finally {
         setLoading(false);
       }
@@ -49,12 +50,12 @@ export function useAuth() {
   });
 
   // Register mutation
-  const registerMutation = useMutation({
+  const registerMutation = useMutation<AuthResponse, unknown, { email: string; password: string; full_name: string }>({
     mutationFn: async ({ email, password, full_name }: { email: string; password: string; full_name: string }) => {
       setLoading(true);
       try {
         const response = await api.auth.register({ email, password, full_name });
-        return response;
+        return response as AuthResponse;
       } finally {
         setLoading(false);
       }
@@ -83,9 +84,12 @@ export function useAuth() {
   };
 
   // Get current user
-  const { data: currentUser, isLoading: isLoadingUser } = useQuery({
+  const { data: currentUser, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ['currentUser'],
-    queryFn: () => api.auth.me(),
+    queryFn: async () => {
+      const result = await api.auth.me();
+      return result as User;
+    },
     enabled: isAuthenticated && !!token,
     retry: false,
   });

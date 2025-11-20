@@ -1,6 +1,5 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@/lib/__tests__/test-utils'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import EngagementsPage from '../page'
 import { mockEngagement } from '@/lib/__tests__/test-utils'
 
@@ -18,20 +17,6 @@ jest.mock('@/lib/api', () => ({
 
 import { api } from '@/lib/api'
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-  Wrapper.displayName = 'TestWrapper'
-  return Wrapper
-}
-
 describe('EngagementsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -43,7 +28,7 @@ describe('EngagementsPage', () => {
         () => new Promise(() => {}) // Never resolves
       )
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       expect(screen.getByRole('heading', { name: 'Engagements' })).toBeInTheDocument()
     })
@@ -53,7 +38,7 @@ describe('EngagementsPage', () => {
     it('should show empty state when no engagements exist', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue([])
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         expect(screen.getByText('No engagements found')).toBeInTheDocument()
@@ -63,7 +48,7 @@ describe('EngagementsPage', () => {
     it('should show create button in empty state', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue([])
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         const createButtons = screen.getAllByText(/Create Engagement/i)
@@ -82,7 +67,7 @@ describe('EngagementsPage', () => {
     it('should render list of engagements', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue(mockEngagements)
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         expect(screen.getByText('ABC Corp')).toBeInTheDocument()
@@ -94,7 +79,7 @@ describe('EngagementsPage', () => {
     it('should show correct stats', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue(mockEngagements)
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         expect(screen.getByText('3')).toBeInTheDocument() // Total
@@ -112,7 +97,7 @@ describe('EngagementsPage', () => {
     it('should filter engagements by search query', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue(mockEngagements)
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         expect(screen.getByText('ABC Corp')).toBeInTheDocument()
@@ -130,7 +115,7 @@ describe('EngagementsPage', () => {
     it('should show empty state when search has no results', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue(mockEngagements)
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         expect(screen.getByText('ABC Corp')).toBeInTheDocument()
@@ -154,7 +139,7 @@ describe('EngagementsPage', () => {
     it('should filter engagements by status', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue(mockEngagements)
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         expect(screen.getByText('ABC Corp')).toBeInTheDocument()
@@ -177,7 +162,7 @@ describe('EngagementsPage', () => {
     it('should open create dialog when clicking new engagement button', async () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue([])
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         const newEngagementButton = screen.getAllByText(/New Engagement/i)[0]
@@ -194,7 +179,7 @@ describe('EngagementsPage', () => {
     it('should render page title and description', () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue([])
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       expect(screen.getByText('Engagements')).toBeInTheDocument()
       expect(screen.getByText('Manage your audit engagements and client work')).toBeInTheDocument()
@@ -203,7 +188,7 @@ describe('EngagementsPage', () => {
     it('should render new engagement button', () => {
       ;(api.engagements.list as jest.Mock).mockResolvedValue([])
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       const newButton = screen.getAllByText(/New Engagement/i)[0]
       expect(newButton).toBeInTheDocument()
@@ -215,7 +200,7 @@ describe('EngagementsPage', () => {
       const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
       ;(api.engagements.list as jest.Mock).mockRejectedValue(new Error('API Error'))
 
-      render(<EngagementsPage />, { wrapper: createWrapper() })
+      render(<EngagementsPage />)
 
       await waitFor(() => {
         // Should still render the page structure

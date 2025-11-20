@@ -17,7 +17,10 @@
       "Bash(npm install:*)",
       "Bash(find:*)",
       "Bash(cut:*)",
-      "Bash(az aks get-credentials:*)"
+      "Bash(az aks get-credentials:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
