@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Menu, X, ChevronDown } from 'lucide-react'
 
 const Navigation = () => {
@@ -27,13 +28,15 @@ const Navigation = () => {
       <div className="section-container">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-accent-600 rounded-lg flex items-center justify-center transform group-hover:scale-110 transition-transform">
-              <span className="text-white font-bold text-xl">A</span>
-            </div>
-            <span className="text-2xl font-display font-bold gradient-text">
-              Aura Audit AI
-            </span>
+          <Link href="/" className="flex items-center group">
+            <Image
+              src="/logo.svg"
+              alt="Aura Audit AI"
+              width={150}
+              height={45}
+              className="transform group-hover:scale-105 transition-transform"
+              priority
+            />
           </Link>
 
           {/* Desktop Navigation */}
