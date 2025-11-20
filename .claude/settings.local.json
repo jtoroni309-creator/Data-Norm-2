@@ -24,7 +24,21 @@
       "Bash(cd:*)",
       "Bash(for dir in services/*/)",
       "Bash(do [ ! -f \"$dir/Dockerfile\" ])",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(kubectl config current-context:*)",
+      "Bash(az aks list:*)",
+      "Bash(az aks install-cli:*)",
+      "Bash(az resource list:*)",
+      "Bash(az ml workspace:*)",
+      "Bash(\"C:\\Users\\jtoroni\\.azure-kubectl\\kubectl.exe\" get pods -n aura-audit-ai)",
+      "Bash(\"C:\\Users\\jtoroni\\.azure-kubelogin\\kubelogin.exe\" convert-kubeconfig -l azurecli)",
+      "Bash(az aks command invoke:*)",
+      "Bash(az acr repository list:*)",
+      "Bash(az aks nodepool list:*)",
+      "Bash(az acr repository show-tags:*)",
+      "Bash(python -c \"import sys, json; repos = json.load(sys.stdin); missing = [''''eo-insurance-portal'''', ''''tax-engine'''', ''''ai-feedback'''', ''''ai-explainability'''', ''''intelligent-sampling'''', ''''ai-chat'''', ''''advanced-report-generation'''', ''''fraud-detection'''', ''''financial-analysis'''', ''''security'''', ''''training-data'''']; print(''''Missing services:'''', [s for s in missing if f''''aura/{s}'''' not in repos])\")",
+      "Bash(findstr:*)",
+      "Bash(az acr login:*)"
     ],
     "deny": [],
     "ask": []
