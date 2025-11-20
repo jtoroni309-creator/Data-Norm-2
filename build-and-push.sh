@@ -7,6 +7,7 @@ IMAGE_TAG="bb863fb-20251111-181127"
 
 # Core services to build
 SERVICES=(
+  # Core Services
   "identity"
   "gateway"
   "llm"
@@ -18,20 +19,35 @@ SERVICES=(
   "disclosures"
   "qc"
   "connectors"
-  "reg-ab-audit"
+  # "reg-ab-audit"  # DISABLED - dependency conflicts
+  # Audit Services
   "audit-planning"
+  "sampling"
+  "related-party"
+  "subsequent-events"
+  "substantive-testing"
+  "estimates-evaluation"
+  # Integration Services
   "accounting-integrations"
+  # Financial Services
   "data-anonymization"
   "financial-analysis"
   "fraud-detection"
-  "related-party"
-  "sampling"
+  # Support Services
   "security"
-  "subsequent-events"
-  "substantive-testing"
   "training-data"
   "eo-insurance-portal"
-  "estimates-evaluation"
+  # AI/ML Services
+  "ai-feedback"
+  "ai-explainability"
+  "intelligent-sampling"
+  "ai-chat"
+  "advanced-report-generation"
+  # Tax Services
+  "tax-engine"
+  "tax-forms"
+  "tax-ocr-intake"
+  "tax-review"
 )
 
 echo "Building and pushing Docker images to ACR..."
