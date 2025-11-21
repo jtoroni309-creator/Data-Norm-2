@@ -9,16 +9,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy shared service client library
-COPY lib/service_client /tmp/service_client
-RUN pip install --no-cache-dir /tmp/service_client && rm -rf /tmp/service_client
-
 # Copy requirements
-COPY services/engagement/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY services/engagement/app /app
+COPY ./app /app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

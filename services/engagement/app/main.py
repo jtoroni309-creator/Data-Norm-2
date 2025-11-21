@@ -166,6 +166,9 @@ async def create_engagement(
     - Assigns creator as team member
     - Enforces RLS (engagement-level isolation)
     """
+    # Set RLS context
+    await set_rls_context(db, current_user_id)
+
     # Create engagement
     new_engagement = Engagement(
         client_id=engagement_data.client_id,
