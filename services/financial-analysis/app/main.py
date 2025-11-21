@@ -28,7 +28,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .config import settings
 from .database import engine, Base, AsyncSessionLocal
-from .permission_middleware import PermissionMiddleware
 
 # Import routers
 from .client_portal_api import router as client_router
@@ -152,9 +151,6 @@ try:
     logger.info("Security middleware enabled (SOC 2 compliant)")
 except ImportError as e:
     logger.warning(f"Security middleware not available: {e}")
-
-# Permission Middleware (for RBAC enforcement)
-app.add_middleware(PermissionMiddleware)
 
 
 # ============================================================================
