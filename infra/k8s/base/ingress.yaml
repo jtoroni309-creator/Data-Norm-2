@@ -103,7 +103,7 @@ spec:
             port:
               number: 80
 ---
-# Client Portal Ingress (CPA Portal)
+# Client Portal Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -121,7 +121,7 @@ spec:
   tls:
   - hosts:
     - portal.auraai.toroniandcompany.com
-    - cpa.auraai.toroniandcompany.com
+    - client.auraai.toroniandcompany.com
     secretName: aura-client-tls-cert
   rules:
   - host: portal.auraai.toroniandcompany.com
@@ -134,6 +134,37 @@ spec:
             name: client-portal
             port:
               number: 80
+  - host: client.auraai.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-portal
+            port:
+              number: 80
+---
+# CPA Firm Portal Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aura-cpa-ingress
+  namespace: aura-audit-ai
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  labels:
+    app.kubernetes.io/name: aura-audit-ai
+    app.kubernetes.io/component: cpa
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - cpa.auraai.toroniandcompany.com
+    secretName: aura-cpa-tls-cert
+  rules:
   - host: cpa.auraai.toroniandcompany.com
     http:
       paths:
