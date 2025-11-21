@@ -25,6 +25,7 @@ from .models import (
     ManagementAssertion, SystemDescription, Report, Signature, Approval,
     WorkflowTask, AuditTrail, TSCCategory, TestType, TestStatus
 )
+from .pentest_routes import router as pentest_router
 
 # Configure logging
 logging.basicConfig(
@@ -73,6 +74,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(pentest_router, prefix="/api/v1", tags=["Penetration Testing"])
 
 
 # ============================================================================
