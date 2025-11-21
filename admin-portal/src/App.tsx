@@ -11,15 +11,17 @@ import {
   LogOut,
   Bell,
   Search,
+  Building2,
 } from 'lucide-react';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserManagement } from './components/UserManagement';
+import { FirmManagement } from './components/FirmManagement';
 import { SystemAnalytics } from './components/SystemAnalytics';
 import { SystemSettings } from './components/SystemSettings';
 import { TicketManagement } from './components/TicketManagement';
 import { authAPI } from './services/api';
 
-type Page = 'dashboard' | 'users' | 'analytics' | 'tickets' | 'settings';
+type Page = 'dashboard' | 'users' | 'firms' | 'analytics' | 'tickets' | 'settings';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -28,6 +30,7 @@ function App() {
   const navigation = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'users' as const, label: 'User Management', icon: Users },
+    { id: 'firms' as const, label: 'CPA Firms', icon: Building2 },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
     { id: 'tickets' as const, label: 'Support Tickets', icon: Ticket },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
@@ -49,6 +52,8 @@ function App() {
         return <AdminDashboard />;
       case 'users':
         return <UserManagement />;
+      case 'firms':
+        return <FirmManagement />;
       case 'analytics':
         return <SystemAnalytics />;
       case 'tickets':
