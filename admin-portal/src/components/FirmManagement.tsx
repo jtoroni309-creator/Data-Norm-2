@@ -540,4 +540,5 @@ const FirmManagement: React.FC = () => {
   );
 };
 
+export { FirmManagement };
 export default FirmManagement;
