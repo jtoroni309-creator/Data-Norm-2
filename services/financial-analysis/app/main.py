@@ -27,7 +27,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import settings
-from .database import engine, Base, AsyncSessionLocal as async_session
+from .database import engine, Base, AsyncSessionLocal
 from .permission_middleware import PermissionMiddleware
 
 # Import routers
@@ -254,7 +254,7 @@ async def readiness_check():
     Readiness check - verifies database connectivity.
     """
     try:
-        async with async_session() as session:
+        async with AsyncSessionLocal() as session:
             await session.execute("SELECT 1")
         return {
             "status": "ready",
