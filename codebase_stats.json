@@ -1,0 +1,207 @@
+{
+  "by_language": {
+    "Markdown": {
+      "files": 134,
+      "total_lines": 68855,
+      "code_lines": 53671,
+      "comment_lines": 0,
+      "blank_lines": 15184
+    },
+    "JSON": {
+      "files": 17,
+      "total_lines": 561,
+      "code_lines": 555,
+      "comment_lines": 0,
+      "blank_lines": 6
+    },
+    "YAML": {
+      "files": 32,
+      "total_lines": 6173,
+      "code_lines": 5608,
+      "comment_lines": 305,
+      "blank_lines": 260
+    },
+    "TOML": {
+      "files": 1,
+      "total_lines": 177,
+      "code_lines": 162,
+      "comment_lines": 0,
+      "blank_lines": 15
+    },
+    "Python": {
+      "files": 326,
+      "total_lines": 99963,
+      "code_lines": 60457,
+      "comment_lines": 21875,
+      "blank_lines": 17631
+    },
+    "Shell": {
+      "files": 11,
+      "total_lines": 2517,
+      "code_lines": 1789,
+      "comment_lines": 340,
+      "blank_lines": 388
+    },
+    "TypeScript": {
+      "files": 31,
+      "total_lines": 4599,
+      "code_lines": 3464,
+      "comment_lines": 548,
+      "blank_lines": 587
+    },
+    "Dockerfile": {
+      "files": 36,
+      "total_lines": 975,
+      "code_lines": 711,
+      "comment_lines": 0,
+      "blank_lines": 264
+    },
+    "Text": {
+      "files": 33,
+      "total_lines": 890,
+      "code_lines": 778,
+      "comment_lines": 0,
+      "blank_lines": 112
+    },
+    "HTML": {
+      "files": 3,
+      "total_lines": 38,
+      "code_lines": 38,
+      "comment_lines": 0,
+      "blank_lines": 0
+    },
+    "TypeScript JSX": {
+      "files": 96,
+      "total_lines": 25057,
+      "code_lines": 23140,
+      "comment_lines": 216,
+      "blank_lines": 1701
+    },
+    "CSS": {
+      "files": 5,
+      "total_lines": 1084,
+      "code_lines": 902,
+      "comment_lines": 0,
+      "blank_lines": 182
+    },
+    "SQL": {
+      "files": 17,
+      "total_lines": 10602,
+      "code_lines": 8696,
+      "comment_lines": 0,
+      "blank_lines": 1906
+    },
+    "Docker": {
+      "files": 2,
+      "total_lines": 33,
+      "code_lines": 33,
+      "comment_lines": 0,
+      "blank_lines": 0
+    },
+    "JavaScript": {
+      "files": 7,
+      "total_lines": 517,
+      "code_lines": 491,
+      "comment_lines": 15,
+      "blank_lines": 11
+    }
+  },
+  "by_directory": {
+    "root": {
+      "files": 93,
+      "total_lines": 47516,
+      "code_lines": 36778
+    },
+    "tests": {
+      "files": 15,
+      "total_lines": 3224,
+      "code_lines": 2004
+    },
+    "services": {
+      "files": 401,
+      "total_lines": 106338,
+      "code_lines": 67692
+    },
+    "db": {
+      "files": 3,
+      "total_lines": 2396,
+      "code_lines": 2018
+    },
+    "docs": {
+      "files": 3,
+      "total_lines": 1786,
+      "code_lines": 1406
+    },
+    "admin-portal": {
+      "files": 24,
+      "total_lines": 6001,
+      "code_lines": 5315
+    },
+    "frontend": {
+      "files": 80,
+      "total_lines": 17634,
+      "code_lines": 15703
+    },
+    "database": {
+      "files": 14,
+      "total_lines": 9008,
+      "code_lines": 7119
+    },
+    "azure-ai-ml": {
+      "files": 14,
+      "total_lines": 5379,
+      "code_lines": 3360
+    },
+    "marketing-site": {
+      "files": 28,
+      "total_lines": 5635,
+      "code_lines": 5039
+    },
+    "client-portal": {
+      "files": 28,
+      "total_lines": 7538,
+      "code_lines": 6624
+    },
+    "scripts": {
+      "files": 11,
+      "total_lines": 3345,
+      "code_lines": 2031
+    },
+    "infra": {
+      "files": 18,
+      "total_lines": 3623,
+      "code_lines": 3377
+    },
+    ".claude": {
+      "files": 1,
+      "total_lines": 54,
+      "code_lines": 54
+    },
+    ".github": {
+      "files": 1,
+      "total_lines": 54,
+      "code_lines": 43
+    },
+    "lib": {
+      "files": 8,
+      "total_lines": 961,
+      "code_lines": 610
+    },
+    "openapi": {
+      "files": 2,
+      "total_lines": 967,
+      "code_lines": 869
+    },
+    "observability": {
+      "files": 7,
+      "total_lines": 582,
+      "code_lines": 453
+    }
+  },
+  "total_files": 751,
+  "total_dirs": 245,
+  "total_lines": 222041,
+  "total_code_lines": 160495,
+  "total_comment_lines": 23299,
+  "total_blank_lines": 38247
+}
