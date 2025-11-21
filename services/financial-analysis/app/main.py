@@ -27,7 +27,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import settings
-from .database import engine, Base, async_session
+from .database import engine, Base, AsyncSessionLocal as async_session
 from .permission_middleware import PermissionMiddleware
 
 # Import routers
