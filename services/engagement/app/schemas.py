@@ -31,7 +31,8 @@ class HealthResponse(BaseModel):
 
 class EngagementCreate(BaseModel):
     """Create new engagement"""
-    client_id: UUID
+    client_id: Optional[UUID] = None
+    client_name: Optional[str] = Field(None, min_length=1, max_length=500)
     name: str = Field(..., min_length=1, max_length=500)
     engagement_type: EngagementType
     fiscal_year_end: date

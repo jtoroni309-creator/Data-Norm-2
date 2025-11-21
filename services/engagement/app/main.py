@@ -169,9 +169,22 @@ async def create_engagement(
     # Set RLS context
     await set_rls_context(db, current_user_id)
 
+    # Handle client_id - accept either UUID or client name
+    client_id = engagement_data.client_id
+    if not client_id and engagement_data.client_name:
+        # Generate deterministic UUID from client name
+        import uuid
+        client_id = uuid.uuid5(uuid.NAMESPACE_DNS, engagement_data.client_name.lower().strip())
+        logger.info(f"Generated client_id {client_id} from client name: {engagement_data.client_name}")
+    elif not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either client_id or client_name must be provided"
+        )
+
     # Create engagement
     new_engagement = Engagement(
-        client_id=engagement_data.client_id,
+        client_id=client_id,
         name=engagement_data.name,
         engagement_type=engagement_data.engagement_type,
         status=EngagementStatus.DRAFT,
