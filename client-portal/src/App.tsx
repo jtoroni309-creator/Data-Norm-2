@@ -24,6 +24,7 @@ import {
 
 // Pages
 import { LoginPage } from './pages/LoginPage';
+import { HomePage } from './pages/HomePage';
 import FirmDashboard from './pages/FirmDashboard';
 import FirmSettings from './pages/FirmSettings';
 import EmployeeManagement from './pages/EmployeeManagement';
@@ -361,9 +362,11 @@ const App: React.FC = () => {
         <Route path="/client/documents" element={<RouteGuard portalType="client"><DocumentsPage /></RouteGuard>} />
         <Route path="/client/integrations" element={<RouteGuard portalType="client"><IntegrationsPage /></RouteGuard>} />
 
-        {/* Default redirect - route based on subdomain */}
-        <Route path="/" element={<SmartRedirect />} />
-        <Route path="*" element={<SmartRedirect />} />
+        {/* Landing Page - Microsoft Fluent Design */}
+        <Route path="/" element={<HomePage />} />
+
+        {/* Fallback - redirect to home */}
+        <Route path="*" element={<HomePage />} />
       </Routes>
     </BrowserRouter>
   );
