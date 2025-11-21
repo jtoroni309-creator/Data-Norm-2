@@ -111,45 +111,62 @@ class TokenPayload(BaseModel):
 # ========================================
 
 class OrganizationBase(BaseModel):
-    """Base organization fields"""
-    name: str = Field(..., min_length=1, max_length=200)
-    tax_id: Optional[str] = None
-    industry_code: Optional[str] = None
+    """Base organization/firm fields"""
+    firm_name: str = Field(..., min_length=1, max_length=200)
+    legal_name: Optional[str] = None
+    ein: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_email: EmailStr
+    primary_contact_phone: Optional[str] = None
 
 
 class OrganizationCreate(OrganizationBase):
     """Organization creation request"""
-    pass
+    subscription_tier: Optional[str] = Field(default="professional", pattern="^(starter|professional|enterprise)$")
+    subscription_status: Optional[str] = Field(default="active", pattern="^(active|trial|suspended|cancelled)$")
+    max_users: Optional[int] = Field(default=10, ge=1, le=1000)
 
 
 class OrganizationUpdate(BaseModel):
     """Organization update request"""
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    tax_id: Optional[str] = None
-    industry_code: Optional[str] = None
+    firm_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    legal_name: Optional[str] = None
+    ein: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_email: Optional[EmailStr] = None
+    primary_contact_phone: Optional[str] = None
     logo_url: Optional[str] = None
     primary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     secondary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    website: Optional[str] = None
-    timezone: Optional[str] = None
-    date_format: Optional[str] = None
+    require_two_factor_auth: Optional[bool] = None
+    session_timeout_minutes: Optional[str] = None
+    subscription_tier: Optional[str] = Field(None, pattern="^(starter|professional|enterprise)$")
+    subscription_status: Optional[str] = Field(None, pattern="^(active|trial|suspended|cancelled)$")
+    max_users: Optional[int] = Field(None, ge=1, le=1000)
+    enabled_services: Optional[dict] = None
 
 
-class OrganizationResponse(OrganizationBase):
+class OrganizationResponse(BaseModel):
     """Organization response"""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    firm_name: str
+    legal_name: Optional[str] = None
+    ein: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_email: str
+    primary_contact_phone: Optional[str] = None
     logo_url: Optional[str] = None
-    primary_color: str
-    secondary_color: str
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    website: Optional[str] = None
-    timezone: str
-    date_format: str
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    require_two_factor_auth: bool
+    session_timeout_minutes: Optional[str] = None
+    subscription_tier: str
+    subscription_status: str
+    max_users: int
+    enabled_services: Optional[dict] = None
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 

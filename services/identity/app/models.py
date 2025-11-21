@@ -11,9 +11,10 @@ from sqlalchemy import (
     ForeignKey,
     Text,
     Enum as SQLEnum,
+    Integer,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID, INET
+from sqlalchemy.dialects.postgresql import UUID as PGUUID, INET, JSONB
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -52,6 +53,12 @@ class Organization(Base):
     # Settings
     require_two_factor_auth = Column(Boolean, default=False)
     session_timeout_minutes = Column(String, default=30)
+
+    # Subscription & Service Access
+    subscription_tier = Column(String, default="professional")  # starter, professional, enterprise
+    subscription_status = Column(String, default="active")  # active, trial, suspended, cancelled
+    max_users = Column(Integer, default=10)
+    enabled_services = Column(JSONB, default={})  # JSON object with service_id: true/false
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

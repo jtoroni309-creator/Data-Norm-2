@@ -19,7 +19,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2Pas
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
@@ -33,6 +33,7 @@ from .schemas import (
     LoginRequest,
     HealthResponse,
     RoleEnum,
+    OrganizationCreate,
     OrganizationResponse,
     OrganizationUpdate,
     UserInvitationCreate,
@@ -515,6 +516,231 @@ async def update_user(
 # ========================================
 # Organization/Firm Management
 # ========================================
+
+@app.get("/admin/organizations", response_model=List[OrganizationResponse])
+async def list_all_organizations(
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all CPA firms (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    query = select(Organization)
+
+    # Apply search filter if provided
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            or_(
+                Organization.firm_name.ilike(search_pattern),
+                Organization.legal_name.ilike(search_pattern),
+                Organization.primary_contact_email.ilike(search_pattern)
+            )
+        )
+
+    query = query.offset(skip).limit(limit).order_by(Organization.created_at.desc())
+
+    result = await db.execute(query)
+    organizations = result.scalars().all()
+
+    return [OrganizationResponse.model_validate(org) for org in organizations]
+
+
+@app.post("/admin/organizations", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
+async def create_organization(
+    org_data: OrganizationCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a new CPA firm (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    # Check if firm with same name or email already exists
+    result = await db.execute(
+        select(Organization).where(
+            or_(
+                Organization.firm_name == org_data.firm_name,
+                Organization.primary_contact_email == org_data.primary_contact_email
+            )
+        )
+    )
+    existing_org = result.scalar_one_or_none()
+
+    if existing_org:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Organization with this name or email already exists"
+        )
+
+    # Create organization with default enabled services (all enabled by default)
+    default_services = {
+        "analytics": True,
+        "audit-planning": True,
+        "connectors": True,
+        "disclosures": True,
+        "engagement": True,
+        "fraud-detection": True,
+        "gateway": True,
+        "identity": True,
+        "ingestion": True,
+        "llm": True,
+        "normalize": True,
+        "qc": True,
+        "reporting": True,
+        "financial-analysis": True,
+        "tax-forms": True,
+        "tax-ocr-intake": True,
+        "knowledge-graph": True,
+        "reg-ab-audit": True,
+        "advanced-report-generation": True,
+        "workflow-automation": True,
+        "document-intelligence": True,
+        "client-communication": True,
+        "audit-sampling": True,
+        "data-analytics-ml": True,
+        "eo-portal": True,
+        "risk-assessment": True
+    }
+
+    new_org = Organization(
+        firm_name=org_data.firm_name,
+        legal_name=org_data.legal_name,
+        ein=org_data.ein,
+        primary_contact_name=org_data.primary_contact_name,
+        primary_contact_email=org_data.primary_contact_email,
+        primary_contact_phone=org_data.primary_contact_phone,
+        subscription_tier=org_data.subscription_tier,
+        subscription_status=org_data.subscription_status,
+        max_users=org_data.max_users,
+        enabled_services=default_services,
+        is_active=True
+    )
+
+    db.add(new_org)
+    await db.commit()
+    await db.refresh(new_org)
+
+    logger.info(f"New organization created: {new_org.firm_name} (ID: {new_org.id})")
+
+    return OrganizationResponse.model_validate(new_org)
+
+
+@app.delete("/admin/organizations/{org_id}")
+async def delete_organization(
+    org_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a CPA firm (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    result = await db.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    organization = result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+
+    # Check if organization has users
+    user_result = await db.execute(
+        select(User).where(User.cpa_firm_id == org_id).limit(1)
+    )
+    has_users = user_result.scalar_one_or_none() is not None
+
+    if has_users:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete organization with existing users. Please remove or reassign users first."
+        )
+
+    await db.delete(organization)
+    await db.commit()
+
+    logger.info(f"Organization deleted: {organization.firm_name} (ID: {org_id})")
+
+    return {"message": "Organization deleted successfully", "id": str(org_id)}
+
+
+@app.patch("/admin/organizations/{org_id}", response_model=OrganizationResponse)
+async def update_organization_admin(
+    org_id: UUID,
+    org_update: OrganizationUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update organization settings (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    result = await db.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    organization = result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+
+    # Update fields if provided
+    update_data = org_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(organization, field, value)
+
+    organization.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(organization)
+
+    logger.info(f"Organization updated: {organization.firm_name} by admin")
+
+    return OrganizationResponse.model_validate(organization)
+
+
+@app.patch("/admin/organizations/{org_id}/services", response_model=OrganizationResponse)
+async def update_organization_services(
+    org_id: UUID,
+    services: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update enabled services for a CPA firm (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    result = await db.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    organization = result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+
+    # Update enabled_services
+    organization.enabled_services = services
+    organization.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(organization)
+
+    logger.info(f"Organization services updated: {organization.firm_name} (ID: {org_id})")
+
+    return OrganizationResponse.model_validate(organization)
+
 
 @app.get("/organizations/{org_id}", response_model=OrganizationResponse)
 async def get_organization(
