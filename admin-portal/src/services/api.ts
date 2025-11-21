@@ -1,10 +1,11 @@
 /**
  * Admin Portal API Service
  *
- * Centralized API calls to the backend financial-analysis service
+ * Centralized API calls to the backend identity service
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || 'http://identity.aura-audit-ai.svc.cluster.local:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || IDENTITY_API_URL;
 
 // ============================================================================
 // Types
@@ -12,13 +13,54 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 export interface Tenant {
   id: string;
-  firmName: string;
-  firmEin: string;
-  status: string;
-  subscriptionTier: string;
-  userCount: number;
-  maxUsers: number;
-  createdAt: string;
+  firm_name: string;
+  legal_name?: string | null;
+  ein?: string | null;
+  primary_contact_name?: string | null;
+  primary_contact_email: string;
+  primary_contact_phone?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  require_two_factor_auth: boolean;
+  session_timeout_minutes?: string | null;
+  subscription_tier: string;
+  subscription_status: string;
+  max_users: number;
+  enabled_services?: Record<string, boolean> | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTenantRequest {
+  firm_name: string;
+  legal_name?: string;
+  ein?: string;
+  primary_contact_name?: string;
+  primary_contact_email: string;
+  primary_contact_phone?: string;
+  subscription_tier?: string;
+  subscription_status?: string;
+  max_users?: number;
+}
+
+export interface UpdateTenantRequest {
+  firm_name?: string;
+  legal_name?: string;
+  ein?: string;
+  primary_contact_name?: string;
+  primary_contact_email?: string;
+  primary_contact_phone?: string;
+  logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  require_two_factor_auth?: boolean;
+  session_timeout_minutes?: string;
+  subscription_tier?: string;
+  subscription_status?: string;
+  max_users?: number;
+  enabled_services?: Record<string, boolean>;
 }
 
 export interface UserListItem {
@@ -123,20 +165,65 @@ export const tenantAPI = {
    * List all CPA firms (tenants)
    */
   async list(params?: {
-    status?: string;
     search?: string;
-    page?: number;
-    pageSize?: number;
+    skip?: number;
+    limit?: number;
   }): Promise<Tenant[]> {
     const queryParams = new URLSearchParams();
-    if (params?.status) queryParams.append('status', params.status);
     if (params?.search) queryParams.append('search', params.search);
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    if (params?.skip) queryParams.append('skip', params.skip.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
 
+    const query = queryParams.toString();
     return fetchAPI<Tenant[]>(
-      `/api/admin/tenants?${queryParams.toString()}`
+      `/admin/organizations${query ? '?' + query : ''}`
     );
+  },
+
+  /**
+   * Get a single CPA firm
+   */
+  async get(id: string): Promise<Tenant> {
+    return fetchAPI<Tenant>(`/admin/organizations/${id}`);
+  },
+
+  /**
+   * Create a new CPA firm
+   */
+  async create(data: CreateTenantRequest): Promise<Tenant> {
+    return fetchAPI<Tenant>('/admin/organizations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update a CPA firm
+   */
+  async update(id: string, data: UpdateTenantRequest): Promise<Tenant> {
+    return fetchAPI<Tenant>(`/admin/organizations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete a CPA firm
+   */
+  async delete(id: string): Promise<void> {
+    return fetchAPI<void>(`/admin/organizations/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Update enabled services for a CPA firm
+   */
+  async updateServices(id: string, services: Record<string, boolean>): Promise<Tenant> {
+    return fetchAPI<Tenant>(`/admin/organizations/${id}/services`, {
+      method: 'PATCH',
+      body: JSON.stringify(services),
+    });
   },
 };
 

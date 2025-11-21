@@ -13,8 +13,7 @@ import {
   Shield,
   Globe
 } from 'lucide-react';
-import { tenantAPI } from '../services/api';
-import { Customer } from '../types';
+import { tenantAPI, Tenant } from '../services/api';
 
 interface ServiceToggle {
   id: string;
@@ -23,8 +22,9 @@ interface ServiceToggle {
   category: string;
 }
 
-interface FirmWithServices extends Customer {
+interface FirmWithServices extends Tenant {
   services: ServiceToggle[];
+  userCount?: number;  // Computed field
 }
 
 const FirmManagement: React.FC = () => {
@@ -96,14 +96,19 @@ const FirmManagement: React.FC = () => {
     try {
       setLoading(true);
       const data = await tenantAPI.list();
-      // Add default services to each firm
+      // Map enabled_services from backend to service toggles
       const firmsWithServices = data.map(firm => ({
         ...firm,
-        services: availableServices.map(service => ({ ...service }))
+        services: availableServices.map(service => ({
+          ...service,
+          enabled: firm.enabled_services?.[service.id] ?? true  // Default to enabled if not specified
+        })),
+        userCount: 0  // TODO: Fetch actual user count from backend
       }));
       setFirms(firmsWithServices);
     } catch (error) {
       console.error('Error loading firms:', error);
+      alert('Failed to load CPA firms. Please check your network connection.');
     } finally {
       setLoading(false);
     }
@@ -128,8 +133,9 @@ const FirmManagement: React.FC = () => {
     }
   };
 
-  const handleToggleService = (firmId: string, serviceId: string) => {
-    setFirms(firms.map(firm => {
+  const handleToggleService = async (firmId: string, serviceId: string) => {
+    // Optimistic UI update
+    const updatedFirms = firms.map(firm => {
       if (firm.id === firmId) {
         return {
           ...firm,
@@ -141,8 +147,26 @@ const FirmManagement: React.FC = () => {
         };
       }
       return firm;
-    }));
-    // TODO: Persist to backend
+    });
+    setFirms(updatedFirms);
+
+    // Persist to backend
+    try {
+      const firm = updatedFirms.find(f => f.id === firmId);
+      if (firm) {
+        const enabledServices = firm.services.reduce((acc, service) => {
+          acc[service.id] = service.enabled;
+          return acc;
+        }, {} as Record<string, boolean>);
+
+        await tenantAPI.updateServices(firmId, enabledServices);
+      }
+    } catch (error) {
+      console.error('Error updating services:', error);
+      alert('Failed to update services. Changes will be reverted.');
+      // Revert optimistic update on error
+      loadFirms();
+    }
   };
 
   const getStatusColor = (status: string) => {
