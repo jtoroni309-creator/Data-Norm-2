@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import get_async_session
+from .database import get_db
 from .permission_service import PermissionService
 from .permissions_models import Tenant, User
 from .stripe_service import StripeService
@@ -92,7 +92,7 @@ class PaymentMethodResponse(BaseModel):
 
 @router.post("/subscriptions/create", response_model=SubscriptionResponse)
 async def create_subscription(
-    request: CreateSubscriptionRequest, session: AsyncSession = Depends(get_async_session)
+    request: CreateSubscriptionRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Create a Stripe subscription for a customer.
@@ -128,7 +128,7 @@ async def create_subscription(
 
 @router.post("/subscriptions/change", response_model=SubscriptionResponse)
 async def change_subscription(
-    request: ChangeSubscriptionRequest, session: AsyncSession = Depends(get_async_session)
+    request: ChangeSubscriptionRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Change subscription tier (upgrade/downgrade).
@@ -159,7 +159,7 @@ async def change_subscription(
 
 @router.post("/subscriptions/cancel")
 async def cancel_subscription(
-    customerId: str, immediate: bool = False, session: AsyncSession = Depends(get_async_session)
+    customerId: str, immediate: bool = False, session: AsyncSession = Depends(get_db)
 ):
     """
     Cancel subscription.
@@ -192,7 +192,7 @@ async def cancel_subscription(
 
 @router.post("/addons/purchase", response_model=AddonResponse)
 async def purchase_addon(
-    request: PurchaseAddonRequest, session: AsyncSession = Depends(get_async_session)
+    request: PurchaseAddonRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Purchase an add-on (extra users, engagements, storage).
@@ -266,7 +266,7 @@ async def get_available_addons():
 
 @router.post("/payment-methods/add", response_model=PaymentMethodResponse)
 async def add_payment_method(
-    request: AddPaymentMethodRequest, session: AsyncSession = Depends(get_async_session)
+    request: AddPaymentMethodRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Add a payment method to customer.
@@ -297,7 +297,7 @@ async def add_payment_method(
 
 @router.get("/payment-methods/{customer_id}", response_model=List[PaymentMethodResponse])
 async def get_payment_methods(
-    customer_id: str, session: AsyncSession = Depends(get_async_session)
+    customer_id: str, session: AsyncSession = Depends(get_db)
 ):
     """
     Get all payment methods for customer.
@@ -325,7 +325,7 @@ async def get_payment_methods(
 
 
 @router.get("/invoices/{customer_id}")
-async def get_invoices(customer_id: str, session: AsyncSession = Depends(get_async_session)):
+async def get_invoices(customer_id: str, session: AsyncSession = Depends(get_db)):
     """
     Get invoices for customer.
     """
@@ -352,7 +352,7 @@ async def get_invoices(customer_id: str, session: AsyncSession = Depends(get_asy
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(None, alias="Stripe-Signature"),
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     Handle Stripe webhook events.
@@ -401,7 +401,7 @@ async def stripe_webhook(
 
 
 @router.post("/admin/check-overdue")
-async def check_overdue_invoices(session: AsyncSession = Depends(get_async_session)):
+async def check_overdue_invoices(session: AsyncSession = Depends(get_db)):
     """
     Check for overdue invoices and suspend customers.
 
@@ -421,7 +421,7 @@ async def check_overdue_invoices(session: AsyncSession = Depends(get_async_sessi
 
 
 @router.get("/admin/subscription-stats")
-async def get_subscription_stats(session: AsyncSession = Depends(get_async_session)):
+async def get_subscription_stats(session: AsyncSession = Depends(get_db)):
     """
     Get subscription statistics for admin dashboard.
     """

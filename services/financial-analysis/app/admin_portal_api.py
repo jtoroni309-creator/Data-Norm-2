@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import get_async_session
+from .database import get_db
 from .permission_service import PermissionService
 from .permissions_models import (
     PermissionScope,
@@ -1052,7 +1052,7 @@ async def list_users(
 @router.post("/users", response_model=UserDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     request: CreateUserRequest,
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Create a new user and assign to a CPA firm.
@@ -1144,7 +1144,7 @@ async def get_user(user_id: str):
 async def update_user(
     user_id: str,
     request: UpdateUserRequest,
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update user information.
@@ -1185,7 +1185,7 @@ async def update_user(
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deactivate_user(
     user_id: str,
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Deactivate a user (soft delete).

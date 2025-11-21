@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFi
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import get_async_session
+from .database import get_db
 from .jira_service import JiraService
 from .permission_service import PermissionService
 from .permissions_models import User, UserRole
@@ -126,7 +126,7 @@ class BugAnalysisResponse(BaseModel):
 
 @router.post("/bug-report", response_model=IssueResponse)
 async def submit_bug_report(
-    request: BugReportRequest, session: AsyncSession = Depends(get_async_session)
+    request: BugReportRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Submit a bug report from a customer.
@@ -182,7 +182,7 @@ async def submit_bug_report(
 
 @router.post("/feature-request", response_model=IssueResponse)
 async def submit_feature_request(
-    request: FeatureRequestRequest, session: AsyncSession = Depends(get_async_session)
+    request: FeatureRequestRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Submit a feature request from a customer.
@@ -224,7 +224,7 @@ async def submit_feature_request(
 
 @router.post("/support-ticket", response_model=IssueResponse)
 async def submit_support_ticket(
-    request: SupportTicketRequest, session: AsyncSession = Depends(get_async_session)
+    request: SupportTicketRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Submit a general support ticket.
@@ -265,7 +265,7 @@ async def submit_support_ticket(
 
 @router.get("/my-tickets", response_model=List[IssueResponse])
 async def get_my_tickets(
-    email: EmailStr, customer_id: str, session: AsyncSession = Depends(get_async_session)
+    email: EmailStr, customer_id: str, session: AsyncSession = Depends(get_db)
 ):
     """
     Get all tickets submitted by a customer user.
@@ -302,7 +302,7 @@ async def get_my_tickets(
 
 
 @router.get("/ticket/{issue_key}", response_model=IssueResponse)
-async def get_ticket_details(issue_key: str, session: AsyncSession = Depends(get_async_session)):
+async def get_ticket_details(issue_key: str, session: AsyncSession = Depends(get_db)):
     """
     Get details for a specific ticket.
 
@@ -346,7 +346,7 @@ async def search_issues(
     priority: Optional[str] = None,
     customer_id: Optional[str] = None,
     max_results: int = 50,
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     Search and filter Jira issues for admin dashboard.
@@ -397,7 +397,7 @@ async def search_issues(
 
 @router.patch("/admin/issues/{issue_key}")
 async def update_issue(
-    issue_key: str, request: UpdateIssueRequest, session: AsyncSession = Depends(get_async_session)
+    issue_key: str, request: UpdateIssueRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Update issue status, assignee, or other fields.
@@ -447,7 +447,7 @@ async def update_issue(
 
 @router.post("/admin/issues/{issue_key}/comment")
 async def add_comment_to_issue(
-    issue_key: str, request: AddCommentRequest, session: AsyncSession = Depends(get_async_session)
+    issue_key: str, request: AddCommentRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Add a comment to an issue.
@@ -475,7 +475,7 @@ async def add_comment_to_issue(
 
 @router.post("/admin/analyze-bug", response_model=BugAnalysisResponse)
 async def analyze_bug_with_claude(
-    request: AnalyzeBugRequest, session: AsyncSession = Depends(get_async_session)
+    request: AnalyzeBugRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Analyze a bug using Claude Code AI.
@@ -529,7 +529,7 @@ async def generate_fix(
     issue_key: str,
     codebase_path: str = "/home/user/Data-Norm-2",
     create_pr: bool = False,
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     Generate a fix for a bug using Claude Code.
@@ -567,7 +567,7 @@ async def generate_fix(
 
 
 @router.post("/webhook")
-async def jira_webhook(request: Request, session: AsyncSession = Depends(get_async_session)):
+async def jira_webhook(request: Request, session: AsyncSession = Depends(get_db)):
     """
     Handle Jira webhook events.
 
@@ -629,7 +629,7 @@ async def jira_webhook(request: Request, session: AsyncSession = Depends(get_asy
 
 
 @router.get("/admin/stats")
-async def get_jira_stats(session: AsyncSession = Depends(get_async_session)):
+async def get_jira_stats(session: AsyncSession = Depends(get_db)):
     """
     Get Jira statistics for admin dashboard.
 

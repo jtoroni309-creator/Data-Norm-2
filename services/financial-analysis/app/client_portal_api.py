@@ -19,7 +19,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import get_async_session
+from .database import get_db
 from .permission_service import PermissionService
 from .permissions_models import PermissionScope, User, UserRole
 
@@ -174,7 +174,7 @@ async def initiate_google_oauth():
 @router.post("/auth/microsoft/callback", response_model=AuthResponse)
 async def handle_microsoft_callback(
     request: OAuthCallbackRequest,
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     Handle Microsoft OAuth callback.
@@ -211,7 +211,7 @@ async def handle_microsoft_callback(
 @router.post("/auth/google/callback", response_model=AuthResponse)
 async def handle_google_callback(
     request: OAuthCallbackRequest,
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     Handle Google OAuth callback.
