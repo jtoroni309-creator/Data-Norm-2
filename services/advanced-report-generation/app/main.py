@@ -700,7 +700,7 @@ class AuditReportStructure(BaseModel):
 
     # Report metadata
     report_date: datetime
-    report_type: str = Field(..., regex="^(10-K|10-Q|Review|Compilation)$")
+    report_type: str = Field(..., pattern="^(10-K|10-Q|Review|Compilation)$")
     entity_name: str
     fiscal_year_end: datetime
     auditor_firm: str
