@@ -108,7 +108,7 @@ except ImportError as e:
 # Use proper key derivation for Fernet encryption
 import base64
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 
 def get_encryption_cipher() -> Fernet:
@@ -121,8 +121,8 @@ def get_encryption_cipher() -> Fernet:
     Returns:
         Fernet cipher instance with properly derived key
     """
-    # Use PBKDF2 to derive a proper 32-byte key from the encryption key
-    kdf = PBKDF2(
+    # Use PBKDF2HMAC to derive a proper 32-byte key from the encryption key
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=b'aura_audit_ai_salt_v1',  # Static salt for deterministic key derivation
