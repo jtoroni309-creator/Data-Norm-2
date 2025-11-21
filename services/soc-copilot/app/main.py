@@ -26,6 +26,9 @@ from .models import (
     WorkflowTask, AuditTrail, TSCCategory, TestType, TestStatus
 )
 from .pentest_routes import router as pentest_router
+from .predictive_analytics_routes import router as predictive_analytics_router
+from .nl_query_routes import router as nl_query_router
+from .smart_sampling_routes import router as smart_sampling_router
 
 # Configure logging
 logging.basicConfig(
@@ -77,6 +80,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(pentest_router, prefix="/api/v1", tags=["Penetration Testing"])
+app.include_router(predictive_analytics_router, prefix="/api/v1", tags=["Predictive Analytics"])
+app.include_router(nl_query_router, prefix="/api/v1", tags=["Natural Language Query"])
+app.include_router(smart_sampling_router, prefix="/api/v1", tags=["Smart Sampling"])
 
 
 # ============================================================================
