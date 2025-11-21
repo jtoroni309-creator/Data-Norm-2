@@ -11,7 +11,7 @@ Provides intelligent, risk-adjusted materiality calculations using:
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from openai import AsyncOpenAI
