@@ -107,6 +107,17 @@ class User(Base):
             return f"{self.first_name} {self.last_name}"
         return self.first_name or self.last_name or self.email
 
+    @full_name.setter
+    def full_name(self, value):
+        """Setter that splits full name into first_name and last_name"""
+        if value:
+            parts = value.strip().split(" ", 1)
+            self.first_name = parts[0]
+            self.last_name = parts[1] if len(parts) > 1 else ""
+        else:
+            self.first_name = None
+            self.last_name = None
+
     @property
     def hashed_password(self):
         """Alias for backwards compatibility"""
