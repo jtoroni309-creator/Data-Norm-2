@@ -12,6 +12,7 @@ import {
   Bell,
   Search,
   Building2,
+  Loader2,
 } from 'lucide-react';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserManagement } from './components/UserManagement';
@@ -19,13 +20,32 @@ import { FirmManagement } from './components/FirmManagement';
 import { SystemAnalytics } from './components/SystemAnalytics';
 import { SystemSettings } from './components/SystemSettings';
 import { TicketManagement } from './components/TicketManagement';
-import { authAPI } from './services/api';
+import { Login } from './components/Login';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 type Page = 'dashboard' | 'users' | 'firms' | 'analytics' | 'tickets' | 'settings';
 
-function App() {
+function AppContent() {
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   const navigation = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
@@ -38,9 +58,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await authAPI.logout();
-      // Reload the page to clear state and return to login
-      window.location.href = '/';
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -149,8 +167,12 @@ function App() {
                     exit={{ opacity: 0 }}
                     className="flex-1 min-w-0"
                   >
-                    <p className="font-semibold text-gray-900 text-sm truncate">Admin User</p>
-                    <p className="text-xs text-gray-500 truncate">admin@auraai.com</p>
+                    <p className="font-semibold text-gray-900 text-sm truncate">
+                      {user?.firstName && user?.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : user?.email}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -220,6 +242,14 @@ function App() {
         </div>
       </motion.main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

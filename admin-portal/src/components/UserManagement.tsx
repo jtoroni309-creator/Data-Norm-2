@@ -55,7 +55,7 @@ export const UserManagement: React.FC = () => {
 
   const loadTenants = async () => {
     try {
-      const data = await tenantAPI.list({ page: 1, pageSize: 100 });
+      const data = await tenantAPI.list({ skip: 0, limit: 100 });
       setTenants(data);
     } catch (err) {
       console.error('Failed to load tenants:', err);
@@ -394,7 +394,7 @@ export const UserManagement: React.FC = () => {
                     <option value="">Select a firm...</option>
                     {tenants.map((tenant) => (
                       <option key={tenant.id} value={tenant.id}>
-                        {tenant.firmName}
+                        {tenant.firm_name}
                       </option>
                     ))}
                   </select>

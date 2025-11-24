@@ -296,14 +296,14 @@ const FirmManagement: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(firm.status)}`}>
-                      {firm.status.charAt(0).toUpperCase() + firm.status.slice(1)}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(firm.subscription_status)}`}>
+                      {firm.subscription_status.charAt(0).toUpperCase() + firm.subscription_status.slice(1)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm text-gray-900">
                       <Users className="w-4 h-4 text-gray-400" />
-                      {firm.usage_analytics?.active_users || 0} / {firm.limits?.max_users || '∞'}
+                      {firm.userCount || 0} / {firm.max_users || '∞'}
                     </div>
                   </td>
                   <td className="px-6 py-4">

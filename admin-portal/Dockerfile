@@ -12,6 +12,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Set build-time environment variables
+ARG VITE_IDENTITY_API_URL=https://admin.auraai.toroniandcompany.com/api
+ENV VITE_IDENTITY_API_URL=$VITE_IDENTITY_API_URL
+
 # Build the application (skip tsc, just use vite)
 RUN npx vite build
 

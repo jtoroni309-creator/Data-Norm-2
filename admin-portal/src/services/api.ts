@@ -294,44 +294,89 @@ export const userAPI = {
 };
 
 // ============================================================================
-// Authentication (Mock for now)
+// Authentication
 // ============================================================================
+
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    role: string;
+    organization_id: string | null;
+    is_active: boolean;
+    email_verified: boolean;
+    email_verified_at: string | null;
+    two_factor_enabled: boolean;
+    last_login_at: string | null;
+    created_at: string;
+    updated_at: string | null;
+  };
+}
 
 export const authAPI = {
   /**
    * Login as admin
    */
   async login(email: string, password: string): Promise<{ token: string; user: UserDetail }> {
-    // Mock implementation - in production, call real auth endpoint
-    const mockToken = 'mock-admin-token-' + Date.now();
-    localStorage.setItem('admin_token', mockToken);
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Login failed' }));
+      throw new Error(error.detail || 'Invalid email or password');
+    }
+
+    const data: LoginResponse = await response.json();
+
+    // Store token
+    localStorage.setItem('admin_token', data.access_token);
+
+    // Map backend user format to frontend UserDetail format
+    const nameParts = (data.user.full_name || '').split(' ');
+    const user: UserDetail = {
+      id: data.user.id,
+      email: data.user.email,
+      firstName: nameParts[0] || null,
+      lastName: nameParts.slice(1).join(' ') || null,
+      phone: null,
+      role: data.user.role,
+      tenantId: data.user.organization_id,
+      tenantName: null,
+      isActive: data.user.is_active,
+      emailVerified: data.user.email_verified,
+      emailVerifiedAt: data.user.email_verified_at,
+      twoFactorEnabled: data.user.two_factor_enabled,
+      lastLoginAt: data.user.last_login_at,
+      lastLoginIp: null,
+      failedLoginAttempts: 0,
+      cpaLicenseNumber: null,
+      cpaLicenseState: null,
+      professionalTitle: null,
+      createdAt: data.user.created_at,
+      updatedAt: data.user.updated_at,
+      createdBy: null,
+    };
 
     return {
-      token: mockToken,
-      user: {
-        id: '1',
-        email,
-        firstName: 'Admin',
-        lastName: 'User',
-        phone: null,
-        role: 'platform_admin',
-        tenantId: null,
-        tenantName: null,
-        isActive: true,
-        emailVerified: true,
-        emailVerifiedAt: new Date().toISOString(),
-        twoFactorEnabled: false,
-        lastLoginAt: new Date().toISOString(),
-        lastLoginIp: '127.0.0.1',
-        failedLoginAttempts: 0,
-        cpaLicenseNumber: null,
-        cpaLicenseState: null,
-        professionalTitle: 'Platform Administrator',
-        createdAt: new Date().toISOString(),
-        updatedAt: null,
-        createdBy: null,
-      },
+      token: data.access_token,
+      user,
     };
+  },
+
+  /**
+   * Get current user info
+   */
+  async getCurrentUser(): Promise<UserDetail> {
+    return fetchAPI<UserDetail>('/auth/me');
   },
 
   /**
