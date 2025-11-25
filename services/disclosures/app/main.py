@@ -1,6 +1,6 @@
 """
-Aura Audit AI - Ingestion Service
-EDGAR/XBRL fetching, PBC document uploads, and data ingestion orchestration
+Aura Audit AI - Disclosures Service
+AI-powered disclosure drafting, note generation, and financial statement disclosures
 """
 import logging
 from contextlib import asynccontextmanager
