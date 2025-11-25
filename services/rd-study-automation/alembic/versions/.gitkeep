@@ -1,0 +1,3 @@
+# This directory contains database migrations
+# Run: alembic revision --autogenerate -m "description"
+# Apply: alembic upgrade head
