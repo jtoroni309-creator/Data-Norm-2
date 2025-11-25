@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  rd-study-automation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8010:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/rd_study_automation
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-rd-study-files}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-west-2}
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - RULES_VERSION=2024.1
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - rd-study-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rd_study_automation
+    ports:
+      - "5433:5432"
+    volumes:
+      - rd-study-db-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rd-study-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - rd-study-redis-data:/data
+    networks:
+      - rd-study-network
+
+  # Worker for background tasks
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    command: ["python", "-m", "app.worker"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/rd_study_automation
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    volumes:
+      - ./app:/app/app
+      - ./storage:/app/storage
+    depends_on:
+      - db
+      - redis
+    networks:
+      - rd-study-network
+    restart: unless-stopped
+
+volumes:
+  rd-study-db-data:
+  rd-study-redis-data:
+
+networks:
+  rd-study-network:
+    driver: bridge
