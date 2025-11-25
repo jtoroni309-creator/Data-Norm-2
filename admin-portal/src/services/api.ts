@@ -252,7 +252,7 @@ export const userAPI = {
     if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
 
     return fetchAPI<UserListItem[]>(
-      `/api/admin/users?${queryParams.toString()}`
+      `/admin/users?${queryParams.toString()}`
     );
   },
 
@@ -260,16 +260,25 @@ export const userAPI = {
    * Get user details
    */
   async get(userId: string): Promise<UserDetail> {
-    return fetchAPI<UserDetail>(`/api/admin/users/${userId}`);
+    return fetchAPI<UserDetail>(`/admin/users/${userId}`);
   },
 
   /**
    * Create new user
    */
   async create(data: CreateUserRequest): Promise<UserDetail> {
+    // Transform frontend schema to backend schema
+    const backendPayload = {
+      email: data.email,
+      full_name: `${data.firstName} ${data.lastName}`.trim(),
+      password: data.password || 'TempPass123!', // Generate temp password if not provided
+      organization_id: data.tenantId,
+      role: data.role,
+    };
+
     return fetchAPI<UserDetail>('/api/admin/users', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendPayload),
     });
   },
 
@@ -277,7 +286,7 @@ export const userAPI = {
    * Update user
    */
   async update(userId: string, data: UpdateUserRequest): Promise<UserDetail> {
-    return fetchAPI<UserDetail>(`/api/admin/users/${userId}`, {
+    return fetchAPI<UserDetail>(`/admin/users/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -287,7 +296,7 @@ export const userAPI = {
    * Deactivate user (soft delete)
    */
   async deactivate(userId: string): Promise<void> {
-    return fetchAPI<void>(`/api/admin/users/${userId}`, {
+    return fetchAPI<void>(`/admin/users/${userId}`, {
       method: 'DELETE',
     });
   },
