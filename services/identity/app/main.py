@@ -23,10 +23,10 @@ from sqlalchemy import select, and_, or_
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
-from .config import settings
-from .database import get_db, init_db
-from .models import User, Organization, LoginAuditLog, UserInvitation, UserPermission
-from .schemas import (
+from app.config import settings
+from app.database import get_db, init_db
+from app.models import User, Organization, LoginAuditLog, UserInvitation, UserPermission
+from app.schemas import (
     UserCreate,
     UserResponse,
     TokenResponse,
@@ -839,6 +839,190 @@ async def update_organization(
     logger.info(f"Organization updated: {organization.name} by {current_user.email}")
 
     return OrganizationResponse.model_validate(organization)
+
+
+# ========================================
+# Admin User Management
+# ========================================
+
+@app.get("/admin/users", response_model=List[UserResponse])
+async def list_all_users(
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    role: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all users across all organizations (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    query = select(User)
+
+    # Apply filters
+    filters = []
+    if search:
+        search_pattern = f"%{search}%"
+        filters.append(
+            or_(
+                User.email.ilike(search_pattern),
+                User.full_name.ilike(search_pattern)
+            )
+        )
+    if tenant_id:
+        filters.append(User.cpa_firm_id == UUID(tenant_id))
+    if role:
+        filters.append(User.role == role)
+    if is_active is not None:
+        filters.append(User.is_active == is_active)
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    query = query.offset(skip).limit(limit).order_by(User.created_at.desc())
+
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    return [UserResponse.model_validate(user) for user in users]
+
+
+@app.get("/admin/users/{user_id}", response_model=UserResponse)
+async def get_user_admin(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get user details (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    return UserResponse.model_validate(user)
+
+
+@app.post("/admin/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user_admin(
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a new user (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    # Check if email already exists
+    result = await db.execute(
+        select(User).where(User.email == user_data.email)
+    )
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Hash password
+    hashed_password = hash_password(user_data.password)
+
+    # Create user
+    new_user = User(
+        email=user_data.email,
+        full_name=user_data.full_name,
+        hashed_password=hashed_password,
+        organization_id=user_data.organization_id,
+        role=user_data.role,
+        is_active=True
+    )
+
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    logger.info(f"New user created by admin: {new_user.email} (ID: {new_user.id})")
+
+    return UserResponse.model_validate(new_user)
+
+
+@app.patch("/admin/users/{user_id}", response_model=UserResponse)
+async def update_user_admin(
+    user_id: UUID,
+    user_update: UserUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update a user (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Update fields if provided
+    if user_update.full_name is not None:
+        user.full_name = user_update.full_name
+    if user_update.role is not None:
+        user.role = user_update.role
+    if user_update.is_active is not None:
+        user.is_active = user_update.is_active
+
+    await db.commit()
+    await db.refresh(user)
+
+    logger.info(f"User updated by admin: {user.email}")
+
+    return UserResponse.model_validate(user)
+
+
+@app.delete("/admin/users/{user_id}")
+async def deactivate_user_admin(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Deactivate a user (Admin endpoint - no auth required for now)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user.is_active = False
+    await db.commit()
+
+    logger.info(f"User deactivated by admin: {user.email}")
+
+    return {"message": "User deactivated successfully", "id": str(user_id)}
 
 
 # ========================================
