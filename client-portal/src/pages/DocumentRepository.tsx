@@ -3,7 +3,7 @@
  * Document management with OCR, AI extraction, and organization
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -27,8 +27,10 @@ import {
   CheckCircle2,
   X,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { documentService } from '../services/document.service';
 
 interface Document {
   id: string;
@@ -48,81 +50,64 @@ const DocumentRepository: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadCategory, setUploadCategory] = useState('Financial Statements');
+  const [uploadWorkpaperRef, setUploadWorkpaperRef] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock documents
-  const mockDocuments: Document[] = [
-    {
-      id: '1',
-      name: 'Trial Balance - Dec 2024.xlsx',
-      type: 'spreadsheet',
-      size: '2.4 MB',
-      uploadedBy: 'Sarah Johnson',
-      uploadedAt: '2024-11-20',
-      category: 'Financial Statements',
-      workpaperRef: 'A-1',
-      ocrStatus: 'completed',
-      aiExtracted: true,
-      tags: ['Trial Balance', 'Q4', 'Financial'],
-    },
-    {
-      id: '2',
-      name: 'Bank Statements - November 2024.pdf',
-      type: 'pdf',
-      size: '5.1 MB',
-      uploadedBy: 'John Smith',
-      uploadedAt: '2024-11-19',
-      category: 'Bank Statements',
-      workpaperRef: 'C-1',
-      ocrStatus: 'completed',
-      aiExtracted: true,
-      tags: ['Bank', 'November', 'Cash'],
-    },
-    {
-      id: '3',
-      name: 'Accounts Receivable Aging.xlsx',
-      type: 'spreadsheet',
-      size: '1.8 MB',
-      uploadedBy: 'Emily Davis',
-      uploadedAt: '2024-11-18',
-      category: 'Receivables',
-      workpaperRef: 'C-2',
-      ocrStatus: 'completed',
-      aiExtracted: true,
-      tags: ['AR', 'Aging', 'Collections'],
-    },
-    {
-      id: '4',
-      name: 'Fixed Asset Schedule.xlsx',
-      type: 'spreadsheet',
-      size: '980 KB',
-      uploadedBy: 'John Smith',
-      uploadedAt: '2024-11-17',
-      category: 'Fixed Assets',
-      workpaperRef: 'D-1',
-      tags: ['Fixed Assets', 'Depreciation'],
-    },
-    {
-      id: '5',
-      name: 'Revenue Invoices - Sample.pdf',
-      type: 'pdf',
-      size: '12.3 MB',
-      uploadedBy: 'Sarah Johnson',
-      uploadedAt: '2024-11-16',
-      category: 'Revenue',
-      workpaperRef: 'B-1',
-      ocrStatus: 'completed',
-      aiExtracted: true,
-      tags: ['Revenue', 'Invoices', 'Sample'],
-    },
-  ];
+  useEffect(() => {
+    loadDocuments();
+  }, [id]);
 
-  React.useEffect(() => {
-    setDocuments(mockDocuments);
-  }, []);
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const docs = await documentService.getDocuments(id);
+      // Transform API response to our Document interface
+      const transformedDocs: Document[] = docs.map((doc: any) => ({
+        id: doc.id,
+        name: doc.name || doc.filename || 'Unnamed Document',
+        type: getFileType(doc.name || doc.filename || ''),
+        size: formatFileSize(doc.size || 0),
+        uploadedBy: doc.uploaded_by || doc.uploadedBy || 'Unknown',
+        uploadedAt: doc.created_at || doc.uploadedAt || new Date().toISOString(),
+        category: doc.category || 'Other',
+        workpaperRef: doc.workpaper_ref || doc.workpaperRef,
+        ocrStatus: doc.ocr_status || doc.ocrStatus || 'pending',
+        aiExtracted: doc.ai_extracted || doc.aiExtracted || false,
+        tags: doc.tags || [],
+      }));
+      setDocuments(transformedDocs);
+    } catch (error) {
+      console.log('Documents API not available, starting with empty list');
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFileType = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (['pdf'].includes(ext || '')) return 'pdf';
+    if (['xlsx', 'xls', 'csv'].includes(ext || '')) return 'spreadsheet';
+    if (['png', 'jpg', 'jpeg', 'gif'].includes(ext || '')) return 'image';
+    return 'document';
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   const categories = [
     'All',
@@ -157,10 +142,88 @@ const DocumentRepository: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleUpload = () => {
-    toast.success('Documents uploaded successfully! AI extraction in progress...');
-    setUploadModalOpen(false);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setSelectedFiles(files);
   };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    setSelectedFiles(files);
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
+      toast.error('Please select files to upload');
+      return;
+    }
+
+    setUploading(true);
+    const loadingToast = toast.loading(`Uploading ${selectedFiles.length} file(s)...`);
+
+    try {
+      for (const file of selectedFiles) {
+        await documentService.uploadDocument(file, uploadCategory as any, id);
+      }
+      toast.dismiss(loadingToast);
+      toast.success('Documents uploaded successfully! AI extraction in progress...');
+      setUploadModalOpen(false);
+      setSelectedFiles([]);
+      setUploadCategory('Financial Statements');
+      setUploadWorkpaperRef('');
+      setUploadTags('');
+      loadDocuments(); // Refresh the list
+    } catch (error: any) {
+      toast.dismiss(loadingToast);
+      toast.error(error.message || 'Failed to upload documents');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (docId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    try {
+      await documentService.deleteDocument(docId);
+      toast.success('Document deleted');
+      setDocuments(documents.filter(d => d.id !== docId));
+    } catch (error) {
+      toast.error('Failed to delete document');
+    }
+  };
+
+  const handleDownload = async (doc: Document) => {
+    try {
+      const blob = await documentService.downloadDocument(doc.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      toast.error('Failed to download document');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-body text-neutral-600">Loading documents...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1800px]">
@@ -326,11 +389,17 @@ const DocumentRepository: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button className="fluent-btn-secondary text-sm">
+                    <button
+                      onClick={() => window.open(documentService.getDocumentPreviewUrl(doc.id), '_blank')}
+                      className="fluent-btn-secondary text-sm"
+                    >
                       <Eye className="w-3.5 h-3.5" />
                       View
                     </button>
-                    <button className="fluent-btn-secondary text-sm">
+                    <button
+                      onClick={() => handleDownload(doc)}
+                      className="fluent-btn-secondary text-sm"
+                    >
                       <Download className="w-3.5 h-3.5" />
                       Download
                     </button>
@@ -340,7 +409,10 @@ const DocumentRepository: React.FC = () => {
                         AI Insights
                       </button>
                     )}
-                    <button className="text-error-600 hover:bg-error-50 px-3 py-1.5 rounded-fluent transition-colors text-sm flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      className="text-error-600 hover:bg-error-50 px-3 py-1.5 rounded-fluent transition-colors text-sm flex items-center gap-1.5"
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                       Delete
                     </button>
@@ -391,20 +463,52 @@ const DocumentRepository: React.FC = () => {
                 </button>
               </div>
 
-              <div className="border-2 border-dashed border-neutral-300 rounded-fluent-lg p-12 text-center mb-6 hover:border-primary-400 hover:bg-primary-50 transition-all cursor-pointer">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                multiple
+                accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.png,.jpg,.jpeg"
+                className="hidden"
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                className="border-2 border-dashed border-neutral-300 rounded-fluent-lg p-12 text-center mb-6 hover:border-primary-400 hover:bg-primary-50 transition-all cursor-pointer"
+              >
                 <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-                <p className="text-body-strong text-neutral-900 mb-2">
-                  Drag and drop files here, or click to browse
-                </p>
-                <p className="text-caption text-neutral-600">
-                  Supported formats: PDF, Excel, Word, Images (Max 50MB per file)
-                </p>
+                {selectedFiles.length > 0 ? (
+                  <>
+                    <p className="text-body-strong text-neutral-900 mb-2">
+                      {selectedFiles.length} file(s) selected
+                    </p>
+                    <div className="text-caption text-neutral-600 space-y-1">
+                      {selectedFiles.map((file, idx) => (
+                        <div key={idx}>{file.name} ({formatFileSize(file.size)})</div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-body-strong text-neutral-900 mb-2">
+                      Drag and drop files here, or click to browse
+                    </p>
+                    <p className="text-caption text-neutral-600">
+                      Supported formats: PDF, Excel, Word, Images (Max 50MB per file)
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-body-strong text-neutral-700 mb-2">Category</label>
-                  <select className="fluent-input">
+                  <select
+                    className="fluent-input"
+                    value={uploadCategory}
+                    onChange={(e) => setUploadCategory(e.target.value)}
+                  >
                     {categories.filter((c) => c !== 'All').map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -421,6 +525,8 @@ const DocumentRepository: React.FC = () => {
                     type="text"
                     className="fluent-input"
                     placeholder="e.g., A-1, B-2"
+                    value={uploadWorkpaperRef}
+                    onChange={(e) => setUploadWorkpaperRef(e.target.value)}
                   />
                 </div>
 
@@ -432,6 +538,8 @@ const DocumentRepository: React.FC = () => {
                     type="text"
                     className="fluent-input"
                     placeholder="Separate tags with commas"
+                    value={uploadTags}
+                    onChange={(e) => setUploadTags(e.target.value)}
                   />
                 </div>
 
@@ -444,11 +552,29 @@ const DocumentRepository: React.FC = () => {
               </div>
 
               <div className="flex gap-3 pt-6 border-t border-neutral-200">
-                <button onClick={() => setUploadModalOpen(false)} className="fluent-btn-secondary flex-1">
+                <button
+                  onClick={() => {
+                    setUploadModalOpen(false);
+                    setSelectedFiles([]);
+                  }}
+                  className="fluent-btn-secondary flex-1"
+                  disabled={uploading}
+                >
                   Cancel
                 </button>
-                <button onClick={handleUpload} className="fluent-btn-primary flex-1">
-                  Upload
+                <button
+                  onClick={handleUpload}
+                  className="fluent-btn-primary flex-1"
+                  disabled={uploading || selectedFiles.length === 0}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    'Upload'
+                  )}
                 </button>
               </div>
             </motion.div>

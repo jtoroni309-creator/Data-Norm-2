@@ -28,17 +28,48 @@ import {
   Brain,
 } from 'lucide-react';
 import { engagementService, Engagement } from '../services/engagement.service';
+import { apiService } from '../services/api.service';
+import { auditPlanningService } from '../services/audit-planning.service';
 import toast from 'react-hot-toast';
+
+interface AIInsight {
+  type: string;
+  title: string;
+  description: string;
+  severity: 'high' | 'medium' | 'low';
+}
+
+interface Activity {
+  type: string;
+  title: string;
+  user: string;
+  time: string;
+  status: string;
+}
+
+interface TeamMember {
+  name: string;
+  role: string;
+  avatar: string;
+  status: string;
+}
 
 const EngagementWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [engagement, setEngagement] = useState<Engagement | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [workspaceStats, setWorkspaceStats] = useState<Record<string, { total: number; completed: number }>>({});
 
   useEffect(() => {
     if (id) {
       loadEngagement(id);
+      loadAIInsights(id);
+      loadActivity(id);
+      loadTeamMembers(id);
     }
   }, [id]);
 
@@ -53,6 +84,101 @@ const EngagementWorkspace: React.FC = () => {
       navigate('/firm/audits');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAIInsights = async (engagementId: string) => {
+    try {
+      const suggestions = await apiService.getAISuggestions(engagementId);
+      const insights: AIInsight[] = suggestions.map((s: any) => ({
+        type: s.type || 'insight',
+        title: s.title || s.message,
+        description: s.description || s.details,
+        severity: s.priority === 'high' ? 'high' : s.priority === 'medium' ? 'medium' : 'low',
+      }));
+      setAiInsights(insights);
+    } catch (error) {
+      console.log('AI insights not available, using defaults');
+      // Fallback to contextual defaults based on engagement
+      setAiInsights([
+        {
+          type: 'planning',
+          title: 'Start with Risk Assessment',
+          description: 'Begin by completing the risk assessment to determine audit approach and materiality',
+          severity: 'medium',
+        },
+        {
+          type: 'document',
+          title: 'Upload Client Documents',
+          description: 'Upload trial balance, bank statements, and other source documents to enable AI analysis',
+          severity: 'high',
+        },
+      ]);
+    }
+  };
+
+  const loadActivity = async (engagementId: string) => {
+    try {
+      const response = await apiService.getActivityFeed(engagementId);
+      const activities: Activity[] = response.activities.map((a: any) => ({
+        type: a.type,
+        title: a.title,
+        user: a.description || 'System',
+        time: new Date(a.timestamp).toLocaleString(),
+        status: a.type === 'warning' ? 'warning' : a.type === 'error' ? 'error' : 'completed',
+      }));
+      setRecentActivity(activities);
+    } catch (error) {
+      console.log('Activity feed not available');
+      setRecentActivity([]);
+    }
+  };
+
+  const loadTeamMembers = async (engagementId: string) => {
+    try {
+      const team = await engagementService.getEngagementTeam(engagementId);
+      const members: TeamMember[] = team.map((m: any) => ({
+        name: m.user_name || m.email || 'Team Member',
+        role: m.role || 'Staff',
+        avatar: (m.user_name || 'TM').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+        status: 'active',
+      }));
+      setTeamMembers(members);
+    } catch (error) {
+      console.log('Team members not available');
+      setTeamMembers([]);
+    }
+  };
+
+  const handleUploadDocuments = () => {
+    navigate(`/firm/engagements/${id}/documents`);
+  };
+
+  const handleAddWorkpaper = () => {
+    navigate(`/firm/engagements/${id}/workpapers`);
+  };
+
+  const handleStartPlanning = async () => {
+    if (!engagement) return;
+    try {
+      toast.loading('Initializing audit plan...');
+      await auditPlanningService.createAuditPlan({
+        engagement_id: id!,
+        fiscal_year_end: engagement.fiscal_year_end,
+        materiality_amount: 50000, // Default, user should calculate
+        risk_level: 'moderate',
+      });
+      toast.dismiss();
+      toast.success('Audit plan created! Navigate to Risk Assessment to continue.');
+      navigate(`/firm/engagements/${id}/risk`);
+    } catch (error: any) {
+      toast.dismiss();
+      if (error.response?.status === 409) {
+        toast.success('Audit plan already exists');
+        navigate(`/firm/engagements/${id}/risk`);
+      } else {
+        toast.error('Failed to create audit plan');
+      }
     }
   };
 
@@ -121,65 +247,6 @@ const EngagementWorkspace: React.FC = () => {
       color: 'indigo',
       path: `/firm/engagements/${id}/reports`,
       stats: { total: 5, completed: 2 },
-    },
-  ];
-
-  const recentActivity = [
-    {
-      type: 'workpaper',
-      title: 'Revenue Testing - Sample Selection',
-      user: 'John Smith',
-      time: '2 hours ago',
-      status: 'completed',
-    },
-    {
-      type: 'document',
-      title: 'Trial Balance - Q4 2024 uploaded',
-      user: 'Sarah Johnson',
-      time: '4 hours ago',
-      status: 'info',
-    },
-    {
-      type: 'analytics',
-      title: 'Ratio Analysis flagged 3 anomalies',
-      user: 'AI Assistant',
-      time: '5 hours ago',
-      status: 'warning',
-    },
-    {
-      type: 'review',
-      title: 'Inventory Testing reviewed and signed',
-      user: 'Michael Chen (Partner)',
-      time: '1 day ago',
-      status: 'completed',
-    },
-  ];
-
-  const teamMembers = [
-    { name: 'Michael Chen', role: 'Partner', avatar: 'MC', status: 'active' },
-    { name: 'Sarah Johnson', role: 'Manager', avatar: 'SJ', status: 'active' },
-    { name: 'John Smith', role: 'Senior', avatar: 'JS', status: 'active' },
-    { name: 'Emily Davis', role: 'Staff', avatar: 'ED', status: 'away' },
-  ];
-
-  const aiInsights = [
-    {
-      type: 'anomaly',
-      title: 'Revenue Variance Detected',
-      description: 'Q4 revenue decreased 15% vs prior year - investigate seasonality and market conditions',
-      severity: 'high',
-    },
-    {
-      type: 'compliance',
-      title: 'Debt Covenant Review Required',
-      description: 'Current ratio approaching covenant threshold of 1.5x (currently 1.6x)',
-      severity: 'medium',
-    },
-    {
-      type: 'efficiency',
-      title: 'Workpaper Completion Ahead of Schedule',
-      description: '71% of workpapers completed - 12% ahead of planned timeline',
-      severity: 'low',
     },
   ];
 
@@ -386,20 +453,27 @@ const EngagementWorkspace: React.FC = () => {
               </button>
             </div>
             <div className="space-y-3">
-              {teamMembers.map((member, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-caption font-semibold">
-                    {member.avatar}
+              {teamMembers.length > 0 ? (
+                teamMembers.map((member, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-caption font-semibold">
+                      {member.avatar}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-strong text-neutral-900 truncate">{member.name}</p>
+                      <p className="text-caption text-neutral-600">{member.role}</p>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${
+                      member.status === 'active' ? 'bg-success-500' : 'bg-warning-500'
+                    }`} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-strong text-neutral-900 truncate">{member.name}</p>
-                    <p className="text-caption text-neutral-600">{member.role}</p>
-                  </div>
-                  <div className={`w-2 h-2 rounded-full ${
-                    member.status === 'active' ? 'bg-success-500' : 'bg-warning-500'
-                  }`} />
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <Users className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+                  <p className="text-caption text-neutral-500">No team members assigned</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -407,25 +481,33 @@ const EngagementWorkspace: React.FC = () => {
           <div className="fluent-card p-5">
             <h3 className="text-body-strong text-neutral-900 mb-4">Recent Activity</h3>
             <div className="space-y-4">
-              {recentActivity.map((activity, index) => {
-                const statusColors = {
-                  completed: 'success',
-                  info: 'primary',
-                  warning: 'warning',
-                };
-                const color = statusColors[activity.status as keyof typeof statusColors];
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity, index) => {
+                  const statusColors = {
+                    completed: 'success',
+                    info: 'primary',
+                    warning: 'warning',
+                  };
+                  const color = statusColors[activity.status as keyof typeof statusColors] || 'primary';
 
-                return (
-                  <div key={index} className="flex gap-3">
-                    <div className={`w-2 h-2 rounded-full bg-${color}-500 mt-2 flex-shrink-0`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-caption font-medium text-neutral-900">{activity.title}</p>
-                      <p className="text-caption text-neutral-600 truncate">{activity.user}</p>
-                      <p className="text-caption text-neutral-500">{activity.time}</p>
+                  return (
+                    <div key={index} className="flex gap-3">
+                      <div className={`w-2 h-2 rounded-full bg-${color}-500 mt-2 flex-shrink-0`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-caption font-medium text-neutral-900">{activity.title}</p>
+                        <p className="text-caption text-neutral-600 truncate">{activity.user}</p>
+                        <p className="text-caption text-neutral-500">{activity.time}</p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="text-center py-4">
+                  <Clock className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+                  <p className="text-caption text-neutral-500">No recent activity</p>
+                  <p className="text-caption text-neutral-400">Activity will appear as you work</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -433,21 +515,40 @@ const EngagementWorkspace: React.FC = () => {
           <div className="fluent-card p-5">
             <h3 className="text-body-strong text-neutral-900 mb-4">Quick Actions</h3>
             <div className="space-y-2">
-              <button className="w-full fluent-btn-secondary text-left justify-start">
+              <button
+                onClick={handleUploadDocuments}
+                className="w-full fluent-btn-secondary text-left justify-start"
+              >
                 <Upload className="w-4 h-4" />
                 Upload Documents
               </button>
-              <button className="w-full fluent-btn-secondary text-left justify-start">
+              <button
+                onClick={handleAddWorkpaper}
+                className="w-full fluent-btn-secondary text-left justify-start"
+              >
                 <Edit className="w-4 h-4" />
                 Add Workpaper
               </button>
-              <button className="w-full fluent-btn-secondary text-left justify-start">
-                <MessageSquare className="w-4 h-4" />
-                Contact Client
+              <button
+                onClick={handleStartPlanning}
+                className="w-full fluent-btn-primary text-left justify-start"
+              >
+                <Brain className="w-4 h-4" />
+                Start AI Planning
               </button>
-              <button className="w-full fluent-btn-secondary text-left justify-start">
+              <button
+                onClick={() => navigate(`/firm/engagements/${id}/risk`)}
+                className="w-full fluent-btn-secondary text-left justify-start"
+              >
+                <Shield className="w-4 h-4" />
+                Risk Assessment
+              </button>
+              <button
+                onClick={() => navigate(`/firm/engagements/${id}/reports`)}
+                className="w-full fluent-btn-secondary text-left justify-start"
+              >
                 <Download className="w-4 h-4" />
-                Export Report
+                Generate Reports
               </button>
             </div>
           </div>

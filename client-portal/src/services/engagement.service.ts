@@ -108,6 +108,24 @@ class EngagementService {
     });
     return response.data;
   }
+
+  async getEngagementTeam(id: string): Promise<any[]> {
+    try {
+      const response = await this.api.get(`/engagements/${id}/team`);
+      return response.data.team || response.data || [];
+    } catch (error) {
+      console.log('Team endpoint not available');
+      return [];
+    }
+  }
+
+  async addTeamMember(engagementId: string, userId: string, role: string): Promise<any> {
+    const response = await this.api.post(`/engagements/${engagementId}/team`, {
+      user_id: userId,
+      role
+    });
+    return response.data;
+  }
 }
 
 // Export singleton instance
