@@ -25,7 +25,7 @@ from jose import JWTError, jwt
 
 from app.config import settings
 from app.database import get_db, init_db
-from app.models import User, Organization, LoginAuditLog, UserInvitation, UserPermission
+from app.models import User, Organization, LoginAuditLog, UserInvitation, UserPermission, Client, PasswordResetToken
 from app.schemas import (
     UserCreate,
     UserResponse,
@@ -41,7 +41,13 @@ from app.schemas import (
     UserInvitationAccept,
     UserPermissionUpdate,
     UserPermissionResponse,
-    UserUpdate
+    UserUpdate,
+    ClientCreate,
+    ClientUpdate,
+    ClientResponse,
+    PasswordResetRequest,
+    PasswordResetResponse,
+    PasswordResetConfirm
 )
 
 # Configure logging
@@ -59,7 +65,8 @@ security = HTTPBearer()
 app = FastAPI(
     title="Aura Audit AI - Identity Service",
     description="Authentication, authorization, and user management",
-    version="1.0.0"
+    version="1.0.0",
+    redirect_slashes=False
 )
 
 app.add_middleware(
@@ -278,13 +285,12 @@ async def register_user(
     # Hash password
     hashed_password = hash_password(user_data.password)
 
-    # Create user
+    # Create user (note: role is handled separately via user_permissions table)
     new_user = User(
         email=user_data.email,
         full_name=user_data.full_name,
         hashed_password=hashed_password,
         organization_id=user_data.organization_id,
-        role=user_data.role,
         is_active=True
     )
 
@@ -294,7 +300,17 @@ async def register_user(
 
     logger.info(f"New user registered: {new_user.email} (ID: {new_user.id})")
 
-    return UserResponse.model_validate(new_user)
+    # Build response manually since the model doesn't have role
+    return UserResponse(
+        id=new_user.id,
+        email=new_user.email,
+        full_name=new_user.full_name,
+        role=user_data.role,
+        organization_id=new_user.organization_id,
+        is_active=new_user.is_active,
+        created_at=new_user.created_at,
+        last_login_at=new_user.last_login_at
+    )
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -383,6 +399,124 @@ async def get_current_user_info(
 ):
     """Get current authenticated user information"""
     return UserResponse.model_validate(current_user)
+
+
+@app.post("/auth/forgot-password", response_model=PasswordResetResponse)
+async def forgot_password(
+    request: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Request password reset
+
+    - Validates email exists
+    - Creates password reset token
+    - In production, would send email with reset link
+    """
+    import secrets
+
+    # Find user by email
+    result = await db.execute(
+        select(User).where(User.email == request.email)
+    )
+    user = result.scalar_one_or_none()
+
+    # Always return success to prevent email enumeration
+    if not user:
+        logger.warning(f"Password reset requested for non-existent email: {request.email}")
+        return PasswordResetResponse(
+            message="If the email exists, a password reset link will be sent"
+        )
+
+    # Invalidate any existing tokens for this user
+    await db.execute(
+        select(PasswordResetToken).where(
+            and_(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.used_at == None
+            )
+        )
+    )
+
+    # Generate secure token
+    token = secrets.token_urlsafe(32)
+
+    # Create reset token (expires in 1 hour)
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        token=token,
+        expires_at=datetime.utcnow() + timedelta(hours=1)
+    )
+
+    db.add(reset_token)
+    await db.commit()
+
+    # TODO: In production, send email with reset link
+    # For now, log the token (in production this would be removed)
+    logger.info(f"Password reset token created for {user.email}: {token}")
+
+    return PasswordResetResponse(
+        message="If the email exists, a password reset link will be sent"
+    )
+
+
+@app.post("/auth/reset-password", response_model=PasswordResetResponse)
+async def reset_password(
+    request: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Reset password with token
+
+    - Validates token
+    - Updates password
+    - Invalidates token
+    """
+    # Find token
+    result = await db.execute(
+        select(PasswordResetToken).where(
+            and_(
+                PasswordResetToken.token == request.token,
+                PasswordResetToken.used_at == None,
+                PasswordResetToken.expires_at > datetime.utcnow()
+            )
+        )
+    )
+    token_record = result.scalar_one_or_none()
+
+    if not token_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+
+    # Find user
+    result = await db.execute(
+        select(User).where(User.id == token_record.user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found"
+        )
+
+    # Update password
+    user.password_hash = hash_password(request.new_password)
+    user.last_password_change = datetime.utcnow()
+    user.require_password_change = False
+
+    # Mark token as used
+    token_record.used_at = datetime.utcnow()
+
+    await db.commit()
+
+    logger.info(f"Password reset successful for user: {user.email}")
+
+    return PasswordResetResponse(
+        message="Password has been reset successfully"
+    )
 
 
 @app.post("/auth/refresh", response_model=TokenResponse)
@@ -560,6 +694,9 @@ async def create_organization(
 
     Note: In production, this should require admin/super-admin role
     """
+    from sqlalchemy import text
+    from uuid import uuid4
+
     # Check if firm with same name or email already exists
     result = await db.execute(
         select(Organization).where(
@@ -577,26 +714,72 @@ async def create_organization(
             detail="Organization with this name or email already exists"
         )
 
-    new_org = Organization(
-        firm_name=org_data.firm_name,
-        legal_name=org_data.legal_name,
-        ein=org_data.ein,
-        primary_contact_name=org_data.primary_contact_name,
-        primary_contact_email=org_data.primary_contact_email,
-        primary_contact_phone=org_data.primary_contact_phone,
-        subscription_tier=org_data.subscription_tier,
-        subscription_status=org_data.subscription_status,
-        max_users=org_data.max_users,
-        is_active=True
-    )
+    # Use raw SQL to handle PostgreSQL enum types properly
+    new_id = uuid4()
+    tier = org_data.subscription_tier or "professional"
+    status_val = org_data.subscription_status or "active"
+    max_users = org_data.max_users or 10
 
-    db.add(new_org)
+    # For asyncpg, we need to use CAST function instead of :: syntax
+    insert_query = text("""
+        INSERT INTO atlas.cpa_firms (
+            id, firm_name, legal_name, ein, primary_contact_name,
+            primary_contact_email, primary_contact_phone,
+            subscription_tier, subscription_status, max_users, is_active
+        ) VALUES (
+            :id, :firm_name, :legal_name, :ein, :primary_contact_name,
+            :primary_contact_email, :primary_contact_phone,
+            CAST(:subscription_tier AS atlas.firm_subscription_tier),
+            CAST(:subscription_status AS atlas.firm_status),
+            :max_users, :is_active
+        )
+        RETURNING id, firm_name, legal_name, ein, primary_contact_name, primary_contact_email,
+                  primary_contact_phone, logo_url, primary_color, secondary_color,
+                  require_two_factor_auth, session_timeout_minutes,
+                  subscription_tier, subscription_status, max_users,
+                  is_active, created_at, updated_at
+    """)
+
+    result = await db.execute(insert_query, {
+        "id": new_id,
+        "firm_name": org_data.firm_name,
+        "legal_name": org_data.legal_name,
+        "ein": org_data.ein,
+        "primary_contact_name": org_data.primary_contact_name,
+        "primary_contact_email": org_data.primary_contact_email,
+        "primary_contact_phone": org_data.primary_contact_phone,
+        "subscription_tier": tier,
+        "subscription_status": status_val,
+        "max_users": max_users,
+        "is_active": True
+    })
     await db.commit()
-    await db.refresh(new_org)
 
-    logger.info(f"New organization created: {new_org.firm_name} (ID: {new_org.id})")
+    row = result.fetchone()
+    logger.info(f"New organization created: {org_data.firm_name} (ID: {new_id})")
 
-    return OrganizationResponse.model_validate(new_org)
+    # Return the response
+    return OrganizationResponse(
+        id=row.id,
+        firm_name=row.firm_name,
+        legal_name=row.legal_name,
+        ein=row.ein,
+        primary_contact_name=row.primary_contact_name,
+        primary_contact_email=row.primary_contact_email,
+        primary_contact_phone=row.primary_contact_phone,
+        logo_url=row.logo_url,
+        primary_color=row.primary_color,
+        secondary_color=row.secondary_color,
+        require_two_factor_auth=row.require_two_factor_auth or False,
+        session_timeout_minutes=row.session_timeout_minutes,
+        subscription_tier=row.subscription_tier,
+        subscription_status=row.subscription_status,
+        max_users=row.max_users,
+        enabled_services=None,
+        is_active=row.is_active,
+        created_at=row.created_at,
+        updated_at=row.updated_at
+    )
 
 
 @app.delete("/admin/organizations/{org_id}")
@@ -815,12 +998,46 @@ async def update_organization(
 # Admin User Management
 # ========================================
 
-@app.get("/admin/users", response_model=List[UserResponse])
+@app.get("/admin/organizations/{org_id}/users")
+async def get_organization_users(
+    org_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all users for a specific organization (Admin endpoint)
+    """
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.organization))
+        .where(User.cpa_firm_id == org_id)
+        .order_by(User.created_at.desc())
+    )
+    users = result.scalars().all()
+
+    return [
+        {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": "firm_user",
+            "is_active": user.is_active,
+            "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        }
+        for user in users
+    ]
+
+
+@app.get("/admin/users")
 async def list_all_users(
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
-    tenant_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
     role: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: AsyncSession = Depends(get_db)
@@ -830,7 +1047,9 @@ async def list_all_users(
 
     Note: In production, this should require admin/super-admin role
     """
-    query = select(User)
+    from sqlalchemy.orm import selectinload
+
+    query = select(User).options(selectinload(User.organization))
 
     # Apply filters
     filters = []
@@ -839,13 +1058,12 @@ async def list_all_users(
         filters.append(
             or_(
                 User.email.ilike(search_pattern),
-                User.full_name.ilike(search_pattern)
+                User.first_name.ilike(search_pattern),
+                User.last_name.ilike(search_pattern)
             )
         )
-    if tenant_id:
-        filters.append(User.cpa_firm_id == UUID(tenant_id))
-    if role:
-        filters.append(User.role == role)
+    if organization_id:
+        filters.append(User.cpa_firm_id == UUID(organization_id))
     if is_active is not None:
         filters.append(User.is_active == is_active)
 
@@ -857,7 +1075,24 @@ async def list_all_users(
     result = await db.execute(query)
     users = result.scalars().all()
 
-    return [UserResponse.model_validate(user) for user in users]
+    # Build response with organization name
+    return [
+        {
+            "id": str(user.id),
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "full_name": user.full_name,
+            "role": getattr(user, 'role', None) or "firm_user",
+            "organization_id": str(user.cpa_firm_id) if user.cpa_firm_id else None,
+            "organization_name": user.organization.firm_name if user.organization else None,
+            "is_active": user.is_active,
+            "email_verified": user.is_email_verified,
+            "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        }
+        for user in users
+    ]
 
 
 @app.get("/admin/users/{user_id}", response_model=UserResponse)
@@ -909,13 +1144,12 @@ async def create_user_admin(
     # Hash password
     hashed_password = hash_password(user_data.password)
 
-    # Create user
+    # Create user (note: role is handled separately via user_permissions table, not stored on User)
     new_user = User(
         email=user_data.email,
         full_name=user_data.full_name,
         hashed_password=hashed_password,
         organization_id=user_data.organization_id,
-        role=user_data.role,
         is_active=True
     )
 
@@ -925,7 +1159,17 @@ async def create_user_admin(
 
     logger.info(f"New user created by admin: {new_user.email} (ID: {new_user.id})")
 
-    return UserResponse.model_validate(new_user)
+    # Build response manually since the model doesn't have role
+    return UserResponse(
+        id=new_user.id,
+        email=new_user.email,
+        full_name=new_user.full_name,
+        role=user_data.role,  # Pass through the requested role
+        organization_id=new_user.organization_id,
+        is_active=new_user.is_active,
+        created_at=new_user.created_at,
+        last_login_at=new_user.last_login_at
+    )
 
 
 @app.patch("/admin/users/{user_id}", response_model=UserResponse)
@@ -993,6 +1237,53 @@ async def deactivate_user_admin(
     logger.info(f"User deactivated by admin: {user.email}")
 
     return {"message": "User deactivated successfully", "id": str(user_id)}
+
+
+@app.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_user_password(
+    user_id: UUID,
+    password_data: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Reset a user's password (Admin endpoint)
+
+    Note: In production, this should require admin/super-admin role
+    """
+    new_password = password_data.get("new_password")
+    if not new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="new_password is required"
+        )
+
+    if len(new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters"
+        )
+
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Hash and update password
+    user.password_hash = hash_password(new_password)
+    user.last_password_change = datetime.utcnow()
+    user.require_password_change = password_data.get("require_change", False)
+
+    await db.commit()
+
+    logger.info(f"Password reset by admin for user: {user.email}")
+
+    return {"message": "Password reset successfully", "user_id": str(user_id)}
 
 
 # ========================================
@@ -1295,6 +1586,340 @@ async def update_user_permissions(
     logger.info(f"Permissions updated for user {user.email} by {current_user.email}")
 
     return UserPermissionResponse.model_validate(permissions)
+
+
+# ========================================
+# Client (Audit Client) Management
+# ========================================
+
+@app.get("/clients", response_model=dict)
+@app.get("/clients/", response_model=dict, include_in_schema=False)
+async def list_clients(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List clients for the current user's CPA firm
+    """
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    result = await db.execute(
+        select(Client)
+        .where(Client.cpa_firm_id == current_user.cpa_firm_id)
+        .where(Client.is_active == True)
+        .order_by(Client.client_name)
+    )
+    clients = result.scalars().all()
+
+    client_list = []
+    for client in clients:
+        client_list.append({
+            "id": str(client.id),
+            "organization_id": str(client.cpa_firm_id),
+            "name": client.client_name,
+            "ein": client.ein,
+            "industry": client.industry_code,
+            "address": client.address_line1,
+            "phone": client.primary_contact_phone,
+            "email": client.primary_contact_email,
+            "primary_contact_name": client.primary_contact_name,
+            "primary_contact_email": client.primary_contact_email,
+            "primary_contact_phone": client.primary_contact_phone,
+            "status": client.client_status or "active",
+            "fiscal_year_end": client.fiscal_year_end,
+            "notes": None,
+            "created_at": client.created_at.isoformat() if client.created_at else None,
+            "updated_at": client.updated_at.isoformat() if client.updated_at else None
+        })
+
+    return {"clients": client_list}
+
+
+@app.post("/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/clients/", response_model=ClientResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+async def create_client(
+    client_data: ClientCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a new audit client
+    """
+    from sqlalchemy import text
+    from uuid import uuid4 as gen_uuid
+
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    # Check if client with same name exists in this firm
+    result = await db.execute(
+        select(Client).where(
+            and_(
+                Client.cpa_firm_id == current_user.cpa_firm_id,
+                Client.client_name == client_data.name
+            )
+        )
+    )
+    existing_client = result.scalar_one_or_none()
+
+    if existing_client:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Client with this name already exists"
+        )
+
+    # Use raw SQL to handle PostgreSQL enum types
+    new_id = gen_uuid()
+    status_val = client_data.status if client_data.status else "active"
+
+    insert_query = text("""
+        INSERT INTO atlas.clients (
+            id, cpa_firm_id, client_name, ein,
+            primary_contact_name, primary_contact_email, primary_contact_phone,
+            address_line1, fiscal_year_end, industry_code,
+            client_status, is_active, created_by
+        ) VALUES (
+            :id, :cpa_firm_id, :client_name, :ein,
+            :primary_contact_name, :primary_contact_email, :primary_contact_phone,
+            :address_line1, :fiscal_year_end, :industry_code,
+            CAST(:client_status AS atlas.client_status), :is_active, :created_by
+        )
+        RETURNING id, cpa_firm_id, client_name, ein,
+                  primary_contact_name, primary_contact_email, primary_contact_phone,
+                  address_line1, fiscal_year_end, industry_code,
+                  client_status, is_active, created_at, updated_at
+    """)
+
+    result = await db.execute(insert_query, {
+        "id": new_id,
+        "cpa_firm_id": current_user.cpa_firm_id,
+        "client_name": client_data.name,
+        "ein": client_data.ein,
+        "primary_contact_name": client_data.primary_contact_name,
+        "primary_contact_email": client_data.primary_contact_email or client_data.email,
+        "primary_contact_phone": client_data.primary_contact_phone or client_data.phone,
+        "address_line1": client_data.address,
+        "fiscal_year_end": client_data.fiscal_year_end,
+        "industry_code": client_data.industry,
+        "client_status": status_val,
+        "is_active": True,
+        "created_by": current_user.id
+    })
+    await db.commit()
+
+    row = result.fetchone()
+    logger.info(f"New client created: {client_data.name} by {current_user.email}")
+
+    return ClientResponse(
+        id=row.id,
+        organization_id=row.cpa_firm_id,
+        name=row.client_name,
+        ein=row.ein,
+        industry=row.industry_code,
+        address=row.address_line1,
+        phone=row.primary_contact_phone,
+        email=row.primary_contact_email,
+        primary_contact_name=row.primary_contact_name,
+        primary_contact_email=row.primary_contact_email,
+        primary_contact_phone=row.primary_contact_phone,
+        status=str(row.client_status) if row.client_status else "active",
+        fiscal_year_end=row.fiscal_year_end,
+        notes=None,
+        created_at=row.created_at,
+        updated_at=row.updated_at
+    )
+
+
+@app.get("/clients/{client_id}", response_model=ClientResponse)
+async def get_client(
+    client_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get client by ID
+    """
+    result = await db.execute(
+        select(Client).where(
+            and_(
+                Client.id == client_id,
+                Client.cpa_firm_id == current_user.cpa_firm_id
+            )
+        )
+    )
+    client = result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+
+    return ClientResponse(
+        id=client.id,
+        organization_id=client.cpa_firm_id,
+        name=client.client_name,
+        ein=client.ein,
+        industry=client.industry_code,
+        address=client.address_line1,
+        phone=client.primary_contact_phone,
+        email=client.primary_contact_email,
+        primary_contact_name=client.primary_contact_name,
+        primary_contact_email=client.primary_contact_email,
+        primary_contact_phone=client.primary_contact_phone,
+        status=client.client_status or "active",
+        fiscal_year_end=client.fiscal_year_end,
+        notes=None,
+        created_at=client.created_at,
+        updated_at=client.updated_at
+    )
+
+
+@app.patch("/clients/{client_id}", response_model=ClientResponse)
+async def update_client(
+    client_id: UUID,
+    client_update: ClientUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update client information
+    """
+    result = await db.execute(
+        select(Client).where(
+            and_(
+                Client.id == client_id,
+                Client.cpa_firm_id == current_user.cpa_firm_id
+            )
+        )
+    )
+    client = result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+
+    # Update fields if provided
+    if client_update.name is not None:
+        client.client_name = client_update.name
+    if client_update.ein is not None:
+        client.ein = client_update.ein
+    if client_update.industry is not None:
+        client.industry_code = client_update.industry
+    if client_update.address is not None:
+        client.address_line1 = client_update.address
+    if client_update.primary_contact_name is not None:
+        client.primary_contact_name = client_update.primary_contact_name
+    if client_update.primary_contact_email is not None:
+        client.primary_contact_email = client_update.primary_contact_email
+    if client_update.primary_contact_phone is not None:
+        client.primary_contact_phone = client_update.primary_contact_phone
+    if client_update.email is not None:
+        client.primary_contact_email = client_update.email
+    if client_update.phone is not None:
+        client.primary_contact_phone = client_update.phone
+    if client_update.status is not None:
+        client.client_status = client_update.status
+    if client_update.fiscal_year_end is not None:
+        client.fiscal_year_end = client_update.fiscal_year_end
+
+    await db.commit()
+    await db.refresh(client)
+
+    logger.info(f"Client updated: {client.client_name} by {current_user.email}")
+
+    return ClientResponse(
+        id=client.id,
+        organization_id=client.cpa_firm_id,
+        name=client.client_name,
+        ein=client.ein,
+        industry=client.industry_code,
+        address=client.address_line1,
+        phone=client.primary_contact_phone,
+        email=client.primary_contact_email,
+        primary_contact_name=client.primary_contact_name,
+        primary_contact_email=client.primary_contact_email,
+        primary_contact_phone=client.primary_contact_phone,
+        status=client.client_status or "active",
+        fiscal_year_end=client.fiscal_year_end,
+        notes=None,
+        created_at=client.created_at,
+        updated_at=client.updated_at
+    )
+
+
+@app.delete("/clients/{client_id}")
+async def delete_client(
+    client_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete (soft-delete) a client
+    """
+    result = await db.execute(
+        select(Client).where(
+            and_(
+                Client.id == client_id,
+                Client.cpa_firm_id == current_user.cpa_firm_id
+            )
+        )
+    )
+    client = result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+
+    # Soft delete
+    client.is_active = False
+    await db.commit()
+
+    logger.info(f"Client deleted: {client.client_name} by {current_user.email}")
+
+    return {"message": "Client deleted successfully", "id": str(client_id)}
+
+
+@app.get("/clients/{client_id}/engagements")
+async def get_client_engagements(
+    client_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get engagements for a client
+    """
+    # Verify client belongs to user's firm
+    result = await db.execute(
+        select(Client).where(
+            and_(
+                Client.id == client_id,
+                Client.cpa_firm_id == current_user.cpa_firm_id
+            )
+        )
+    )
+    client = result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+
+    # TODO: Query engagements from engagement service
+    # For now, return empty list
+    return {"engagements": []}
 
 
 if __name__ == "__main__":
