@@ -1,0 +1,488 @@
+# Recreate 8 services with proper environment configuration
+# advanced-report-generation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-report-generation
+  namespace: aura-audit-ai
+  labels:
+    app: advanced-report-generation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: advanced-report-generation
+  template:
+    metadata:
+      labels:
+        app: advanced-report-generation
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: advanced-report-generation
+        image: auraauditaiprodacr.azurecr.io/aura/advanced-report-generation:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# financial-analysis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financial-analysis
+  namespace: aura-audit-ai
+  labels:
+    app: financial-analysis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: financial-analysis
+  template:
+    metadata:
+      labels:
+        app: financial-analysis
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: financial-analysis
+        image: auraauditaiprodacr.azurecr.io/aura/financial-analysis:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# fraud-detection
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection
+  namespace: aura-audit-ai
+  labels:
+    app: fraud-detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-detection
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: fraud-detection
+        image: auraauditaiprodacr.azurecr.io/aura/fraud-detection:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# reg-ab-audit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reg-ab-audit
+  namespace: aura-audit-ai
+  labels:
+    app: reg-ab-audit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reg-ab-audit
+  template:
+    metadata:
+      labels:
+        app: reg-ab-audit
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: reg-ab-audit
+        image: auraauditaiprodacr.azurecr.io/aura/reg-ab-audit:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# tax-engine
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-engine
+  namespace: aura-audit-ai
+  labels:
+    app: tax-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-engine
+  template:
+    metadata:
+      labels:
+        app: tax-engine
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-engine
+        image: auraauditaiprodacr.azurecr.io/aura/tax-engine:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# tax-forms
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-forms
+  namespace: aura-audit-ai
+  labels:
+    app: tax-forms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-forms
+  template:
+    metadata:
+      labels:
+        app: tax-forms
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-forms
+        image: auraauditaiprodacr.azurecr.io/aura/tax-forms:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# tax-ocr-intake
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-ocr-intake
+  namespace: aura-audit-ai
+  labels:
+    app: tax-ocr-intake
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-ocr-intake
+  template:
+    metadata:
+      labels:
+        app: tax-ocr-intake
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-ocr-intake
+        image: auraauditaiprodacr.azurecr.io/aura/tax-ocr-intake:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# tax-review
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-review
+  namespace: aura-audit-ai
+  labels:
+    app: tax-review
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-review
+  template:
+    metadata:
+      labels:
+        app: tax-review
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: tax-review
+        image: auraauditaiprodacr.azurecr.io/aura/tax-review:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: storage-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi

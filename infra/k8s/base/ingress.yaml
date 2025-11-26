@@ -82,6 +82,9 @@ metadata:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/api(/|$)(.*) /$2 break;
   labels:
     app.kubernetes.io/name: aura-audit-ai
     app.kubernetes.io/component: admin
@@ -95,6 +98,15 @@ spec:
   - host: admin.auraai.toroniandcompany.com
     http:
       paths:
+      # Route API requests to identity service (strip /api prefix)
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: identity
+            port:
+              number: 8000
+      # Route frontend requests to admin portal
       - path: /
         pathType: Prefix
         backend:

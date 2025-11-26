@@ -1,0 +1,525 @@
+---
+# AI Agent Builder Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent-builder
+  namespace: aura-audit-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-agent-builder
+  template:
+    metadata:
+      labels:
+        app: ai-agent-builder
+    spec:
+      containers:
+      - name: ai-agent-builder
+        image: auraauditaiprodacr.azurecr.io/aura/ai-agent-builder:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-agent-builder
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: ai-agent-builder
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# AI Testing Deployment (GPU)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-testing
+  namespace: aura-audit-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-testing
+  template:
+    metadata:
+      labels:
+        app: ai-testing
+    spec:
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: ai-testing
+        image: auraauditaiprodacr.azurecr.io/aura/ai-testing:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-testing
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: ai-testing
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Control Points Engine Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-points-engine
+  namespace: aura-audit-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: control-points-engine
+  template:
+    metadata:
+      labels:
+        app: control-points-engine
+    spec:
+      containers:
+      - name: control-points-engine
+        image: auraauditaiprodacr.azurecr.io/aura/control-points-engine:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-points-engine
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: control-points-engine
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Document Intelligence Deployment (GPU)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-intelligence
+  namespace: aura-audit-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: document-intelligence
+  template:
+    metadata:
+      labels:
+        app: document-intelligence
+    spec:
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: document-intelligence
+        image: auraauditaiprodacr.azurecr.io/aura/document-intelligence:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "8Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-intelligence
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: document-intelligence
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Full Population Analysis Deployment (GPU)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: full-population-analysis
+  namespace: aura-audit-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: full-population-analysis
+  template:
+    metadata:
+      labels:
+        app: full-population-analysis
+    spec:
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: full-population-analysis
+        image: auraauditaiprodacr.azurecr.io/aura/full-population-analysis:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "8Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: full-population-analysis
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: full-population-analysis
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# GL Monitor Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gl-monitor
+  namespace: aura-audit-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gl-monitor
+  template:
+    metadata:
+      labels:
+        app: gl-monitor
+    spec:
+      containers:
+      - name: gl-monitor
+        image: auraauditaiprodacr.azurecr.io/aura/gl-monitor:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gl-monitor
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: gl-monitor
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Predictive Failure Deployment (GPU)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: predictive-failure
+  namespace: aura-audit-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: predictive-failure
+  template:
+    metadata:
+      labels:
+        app: predictive-failure
+    spec:
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: predictive-failure
+        image: auraauditaiprodacr.azurecr.io/aura/predictive-failure:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "8Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: predictive-failure
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: predictive-failure
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Risk Monitor Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk-monitor
+  namespace: aura-audit-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: risk-monitor
+  template:
+    metadata:
+      labels:
+        app: risk-monitor
+    spec:
+      containers:
+      - name: risk-monitor
+        image: auraauditaiprodacr.azurecr.io/aura/risk-monitor:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: risk-monitor
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: risk-monitor
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# SOX Automation Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sox-automation
+  namespace: aura-audit-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sox-automation
+  template:
+    metadata:
+      labels:
+        app: sox-automation
+    spec:
+      containers:
+      - name: sox-automation
+        image: auraauditaiprodacr.azurecr.io/aura/sox-automation:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sox-automation
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: sox-automation
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Variance Intelligence Deployment (GPU)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: variance-intelligence
+  namespace: aura-audit-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: variance-intelligence
+  template:
+    metadata:
+      labels:
+        app: variance-intelligence
+    spec:
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: variance-intelligence
+        image: auraauditaiprodacr.azurecr.io/aura/variance-intelligence:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "8Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: variance-intelligence
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: variance-intelligence
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP

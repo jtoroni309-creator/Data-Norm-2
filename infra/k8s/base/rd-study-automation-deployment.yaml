@@ -1,0 +1,54 @@
+---
+# R&D Study Automation Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rd-study-automation
+  namespace: aura-audit-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rd-study-automation
+  template:
+    metadata:
+      labels:
+        app: rd-study-automation
+    spec:
+      containers:
+      - name: rd-study-automation
+        image: auraauditaiprodacr.azurecr.io/aura/rd-study-automation:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: AZURE_STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: azure-storage
+              key: connection-string
+              optional: true
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rd-study-automation
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: rd-study-automation
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP

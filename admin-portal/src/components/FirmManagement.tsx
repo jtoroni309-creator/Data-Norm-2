@@ -14,6 +14,7 @@ import {
   Globe
 } from 'lucide-react';
 import { tenantAPI, Tenant } from '../services/api';
+import { SERVICE_CATALOG } from '../config';
 
 interface ServiceToggle {
   id: string;
@@ -44,49 +45,13 @@ const FirmManagement: React.FC = () => {
     subscription_tier: 'professional' as const,
   });
 
-  // Available services that can be toggled per firm
-  const availableServices: ServiceToggle[] = [
-    // Core Services
-    { id: 'analytics', name: 'Analytics', enabled: true, category: 'Core' },
-    { id: 'llm', name: 'AI Language Model', enabled: true, category: 'Core' },
-    { id: 'engagement', name: 'Engagement Management', enabled: true, category: 'Core' },
-    { id: 'reporting', name: 'Reporting', enabled: true, category: 'Core' },
-
-    // Audit Services
-    { id: 'audit-planning', name: 'Audit Planning', enabled: true, category: 'Audit' },
-    { id: 'substantive-testing', name: 'Substantive Testing', enabled: true, category: 'Audit' },
-    { id: 'fraud-detection', name: 'Fraud Detection', enabled: true, category: 'Audit' },
-    { id: 'financial-analysis', name: 'Financial Analysis', enabled: true, category: 'Audit' },
-    { id: 'subsequent-events', name: 'Subsequent Events', enabled: true, category: 'Audit' },
-    { id: 'related-party', name: 'Related Party Transactions', enabled: true, category: 'Audit' },
-    { id: 'sampling', name: 'Audit Sampling', enabled: true, category: 'Audit' },
-    { id: 'estimates-evaluation', name: 'Estimates Evaluation', enabled: true, category: 'Audit' },
-
-    // Compliance & Reporting
-    { id: 'disclosures', name: 'Disclosure Generation', enabled: true, category: 'Compliance' },
-    { id: 'reg-ab-audit', name: 'Reg AB Audit', enabled: true, category: 'Compliance' },
-    { id: 'advanced-report-generation', name: 'Advanced Report Generation', enabled: true, category: 'Compliance' },
-
-    // Tax Services
-    { id: 'tax-engine', name: 'Tax Engine', enabled: true, category: 'Tax' },
-    { id: 'tax-forms', name: 'Tax Forms', enabled: true, category: 'Tax' },
-    { id: 'tax-review', name: 'Tax Review', enabled: true, category: 'Tax' },
-    { id: 'tax-ocr-intake', name: 'Tax OCR Intake', enabled: true, category: 'Tax' },
-
-    // Data & Integration
-    { id: 'ingestion', name: 'Data Ingestion', enabled: true, category: 'Data' },
-    { id: 'normalize', name: 'Data Normalization', enabled: true, category: 'Data' },
-    { id: 'connectors', name: 'Third-Party Connectors', enabled: true, category: 'Data' },
-    { id: 'accounting-integrations', name: 'Accounting Integrations', enabled: true, category: 'Data' },
-
-    // Quality & Security
-    { id: 'qc', name: 'Quality Control', enabled: true, category: 'Quality' },
-    { id: 'security', name: 'Security & Access Control', enabled: true, category: 'Security' },
-    { id: 'data-anonymization', name: 'Data Anonymization', enabled: true, category: 'Security' },
-
-    // Training & Support
-    { id: 'training-data', name: 'Training Data Management', enabled: false, category: 'AI/ML' },
-  ];
+  // Available services that can be toggled per firm - imported from config
+  const availableServices: ServiceToggle[] = SERVICE_CATALOG.map(service => ({
+    id: service.id,
+    name: service.name,
+    enabled: service.defaultEnabled,
+    category: service.category,
+  }));
 
   useEffect(() => {
     loadFirms();

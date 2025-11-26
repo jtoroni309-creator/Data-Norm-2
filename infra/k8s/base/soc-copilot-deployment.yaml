@@ -1,0 +1,95 @@
+# SOC Copilot Service Deployment
+# SOC 1 & SOC 2 audit management service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: soc-copilot
+  namespace: aura-audit-ai
+  labels:
+    app: soc-copilot
+    component: api
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: soc-copilot
+  template:
+    metadata:
+      labels:
+        app: soc-copilot
+        component: api
+    spec:
+      serviceAccountName: aura-workload-identity
+      containers:
+      - name: soc-copilot
+        image: auraauditaiprodacr.azurecr.io/aura/soc-copilot:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-redis-connection
+              key: connection-string
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: openai-api-key
+        envFrom:
+        - configMapRef:
+            name: aura-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      nodeSelector:
+        workload: application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: soc-copilot
+  namespace: aura-audit-ai
+  labels:
+    app: soc-copilot
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: soc-copilot

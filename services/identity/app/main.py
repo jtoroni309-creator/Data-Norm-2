@@ -577,36 +577,6 @@ async def create_organization(
             detail="Organization with this name or email already exists"
         )
 
-    # Create organization with default enabled services (all enabled by default)
-    default_services = {
-        "analytics": True,
-        "audit-planning": True,
-        "connectors": True,
-        "disclosures": True,
-        "engagement": True,
-        "fraud-detection": True,
-        "gateway": True,
-        "identity": True,
-        "ingestion": True,
-        "llm": True,
-        "normalize": True,
-        "qc": True,
-        "reporting": True,
-        "financial-analysis": True,
-        "tax-forms": True,
-        "tax-ocr-intake": True,
-        "knowledge-graph": True,
-        "reg-ab-audit": True,
-        "advanced-report-generation": True,
-        "workflow-automation": True,
-        "document-intelligence": True,
-        "client-communication": True,
-        "audit-sampling": True,
-        "data-analytics-ml": True,
-        "eo-portal": True,
-        "risk-assessment": True
-    }
-
     new_org = Organization(
         firm_name=org_data.firm_name,
         legal_name=org_data.legal_name,
@@ -617,7 +587,6 @@ async def create_organization(
         subscription_tier=org_data.subscription_tier,
         subscription_status=org_data.subscription_status,
         max_users=org_data.max_users,
-        enabled_services=default_services,
         is_active=True
     )
 
@@ -718,6 +687,7 @@ async def update_organization_services(
     Update enabled services for a CPA firm (Admin endpoint - no auth required for now)
 
     Note: In production, this should require admin/super-admin role
+    Note: enabled_services column doesn't exist in DB yet, so this endpoint does nothing
     """
     result = await db.execute(
         select(Organization).where(Organization.id == org_id)
@@ -730,14 +700,14 @@ async def update_organization_services(
             detail="Organization not found"
         )
 
-    # Update enabled_services
-    organization.enabled_services = services
+    # TODO: Add enabled_services column to database schema
+    # organization.enabled_services = services
     organization.updated_at = datetime.utcnow()
 
     await db.commit()
     await db.refresh(organization)
 
-    logger.info(f"Organization services updated: {organization.firm_name} (ID: {org_id})")
+    logger.info(f"Organization services update requested (no-op): {organization.firm_name} (ID: {org_id})")
 
     return OrganizationResponse.model_validate(organization)
 
@@ -836,7 +806,7 @@ async def update_organization(
     await db.commit()
     await db.refresh(organization)
 
-    logger.info(f"Organization updated: {organization.name} by {current_user.email}")
+    logger.info(f"Organization updated: {organization.firm_name} by {current_user.email}")
 
     return OrganizationResponse.model_validate(organization)
 

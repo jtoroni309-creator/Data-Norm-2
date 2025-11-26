@@ -38,3 +38,7 @@ async def get_db() -> AsyncSession:
             yield session
         finally:
             await session.close()
+
+
+# Alias for compatibility with client_portal_api.py
+get_async_session = get_db

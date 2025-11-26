@@ -73,7 +73,7 @@ const FirmDashboard: React.FC = () => {
       trend: 'up',
       icon: FileText,
       color: 'success',
-      action: () => navigate('/engagements')
+      action: () => navigate('/firm/audits')
     },
     {
       title: 'Pending Invitations',
@@ -91,7 +91,7 @@ const FirmDashboard: React.FC = () => {
       trend: 'up',
       icon: Building2,
       color: 'primary',
-      action: () => navigate('/clients')
+      action: () => navigate('/firm/clients')
     }
   ];
 
@@ -112,7 +112,7 @@ const FirmDashboard: React.FC = () => {
       title: 'View Reports',
       description: 'Access analytics and insights',
       icon: BarChart3,
-      action: () => navigate('/reports')
+      action: () => navigate('/firm/reports')
     },
   ];
 

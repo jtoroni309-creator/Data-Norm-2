@@ -45,6 +45,25 @@ from .compliance_checker import ComplianceChecker
 
 
 # ============================================================================
+# BASE TYPES FOR REPORTS
+# ============================================================================
+
+class OpinionType(str, Enum):
+    """Types of audit opinions"""
+    UNQUALIFIED = "unqualified"
+    QUALIFIED = "qualified"
+    ADVERSE = "adverse"
+    DISCLAIMER = "disclaimer"
+
+
+class ReportSection(BaseModel):
+    """Individual section of an audit report"""
+    section_name: str
+    content: str
+    citations: List[str] = []
+
+
+# ============================================================================
 # 1. CONSTITUTIONAL AI FOR REGULATORY COMPLIANCE
 # ============================================================================
 
@@ -710,10 +729,17 @@ class AuditReportStructure(BaseModel):
     title: str = Field(..., min_length=10)
     addressee: str
 
-    opinion: str = Field(..., min_length=100)
-    basis_for_opinion: str = Field(..., min_length=200)
-    auditors_responsibilities: str = Field(..., min_length=300)
-    managements_responsibilities: str = Field(..., min_length=200)
+    # Period end date for the report
+    period_end: datetime
+
+    # Opinion type and sections
+    opinion: OpinionType
+    sections: List[ReportSection] = []
+
+    # Legacy fields for backwards compatibility
+    basis_for_opinion: Optional[str] = None
+    auditors_responsibilities: Optional[str] = None
+    managements_responsibilities: Optional[str] = None
 
     # Optional sections
     critical_audit_matters: Optional[str] = None
@@ -725,32 +751,7 @@ class AuditReportStructure(BaseModel):
 
     # Signature
     signature: str
-    firm_location: str
-
-    @validator('opinion')
-    def opinion_must_contain_key_phrases(cls, v):
-        """Validate opinion contains required language"""
-        required_phrases = [
-            "in our opinion",
-            "present fairly",
-            "in all material respects",
-            "in accordance with"
-        ]
-
-        v_lower = v.lower()
-        for phrase in required_phrases:
-            if phrase not in v_lower:
-                raise ValueError(f"Opinion must contain phrase: '{phrase}'")
-
-        return v
-
-    @validator('basis_for_opinion')
-    def basis_must_reference_standards(cls, v):
-        """Validate basis references audit standards"""
-        if "standards" not in v.lower():
-            raise ValueError("Basis must reference auditing standards")
-
-        return v
+    firm_location: Optional[str] = None
 
 
 # ============================================================================

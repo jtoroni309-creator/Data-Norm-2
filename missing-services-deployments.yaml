@@ -1,0 +1,900 @@
+# Deploy all 18 missing services to AKS
+# accounting-integrations
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounting-integrations
+  namespace: aura-audit-ai
+  labels:
+    app: accounting-integrations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounting-integrations
+  template:
+    metadata:
+      labels:
+        app: accounting-integrations
+    spec:
+      containers:
+      - name: accounting-integrations
+        image: auraauditaiprodacr.azurecr.io/aura/accounting-integrations:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounting-integrations
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: accounting-integrations
+---
+# advanced-report-generation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-report-generation
+  namespace: aura-audit-ai
+  labels:
+    app: advanced-report-generation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: advanced-report-generation
+  template:
+    metadata:
+      labels:
+        app: advanced-report-generation
+    spec:
+      containers:
+      - name: advanced-report-generation
+        image: auraauditaiprodacr.azurecr.io/aura/advanced-report-generation:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: advanced-report-generation
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: advanced-report-generation
+---
+# audit-planning
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-planning
+  namespace: aura-audit-ai
+  labels:
+    app: audit-planning
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-planning
+  template:
+    metadata:
+      labels:
+        app: audit-planning
+    spec:
+      containers:
+      - name: audit-planning
+        image: auraauditaiprodacr.azurecr.io/aura/audit-planning:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-planning
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: audit-planning
+---
+# data-anonymization
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-anonymization
+  namespace: aura-audit-ai
+  labels:
+    app: data-anonymization
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-anonymization
+  template:
+    metadata:
+      labels:
+        app: data-anonymization
+    spec:
+      containers:
+      - name: data-anonymization
+        image: auraauditaiprodacr.azurecr.io/aura/data-anonymization:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-anonymization
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: data-anonymization
+---
+# estimates-evaluation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estimates-evaluation
+  namespace: aura-audit-ai
+  labels:
+    app: estimates-evaluation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estimates-evaluation
+  template:
+    metadata:
+      labels:
+        app: estimates-evaluation
+    spec:
+      containers:
+      - name: estimates-evaluation
+        image: auraauditaiprodacr.azurecr.io/aura/estimates-evaluation:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estimates-evaluation
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: estimates-evaluation
+---
+# financial-analysis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financial-analysis
+  namespace: aura-audit-ai
+  labels:
+    app: financial-analysis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: financial-analysis
+  template:
+    metadata:
+      labels:
+        app: financial-analysis
+    spec:
+      containers:
+      - name: financial-analysis
+        image: auraauditaiprodacr.azurecr.io/aura/financial-analysis:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: financial-analysis
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: financial-analysis
+---
+# fraud-detection
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection
+  namespace: aura-audit-ai
+  labels:
+    app: fraud-detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-detection
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+    spec:
+      containers:
+      - name: fraud-detection
+        image: auraauditaiprodacr.azurecr.io/aura/fraud-detection:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-detection
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: fraud-detection
+---
+# reg-ab-audit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reg-ab-audit
+  namespace: aura-audit-ai
+  labels:
+    app: reg-ab-audit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reg-ab-audit
+  template:
+    metadata:
+      labels:
+        app: reg-ab-audit
+    spec:
+      containers:
+      - name: reg-ab-audit
+        image: auraauditaiprodacr.azurecr.io/aura/reg-ab-audit:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reg-ab-audit
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: reg-ab-audit
+---
+# related-party
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: related-party
+  namespace: aura-audit-ai
+  labels:
+    app: related-party
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: related-party
+  template:
+    metadata:
+      labels:
+        app: related-party
+    spec:
+      containers:
+      - name: related-party
+        image: auraauditaiprodacr.azurecr.io/aura/related-party:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: related-party
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: related-party
+---
+# sampling
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sampling
+  namespace: aura-audit-ai
+  labels:
+    app: sampling
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sampling
+  template:
+    metadata:
+      labels:
+        app: sampling
+    spec:
+      containers:
+      - name: sampling
+        image: auraauditaiprodacr.azurecr.io/aura/sampling:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sampling
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: sampling
+---
+# security
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security
+  namespace: aura-audit-ai
+  labels:
+    app: security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: security
+  template:
+    metadata:
+      labels:
+        app: security
+    spec:
+      containers:
+      - name: security
+        image: auraauditaiprodacr.azurecr.io/aura/security:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: security
+---
+# subsequent-events
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subsequent-events
+  namespace: aura-audit-ai
+  labels:
+    app: subsequent-events
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: subsequent-events
+  template:
+    metadata:
+      labels:
+        app: subsequent-events
+    spec:
+      containers:
+      - name: subsequent-events
+        image: auraauditaiprodacr.azurecr.io/aura/subsequent-events:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: subsequent-events
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: subsequent-events
+---
+# substantive-testing
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: substantive-testing
+  namespace: aura-audit-ai
+  labels:
+    app: substantive-testing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: substantive-testing
+  template:
+    metadata:
+      labels:
+        app: substantive-testing
+    spec:
+      containers:
+      - name: substantive-testing
+        image: auraauditaiprodacr.azurecr.io/aura/substantive-testing:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: substantive-testing
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: substantive-testing
+---
+# tax-engine
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-engine
+  namespace: aura-audit-ai
+  labels:
+    app: tax-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-engine
+  template:
+    metadata:
+      labels:
+        app: tax-engine
+    spec:
+      containers:
+      - name: tax-engine
+        image: auraauditaiprodacr.azurecr.io/aura/tax-engine:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-engine
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-engine
+---
+# tax-forms
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-forms
+  namespace: aura-audit-ai
+  labels:
+    app: tax-forms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-forms
+  template:
+    metadata:
+      labels:
+        app: tax-forms
+    spec:
+      containers:
+      - name: tax-forms
+        image: auraauditaiprodacr.azurecr.io/aura/tax-forms:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-forms
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-forms
+---
+# tax-ocr-intake
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-ocr-intake
+  namespace: aura-audit-ai
+  labels:
+    app: tax-ocr-intake
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-ocr-intake
+  template:
+    metadata:
+      labels:
+        app: tax-ocr-intake
+    spec:
+      containers:
+      - name: tax-ocr-intake
+        image: auraauditaiprodacr.azurecr.io/aura/tax-ocr-intake:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-ocr-intake
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-ocr-intake
+---
+# tax-review
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-review
+  namespace: aura-audit-ai
+  labels:
+    app: tax-review
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-review
+  template:
+    metadata:
+      labels:
+        app: tax-review
+    spec:
+      containers:
+      - name: tax-review
+        image: auraauditaiprodacr.azurecr.io/aura/tax-review:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-review
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: tax-review
+---
+# training-data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-data
+  namespace: aura-audit-ai
+  labels:
+    app: training-data
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-data
+  template:
+    metadata:
+      labels:
+        app: training-data
+    spec:
+      containers:
+      - name: training-data
+        image: auraauditaiprodacr.azurecr.io/aura/training-data:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: training-data
+  namespace: aura-audit-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: training-data

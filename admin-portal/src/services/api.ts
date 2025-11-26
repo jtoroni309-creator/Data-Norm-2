@@ -4,8 +4,9 @@
  * Centralized API calls to the backend identity service
  */
 
-const IDENTITY_API_URL = import.meta.env.VITE_IDENTITY_API_URL || 'http://identity.aura-audit-ai.svc.cluster.local:8000';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || IDENTITY_API_URL;
+import { API_CONFIG } from '../config';
+
+const API_BASE_URL = API_CONFIG.identityUrl;
 
 // ============================================================================
 // Types

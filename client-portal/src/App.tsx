@@ -24,18 +24,31 @@ import {
 
 // Pages
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { HomePage } from './pages/HomePage';
 import FirmDashboard from './pages/FirmDashboard';
 import FirmSettings from './pages/FirmSettings';
 import EmployeeManagement from './pages/EmployeeManagement';
+import FirmClients from './pages/FirmClients';
+import FirmAudits from './pages/FirmAudits';
+import FirmReports from './pages/FirmReports';
 import { DashboardPage } from './pages/DashboardPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
+n// Engagement Workspace Pages
+import EngagementWorkspace from './pages/EngagementWorkspace';
+import WorkpaperManager from './pages/WorkpaperManager';
+import AnalyticalProcedures from './pages/AnalyticalProcedures';
+import AuditTesting from './pages/AuditTesting';
+import RiskAssessment from './pages/RiskAssessment';
+import DocumentRepository from './pages/DocumentRepository';
+import AuditReporting from './pages/AuditReporting';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/firm/dashboard' },
-  { id: 'employees', label: 'Team', icon: Users, path: '/firm/employees' },
+  { id: 'clients', label: 'Clients', icon: Building2, path: '/firm/clients' },
   { id: 'audits', label: 'Audits', icon: FileText, path: '/firm/audits' },
+  { id: 'employees', label: 'Team', icon: Users, path: '/firm/employees' },
   { id: 'reports', label: 'Reports', icon: BarChart3, path: '/firm/reports' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/firm/settings' },
 ];
@@ -55,14 +68,12 @@ const RouteGuard: React.FC<{ children: React.ReactNode; portalType: 'firm' | 'cl
   React.useEffect(() => {
     // If on CPA subdomain but trying to access client routes, redirect to firm dashboard
     if (isCpaPortal && portalType === 'client') {
-      console.log('RouteGuard: Redirecting from client route to firm dashboard');
       navigate('/firm/dashboard', { replace: true });
       return;
     }
 
     // If NOT on CPA subdomain but trying to access firm routes, redirect to client dashboard
     if (!isCpaPortal && portalType === 'firm') {
-      console.log('RouteGuard: Redirecting from firm route to client dashboard');
       navigate('/client/dashboard', { replace: true });
       return;
     }
@@ -85,6 +96,17 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Load user data from localStorage
+  const getUserData = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+  const user = getUserData();
 
   return (
     <div className="min-h-screen bg-[#faf9f8]">
@@ -172,7 +194,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="p-3 border-t border-neutral-200">
             <div className="flex items-center gap-3 px-3 py-2.5">
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white text-body-strong flex-shrink-0">
-                F
+                {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
               </div>
               <AnimatePresence mode="wait">
                 {sidebarOpen && (
@@ -183,14 +205,20 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     transition={{ duration: 0.15 }}
                     className="flex-1 min-w-0 overflow-hidden"
                   >
-                    <p className="text-body-strong text-neutral-900 truncate">Firm Admin</p>
-                    <p className="text-caption text-neutral-600 truncate">admin@firm.com</p>
+                    <p className="text-body-strong text-neutral-900 truncate">{user?.full_name || 'User'}</p>
+                    <p className="text-caption text-neutral-600 truncate">{user?.email || ''}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => {
+                // Clear all auth data
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                localStorage.removeItem('user');
+                navigate('/login');
+              }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-error-500 hover:bg-error-50 rounded-fluent transition-colors mt-2"
               title={!sidebarOpen ? 'Logout' : undefined}
             >
@@ -318,39 +346,23 @@ const App: React.FC = () => {
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         {/* Firm Portal Routes with Layout - Protected by RouteGuard */}
         <Route path="/firm/dashboard" element={<RouteGuard portalType="firm"><AppLayout><FirmDashboard /></AppLayout></RouteGuard>} />
+        <Route path="/firm/clients" element={<RouteGuard portalType="firm"><AppLayout><FirmClients /></AppLayout></RouteGuard>} />
         <Route path="/firm/settings" element={<RouteGuard portalType="firm"><AppLayout><FirmSettings /></AppLayout></RouteGuard>} />
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><AppLayout><EmployeeManagement /></AppLayout></RouteGuard>} />
-        <Route
-          path="/firm/audits"
-          element={
-            <RouteGuard portalType="firm">
-              <AppLayout>
-                <div className="text-center py-20">
-                  <FileText className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-                  <h2 className="text-title-large text-neutral-900 mb-2">Audits Coming Soon</h2>
-                  <p className="text-body text-neutral-600">This feature is currently in development</p>
-                </div>
-              </AppLayout>
-            </RouteGuard>
-          }
-        />
-        <Route
-          path="/firm/reports"
-          element={
-            <RouteGuard portalType="firm">
-              <AppLayout>
-                <div className="text-center py-20">
-                  <BarChart3 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-                  <h2 className="text-title-large text-neutral-900 mb-2">Reports Coming Soon</h2>
-                  <p className="text-body text-neutral-600">This feature is currently in development</p>
-                </div>
-              </AppLayout>
-            </RouteGuard>
-          }
-        />
+        <Route path="/firm/audits" element={<RouteGuard portalType="firm"><AppLayout><FirmAudits /></AppLayout></RouteGuard>} />
+        <Route path="/firm/reports" element={<RouteGuard portalType="firm"><AppLayout><FirmReports /></AppLayout></RouteGuard>} />
+n        {/* Engagement Workspace Routes - Protected by RouteGuard */}
+        <Route path="/firm/engagements/:id/workspace" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/workpapers" element={<RouteGuard portalType="firm"><AppLayout><WorkpaperManager /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/analytics" element={<RouteGuard portalType="firm"><AppLayout><AnalyticalProcedures /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/testing" element={<RouteGuard portalType="firm"><AppLayout><AuditTesting /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/risk" element={<RouteGuard portalType="firm"><AppLayout><RiskAssessment /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/documents" element={<RouteGuard portalType="firm"><AppLayout><DocumentRepository /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/reports" element={<RouteGuard portalType="firm"><AppLayout><AuditReporting /></AppLayout></RouteGuard>} />
 
         {/* Customer Portal Routes - Protected by RouteGuard */}
         <Route path="/customer/dashboard" element={<RouteGuard portalType="client"><DashboardPage /></RouteGuard>} />

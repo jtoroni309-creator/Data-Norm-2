@@ -36,8 +36,13 @@ export function LoginPage() {
         localStorage.setItem('refresh_token', response.data.refresh_token);
       }
 
-      // Navigate to dashboard
-      navigate('/dashboard');
+      // Store user data
+      if (response.data.user) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+
+      // Navigate to firm dashboard
+      navigate('/firm/dashboard');
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.detail) {
         setError(err.response.data.detail);
@@ -313,6 +318,15 @@ export function LoginPage() {
           )}
 
           <div className="mt-6 pt-6 border-t border-neutral-200">
+            <p className="text-caption text-neutral-600 text-center mb-4">
+              Don't have an account?{' '}
+              <button
+                onClick={() => navigate('/register')}
+                className="text-primary-500 hover:text-primary-600 font-semibold hover:underline transition-colors"
+              >
+                Create Account
+              </button>
+            </p>
             <p className="text-caption text-neutral-600 text-center leading-relaxed">
               By signing in, you agree to our{' '}
               <a href="/terms" className="text-primary-500 hover:text-primary-600 font-semibold hover:underline transition-colors">

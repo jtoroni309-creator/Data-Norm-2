@@ -49,8 +49,9 @@ export default function RegABAuditPage() {
 
   const fetchEngagements = async () => {
     try {
+      const apiUrl = import.meta.env.VITE_REG_AB_API_URL || import.meta.env.VITE_API_URL || '/api';
       const response = await fetch(
-        `${import.meta.env.VITE_REG_AB_API_URL || 'http://localhost:8011'}/api/engagements`,
+        `${apiUrl}/reg-ab/engagements`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
@@ -74,8 +75,9 @@ export default function RegABAuditPage() {
 
   const fetchDeals = async (engagementId: string) => {
     try {
+      const apiUrl = import.meta.env.VITE_REG_AB_API_URL || import.meta.env.VITE_API_URL || '/api';
       const response = await fetch(
-        `${import.meta.env.VITE_REG_AB_API_URL || 'http://localhost:8011'}/api/engagements/${engagementId}/deals`,
+        `${apiUrl}/reg-ab/engagements/${engagementId}/deals`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('auth_token')}`,

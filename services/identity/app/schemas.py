@@ -139,7 +139,7 @@ class OrganizationUpdate(BaseModel):
     primary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     secondary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     require_two_factor_auth: Optional[bool] = None
-    session_timeout_minutes: Optional[str] = None
+    session_timeout_minutes: Optional[int] = None
     subscription_tier: Optional[str] = Field(None, pattern="^(starter|professional|enterprise)$")
     subscription_status: Optional[str] = Field(None, pattern="^(active|trial|suspended|cancelled)$")
     max_users: Optional[int] = Field(None, ge=1, le=1000)
@@ -161,7 +161,7 @@ class OrganizationResponse(BaseModel):
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
     require_two_factor_auth: bool
-    session_timeout_minutes: Optional[str] = None
+    session_timeout_minutes: Optional[int] = None
     subscription_tier: str
     subscription_status: str
     max_users: int
