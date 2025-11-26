@@ -121,7 +121,7 @@ async def train_disclosure_model(
     try:
         from training_pipelines.disclosure_model.train import DisclosureTrainingPipeline
         
-        pipeline = Disclosure TrainingPipeline(
+        pipeline = DisclosureTrainingPipeline(
             workspace_name=settings.AZUREML_WORKSPACE_NAME
         )
         
@@ -231,7 +231,7 @@ async def scrape_edgar_data(
     Trigger EDGAR scraping
     """
     try:
-        from data_acquisition.edgar_scraper.edgar_scraper import EDGARScraper
+        from data_acquisition.edgar_scraper import EDGARScraper
         
         scraper = EDGARScraper()
         

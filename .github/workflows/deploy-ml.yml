@@ -1,0 +1,202 @@
+name: Deploy ML Models
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'azure-ai-ml/**'
+      - 'infra/k8s/base/11-azure-ml-training.yaml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      trigger_scraping:
+        description: 'Trigger initial EDGAR scraping after deployment'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  ACR_REGISTRY: auraauditaiprodacr.azurecr.io
+  IMAGE_NAME: aura/azure-ml-training
+  AKS_CLUSTER: aura-aks-prod
+  AKS_RESOURCE_GROUP: rg-aura-prod
+  NAMESPACE: aura-audit-ai
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./azure-ai-ml
+          file: ./azure-ai-ml/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-to-kubernetes:
+    name: Deploy to AKS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER }} \
+            --overwrite-existing
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy ML Training Service
+        run: |
+          kubectl apply -f infra/k8s/base/11-azure-ml-training.yaml
+
+      - name: Wait for deployment rollout
+        run: |
+          kubectl rollout status deployment/azure-ml-training \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployment azure-ml-training -n ${{ env.NAMESPACE }}
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods -l app=azure-ml-training -n ${{ env.NAMESPACE }}
+          echo ""
+          echo "=== CronJobs ==="
+          kubectl get cronjobs -n ${{ env.NAMESPACE }}
+
+  trigger-edgar-scraping:
+    name: Trigger Initial EDGAR Scraping
+    runs-on: ubuntu-latest
+    needs: deploy-to-kubernetes
+    if: ${{ github.event.inputs.trigger_scraping == 'true' }}
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER }} \
+            --overwrite-existing
+
+      - name: Create EDGAR scraping job
+        run: |
+          kubectl create job initial-edgar-scrape \
+            --from=cronjob/edgar-scraper-job \
+            -n ${{ env.NAMESPACE }}
+
+          echo "EDGAR scraping job started. Monitor with:"
+          echo "kubectl logs -f job/initial-edgar-scrape -n ${{ env.NAMESPACE }}"
+
+  health-check:
+    name: Post-Deployment Health Check
+    runs-on: ubuntu-latest
+    needs: deploy-to-kubernetes
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER }} \
+            --overwrite-existing
+
+      - name: Check service health
+        run: |
+          # Get pod name
+          POD=$(kubectl get pods -l app=azure-ml-training -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].metadata.name}')
+
+          # Port forward and check health
+          kubectl port-forward $POD 8000:8000 -n ${{ env.NAMESPACE }} &
+          sleep 5
+
+          # Health check
+          curl -f http://localhost:8000/health || exit 1
+
+          echo "✅ ML Training Service is healthy!"
+
+      - name: Display service info
+        run: |
+          echo "=== ML Training Service Deployed ==="
+          echo ""
+          echo "Service URL: http://azure-ml-training.${{ env.NAMESPACE }}.svc.cluster.local:8000"
+          echo ""
+          echo "API Endpoints:"
+          echo "  - POST /api/v1/train/audit-opinion - Train audit opinion model"
+          echo "  - POST /api/v1/data/scrape-edgar - Trigger EDGAR scraping"
+          echo "  - GET /api/v1/models - List trained models"
+          echo ""
+          echo "CronJobs:"
+          echo "  - edgar-scraper-job: Daily at 2 AM UTC"
+          echo "  - ml-training-job: Weekly Sunday at 3 AM UTC"

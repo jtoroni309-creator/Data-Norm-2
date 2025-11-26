@@ -29,7 +29,10 @@ from azure.identity import DefaultAzureCredential
 import pandas as pd
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from ..config import settings
+try:
+    from config import settings
+except ImportError:
+    from ...config import settings
 
 
 @dataclass

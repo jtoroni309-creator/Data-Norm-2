@@ -38,7 +38,10 @@ import mlflow
 from loguru import logger
 import openai
 
-from ...config import settings
+try:
+    from config import settings
+except ImportError:
+    from ...config import settings
 
 
 @dataclass
@@ -283,6 +286,218 @@ class AuditOpinionTrainer:
         )
 
         logger.info(f"Train: {len(self.train_df)}, Test: {len(self.test_df)}")
+
+    async def load_edgar_data(self) -> int:
+        """
+        Load training data from scraped EDGAR filings
+
+        Loads audit opinions and financial data from Azure Blob Storage
+        where the EDGAR scraper has stored SEC filings.
+        """
+        from azure.storage.blob import BlobServiceClient
+
+        logger.info("Loading EDGAR scraped data from Azure Blob Storage...")
+
+        blob_service = BlobServiceClient.from_connection_string(
+            settings.AZURE_STORAGE_CONNECTION_STRING
+        )
+
+        # Load from EDGAR filings container
+        edgar_container = blob_service.get_container_client(settings.AZURE_BLOB_CONTAINER_EDGAR)
+
+        samples_loaded = 0
+
+        # Process each company's scraped data
+        for blob in edgar_container.list_blobs():
+            if not blob.name.endswith('_data.json'):
+                continue
+
+            try:
+                blob_client = edgar_container.get_blob_client(blob.name)
+                data = json.loads(blob_client.download_blob().readall())
+
+                # Extract audit opinions from scraped data
+                for opinion in data.get('audit_opinions', []):
+                    # Get corresponding financial statements
+                    financial_data = None
+                    for fs in data.get('financial_statements', []):
+                        if fs.get('fiscal_year') == opinion.get('fiscal_year'):
+                            financial_data = fs
+                            break
+
+                    if not financial_data:
+                        continue
+
+                    # Create training sample from EDGAR data
+                    sample = AuditOpinionTrainingSample(
+                        cik=opinion.get('cik', ''),
+                        company_name=opinion.get('company_name', ''),
+                        ticker=data.get('ticker'),
+                        fiscal_year=opinion.get('fiscal_year', 2024),
+                        industry='Unknown',  # Would need SIC/NAICS lookup
+                        market_cap=0.0,
+
+                        # Financial metrics from XBRL
+                        revenue=financial_data.get('revenue', 0) or 0,
+                        net_income=financial_data.get('net_income', 0) or 0,
+                        total_assets=financial_data.get('total_assets', 0) or 0,
+                        total_liabilities=financial_data.get('total_liabilities', 0) or 0,
+                        cash_flow_from_operations=financial_data.get('cash_from_operations', 0) or 0,
+                        current_ratio=self._safe_divide(
+                            financial_data.get('current_assets', 0),
+                            financial_data.get('current_liabilities', 1)
+                        ),
+                        debt_to_equity=self._safe_divide(
+                            financial_data.get('total_liabilities', 0),
+                            financial_data.get('stockholders_equity', 1)
+                        ),
+                        gross_margin=self._safe_divide(
+                            financial_data.get('gross_profit', 0),
+                            financial_data.get('revenue', 1)
+                        ),
+                        operating_margin=self._safe_divide(
+                            financial_data.get('operating_income', 0),
+                            financial_data.get('revenue', 1)
+                        ),
+                        net_margin=self._safe_divide(
+                            financial_data.get('net_income', 0),
+                            financial_data.get('revenue', 1)
+                        ),
+
+                        # Risk indicators from audit opinion extraction
+                        going_concern_doubt=opinion.get('going_concern_emphasis', False),
+                        material_weaknesses=opinion.get('internal_control_opinion') == 'Material Weakness',
+                        restatements=False,
+                        sec_comments=False,
+                        auditor_changes=False,
+                        fraud_indicators_count=0,
+                        litigation_pending=False,
+
+                        # Audit findings
+                        significant_deficiencies=0,
+                        control_deficiencies=0,
+                        misstatements_count=0,
+                        materiality_threshold=financial_data.get('revenue', 0) * 0.01,
+
+                        # Labels from extracted audit opinion
+                        opinion_type=opinion.get('opinion_type', 'Unknown'),
+                        going_concern_emphasis=opinion.get('going_concern_emphasis', False),
+                        internal_control_opinion=opinion.get('internal_control_opinion', 'N/A') or 'N/A',
+                        key_audit_matters=opinion.get('key_audit_matters', []),
+
+                        # Ground truth
+                        actual_opinion_text=opinion.get('opinion_text', '')[:2000],
+                        auditor=opinion.get('auditor', 'Unknown'),
+                        audit_firm_tier=self._classify_auditor_tier(opinion.get('auditor', '')),
+                    )
+
+                    # Only include valid samples
+                    if sample.opinion_type in ['Unqualified', 'Qualified', 'Adverse', 'Disclaimer']:
+                        self.dataset.samples.append(sample)
+                        samples_loaded += 1
+
+            except Exception as e:
+                logger.warning(f"Error processing {blob.name}: {e}")
+                continue
+
+        logger.info(f"Loaded {samples_loaded} training samples from EDGAR data")
+        return samples_loaded
+
+    def _safe_divide(self, numerator: float, denominator: float) -> float:
+        """Safe division handling None and zero"""
+        if numerator is None or denominator is None or denominator == 0:
+            return 0.0
+        return numerator / denominator
+
+    def _classify_auditor_tier(self, auditor: str) -> str:
+        """Classify auditor into tier based on name"""
+        big4 = ['Deloitte', 'PwC', 'PricewaterhouseCoopers', 'EY', 'Ernst & Young', 'KPMG']
+        national = ['BDO', 'Grant Thornton', 'RSM', 'Crowe', 'Baker Tilly']
+
+        auditor_lower = auditor.lower()
+
+        for firm in big4:
+            if firm.lower() in auditor_lower:
+                return 'Big4'
+
+        for firm in national:
+            if firm.lower() in auditor_lower:
+                return 'National'
+
+        return 'Regional'
+
+    async def train_on_edgar_data(self) -> Dict:
+        """
+        Training pipeline specifically for EDGAR scraped data
+
+        This method:
+        1. Loads audit opinions and financial data from EDGAR
+        2. Prepares training samples
+        3. Trains the ensemble model
+        4. Evaluates and registers the model
+        """
+        logger.info("=" * 60)
+        logger.info("STARTING EDGAR DATA TRAINING PIPELINE")
+        logger.info("=" * 60)
+
+        # Load EDGAR data
+        edgar_count = await self.load_edgar_data()
+
+        if edgar_count < 100:
+            logger.warning(f"Only {edgar_count} samples loaded. Need more data for reliable training.")
+
+        # Prepare data splits
+        df = self.dataset.to_dataframe()
+
+        # Filter out unknown opinion types
+        df = df[df['opinion_type'].isin(['Unqualified', 'Qualified', 'Adverse', 'Disclaimer'])]
+
+        if len(df) < 50:
+            logger.error(f"Insufficient data: only {len(df)} valid samples")
+            return {"status": "error", "message": "Insufficient training data"}
+
+        self.train_df, self.test_df = train_test_split(
+            df,
+            test_size=settings.TRAINING_TEST_SPLIT,
+            random_state=settings.TRAINING_RANDOM_SEED,
+            stratify=df["opinion_type"] if len(df["opinion_type"].unique()) > 1 else None,
+        )
+
+        logger.info(f"Training set: {len(self.train_df)} samples")
+        logger.info(f"Test set: {len(self.test_df)} samples")
+        logger.info(f"Opinion distribution:\n{df['opinion_type'].value_counts()}")
+
+        # Train component models
+        logger.info("Training XGBoost model on EDGAR data...")
+        self.train_xgboost_model()
+
+        logger.info("Training Neural Network on EDGAR data...")
+        self.train_neural_model()
+
+        logger.info("Fine-tuning GPT-4 on EDGAR audit opinions...")
+        await self.train_gpt4_model()
+
+        # Evaluate ensemble
+        metrics = await self.evaluate_model()
+
+        # Log results with MLflow
+        with mlflow.start_run(run_name="edgar_training"):
+            mlflow.log_params({
+                "edgar_samples": edgar_count,
+                "train_size": len(self.train_df),
+                "test_size": len(self.test_df),
+                "target_accuracy": settings.TARGET_AUDIT_OPINION_ACCURACY,
+            })
+            mlflow.log_metrics(metrics)
+
+        # Register model if it meets target
+        if metrics["accuracy"] >= settings.TARGET_AUDIT_OPINION_ACCURACY:
+            self.register_model_to_azure()
+            logger.success("Model trained on EDGAR data and registered!")
+        else:
+            logger.warning(f"Model accuracy {metrics['accuracy']:.4f} below target {settings.TARGET_AUDIT_OPINION_ACCURACY}")
+
+        return metrics
 
     def train_xgboost_model(self) -> xgb.XGBClassifier:
         """Train XGBoost classifier"""

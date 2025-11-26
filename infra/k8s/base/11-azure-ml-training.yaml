@@ -1,0 +1,404 @@
+---
+# Azure ML Training Service Deployment
+# Handles ML model training, inference, and EDGAR data acquisition
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-ml-training
+  namespace: aura-audit-ai
+  labels:
+    app: azure-ml-training
+    component: ml-training
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: azure-ml-training
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: azure-ml-training
+        component: ml-training
+    spec:
+      tolerations:
+      - key: sku
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: azure-ml-training
+        image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        # Azure Subscription
+        - name: AZURE_SUBSCRIPTION_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: subscription-id
+        - name: AZURE_RESOURCE_GROUP
+          value: "rg-aura-ml-prod"
+        - name: AZURE_LOCATION
+          value: "eastus"
+        # Azure ML Workspace
+        - name: AZUREML_WORKSPACE_NAME
+          value: "aura-ml-workspace"
+        - name: AZUREML_COMPUTE_NAME
+          value: "cpu-cluster"
+        - name: AZUREML_GPU_COMPUTE_NAME
+          value: "gpu-cluster"
+        # Azure OpenAI
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: openai-endpoint
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: openai-api-key
+        - name: AZURE_OPENAI_API_VERSION
+          value: "2024-02-01"
+        - name: AZURE_OPENAI_DEPLOYMENT_NAME
+          value: "gpt-4-turbo"
+        # Azure Storage for EDGAR data
+        - name: AZURE_STORAGE_ACCOUNT_NAME
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: storage-account-name
+        - name: AZURE_STORAGE_ACCOUNT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: storage-account-key
+        - name: AZURE_BLOB_CONTAINER_EDGAR
+          value: "edgar-filings"
+        - name: AZURE_BLOB_CONTAINER_TRAINING
+          value: "training-data"
+        - name: AZURE_BLOB_CONTAINER_MODELS
+          value: "models"
+        # Azure Key Vault
+        - name: AZURE_KEY_VAULT_NAME
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: keyvault-name
+        # Azure Cognitive Search
+        - name: AZURE_SEARCH_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: search-endpoint
+        - name: AZURE_SEARCH_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: search-key
+        # Azure Form Recognizer
+        - name: AZURE_FORM_RECOGNIZER_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: form-recognizer-endpoint
+        - name: AZURE_FORM_RECOGNIZER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-ml-secrets
+              key: form-recognizer-key
+        # Database
+        - name: AZURE_POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: host
+        - name: AZURE_POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: username
+        - name: AZURE_POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: password
+        - name: AZURE_POSTGRES_DATABASE
+          value: "aura_ml_training"
+        # EDGAR Scraper Configuration
+        - name: EDGAR_SCRAPER_START_DATE
+          value: "2015-01-01"
+        - name: EDGAR_SCRAPER_RATE_LIMIT
+          value: "0.11"
+        - name: EDGAR_SCRAPER_MAX_COMPANIES
+          value: "10000"
+        # Training Configuration
+        - name: TRAINING_BATCH_SIZE
+          value: "32"
+        - name: TRAINING_EPOCHS
+          value: "10"
+        - name: TRAINING_LEARNING_RATE
+          value: "0.00002"
+        # Model Performance Targets
+        - name: TARGET_AUDIT_OPINION_ACCURACY
+          value: "0.995"
+        - name: TARGET_DISCLOSURE_COMPLIANCE
+          value: "0.95"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: data-storage
+          mountPath: /app/data
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: ml-models-pvc
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: ml-data-pvc
+      imagePullSecrets:
+      - name: acr-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azure-ml-training
+  namespace: aura-audit-ai
+  labels:
+    app: azure-ml-training
+spec:
+  selector:
+    app: azure-ml-training
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  type: ClusterIP
+---
+# Persistent Volume Claim for ML Models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-models-pvc
+  namespace: aura-audit-ai
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile-premium
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Persistent Volume Claim for Training Data (EDGAR filings)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-data-pvc
+  namespace: aura-audit-ai
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile-premium
+  resources:
+    requests:
+      storage: 500Gi
+---
+# CronJob for automated EDGAR data scraping (runs daily at 2 AM UTC)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: edgar-scraper-job
+  namespace: aura-audit-ai
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 21600  # 6 hours max
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: edgar-scraper
+            image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
+            command: ["python", "-m", "data_acquisition.edgar_scraper.edgar_scraper"]
+            args: ["--sp500", "--start-date", "2020-01-01"]
+            env:
+            - name: AZURE_STORAGE_ACCOUNT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: storage-account-name
+            - name: AZURE_STORAGE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: storage-account-key
+            - name: AZURE_BLOB_CONTAINER_EDGAR
+              value: "edgar-filings"
+            - name: EDGAR_SCRAPER_RATE_LIMIT
+              value: "0.11"
+            resources:
+              requests:
+                memory: "2Gi"
+                cpu: "1000m"
+              limits:
+                memory: "4Gi"
+                cpu: "2000m"
+            volumeMounts:
+            - name: data-storage
+              mountPath: /app/data
+          volumes:
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: ml-data-pvc
+          imagePullSecrets:
+          - name: acr-auth
+---
+# CronJob for model training (runs weekly on Sunday at 3 AM UTC)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ml-training-job
+  namespace: aura-audit-ai
+spec:
+  schedule: "0 3 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 86400  # 24 hours max
+      template:
+        spec:
+          restartPolicy: OnFailure
+          tolerations:
+          - key: sku
+            operator: Equal
+            value: gpu
+            effect: NoSchedule
+          containers:
+          - name: ml-trainer
+            image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
+            command: ["python"]
+            args:
+            - "-c"
+            - |
+              import asyncio
+              from training_pipelines.audit_opinion_model.train_audit_opinion_model import AuditOpinionTrainingPipeline
+              pipeline = AuditOpinionTrainingPipeline()
+              asyncio.run(pipeline.train_on_edgar_data())
+            env:
+            - name: AZURE_SUBSCRIPTION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: subscription-id
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: openai-endpoint
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: openai-api-key
+            - name: AZURE_STORAGE_ACCOUNT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: storage-account-name
+            - name: AZURE_STORAGE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ml-secrets
+                  key: storage-account-key
+            - name: AZURE_BLOB_CONTAINER_EDGAR
+              value: "edgar-filings"
+            - name: AZURE_BLOB_CONTAINER_TRAINING
+              value: "training-data"
+            - name: AZURE_BLOB_CONTAINER_MODELS
+              value: "models"
+            - name: TRAINING_BATCH_SIZE
+              value: "32"
+            - name: TRAINING_EPOCHS
+              value: "10"
+            - name: TARGET_AUDIT_OPINION_ACCURACY
+              value: "0.995"
+            resources:
+              requests:
+                memory: "8Gi"
+                cpu: "4000m"
+              limits:
+                memory: "16Gi"
+                cpu: "8000m"
+            volumeMounts:
+            - name: models-storage
+              mountPath: /app/models
+            - name: data-storage
+              mountPath: /app/data
+          volumes:
+          - name: models-storage
+            persistentVolumeClaim:
+              claimName: ml-models-pvc
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: ml-data-pvc
+          imagePullSecrets:
+          - name: acr-auth
+---
+# Secrets template for Azure ML (create with actual values)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-ml-secrets
+  namespace: aura-audit-ai
+type: Opaque
+stringData:
+  subscription-id: "YOUR_AZURE_SUBSCRIPTION_ID"
+  openai-endpoint: "https://YOUR_OPENAI_RESOURCE.openai.azure.com/"
+  openai-api-key: "YOUR_OPENAI_API_KEY"
+  storage-account-name: "YOUR_STORAGE_ACCOUNT"
+  storage-account-key: "YOUR_STORAGE_KEY"
+  keyvault-name: "YOUR_KEYVAULT_NAME"
+  search-endpoint: "https://YOUR_SEARCH_SERVICE.search.windows.net"
+  search-key: "YOUR_SEARCH_KEY"
+  form-recognizer-endpoint: "https://YOUR_FORM_RECOGNIZER.cognitiveservices.azure.com/"
+  form-recognizer-key: "YOUR_FORM_RECOGNIZER_KEY"

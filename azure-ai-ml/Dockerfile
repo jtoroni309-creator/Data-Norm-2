@@ -35,14 +35,27 @@ COPY --from=builder /root/.local /root/.local
 # Make sure scripts in .local are usable
 ENV PATH=/root/.local/bin:$PATH
 
-# Copy application code
+# Copy application code - main service
+COPY main.py /app/
 COPY config.py /app/
-COPY training-pipelines /app/training-pipelines
-COPY data-normalization /app/data-normalization
-COPY .env.example /app/
 
-# Create directories for models and data
-RUN mkdir -p /app/models /app/data
+# Copy training pipelines
+COPY training-pipelines /app/training-pipelines
+
+# Copy data acquisition (EDGAR scraper)
+COPY data-acquisition /app/data_acquisition
+
+# Copy data normalization
+COPY data-normalization /app/data-normalization
+
+# Copy environment template if it exists (optional)
+COPY .env.exampl[e] /app/
+
+# Create directories for models, data, and EDGAR filings
+RUN mkdir -p /app/models /app/data /app/data/edgar /app/logs
+
+# Set Python path to include app directory
+ENV PYTHONPATH=/app:$PYTHONPATH
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
