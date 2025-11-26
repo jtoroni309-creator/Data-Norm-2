@@ -41,7 +41,7 @@ const AuditReporting: React.FC = () => {
   const reports: Report[] = [
     {
       id: '1',
-      title: 'Independent Auditor's Report',
+      title: "Independent Auditor's Report",
       type: 'Audit Opinion',
       status: 'review',
       lastModified: '2024-11-22',
