@@ -10,7 +10,7 @@ metadata:
     app: azure-ml-training
     component: ml-training
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: azure-ml-training
@@ -32,7 +32,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: azure-ml-training
-        image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
+        image: auraauditaiprodacr.azurecr.io/aura/training-data:ml-ready
         ports:
         - containerPort: 8000
           name: http
@@ -157,11 +157,11 @@ spec:
           value: "INFO"
         resources:
           requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
             memory: "4Gi"
             cpu: "2000m"
-          limits:
-            memory: "8Gi"
-            cpu: "4000m"
         livenessProbe:
           httpGet:
             path: /health
@@ -255,7 +255,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: edgar-scraper
-            image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
+            image: auraauditaiprodacr.azurecr.io/aura/training-data:ml-ready
             command: ["python", "-m", "data_acquisition.edgar_scraper.edgar_scraper"]
             args: ["--sp500", "--start-date", "2020-01-01"]
             env:
@@ -315,7 +315,7 @@ spec:
             effect: NoSchedule
           containers:
           - name: ml-trainer
-            image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
+            image: auraauditaiprodacr.azurecr.io/aura/training-data:ml-ready
             command: ["python"]
             args:
             - "-c"
