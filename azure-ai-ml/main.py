@@ -82,20 +82,14 @@ async def train_audit_opinion_model(
     try:
         # Import training pipeline
         from training_pipelines.audit_opinion_model.train_audit_opinion_model import (
-            AuditOpinionTrainingPipeline
+            AuditOpinionTrainer
         )
-        
-        pipeline = AuditOpinionTrainingPipeline(
-            workspace_name=settings.AZUREML_WORKSPACE_NAME,
-            subscription_id=settings.AZURE_SUBSCRIPTION_ID,
-            resource_group=settings.AZURE_RESOURCE_GROUP
-        )
-        
-        # Start training in background
+
+        trainer = AuditOpinionTrainer()
+
+        # Start training in background using EDGAR data
         background_tasks.add_task(
-            pipeline.train,
-            target_accuracy=request.target_accuracy,
-            use_azure_compute=request.use_azure_compute
+            trainer.train_on_edgar_data
         )
         
         return {
