@@ -87,11 +87,11 @@ class Engagement(Base):
     client_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)
     name = Column(Text, nullable=False)
     engagement_type = Column(
-        SQLEnum(EngagementType, name="engagement_type", create_type=False),
+        SQLEnum(EngagementType, name="engagement_type", create_type=False, schema="atlas"),
         nullable=False
     )
     status = Column(
-        SQLEnum(EngagementStatus, name="engagement_status", create_type=False),
+        SQLEnum(EngagementStatus, name="engagement_status", create_type=False, schema="atlas"),
         nullable=False,
         default=EngagementStatus.DRAFT,
         index=True
@@ -134,7 +134,7 @@ class EngagementTeamMember(Base):
     )
     user_id = Column(PGUUID(as_uuid=True), nullable=False)
     role = Column(
-        SQLEnum(UserRole, name="user_role", create_type=False),
+        SQLEnum(UserRole, name="user_role", create_type=False, schema="atlas"),
         nullable=False
     )
     assigned_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -226,7 +226,7 @@ class BinderNode(Base):
         ForeignKey("atlas.binder_nodes.id", ondelete="CASCADE")
     )
     node_type = Column(
-        SQLEnum(BinderNodeType, name="binder_node_type", create_type=False),
+        SQLEnum(BinderNodeType, name="binder_node_type", create_type=False, schema="atlas"),
         nullable=False
     )
     node_code = Column(String)  # e.g., 'A-100', 'B-200'
@@ -234,7 +234,7 @@ class BinderNode(Base):
     description = Column(Text)
     position = Column(Integer, nullable=False, default=0)
     status = Column(
-        SQLEnum(WorkpaperStatus, name="workpaper_status", create_type=False),
+        SQLEnum(WorkpaperStatus, name="workpaper_status", create_type=False, schema="atlas"),
         default=WorkpaperStatus.DRAFT
     )
     created_by = Column(PGUUID(as_uuid=True))
