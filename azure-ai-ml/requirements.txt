@@ -1,5 +1,6 @@
 # Azure AI/ML Audit Training Environment
 # Python 3.11+
+# Build trigger: 2025-11-26
 
 # Azure SDKs
 azure-ai-ml==1.12.0
