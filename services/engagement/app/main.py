@@ -187,7 +187,7 @@ async def create_engagement(
         client_id=client_id,
         name=engagement_data.name,
         engagement_type=engagement_data.engagement_type,
-        status=EngagementStatus.DRAFT,
+        status=EngagementStatus.draft,
         fiscal_year_end=engagement_data.fiscal_year_end,
         start_date=engagement_data.start_date,
         expected_completion_date=engagement_data.expected_completion_date,
@@ -203,7 +203,7 @@ async def create_engagement(
     team_member = EngagementTeamMember(
         engagement_id=new_engagement.id,
         user_id=current_user_id,
-        role=UserRole.MANAGER,  # Default role
+        role=UserRole.manager,  # Default role
         assigned_by=current_user_id
     )
     db.add(team_member)
@@ -211,7 +211,7 @@ async def create_engagement(
     # Create root binder node
     root_node = BinderNode(
         engagement_id=new_engagement.id,
-        node_type=BinderNodeType.FOLDER,
+        node_type=BinderNodeType.folder,
         title="Audit Binder",
         node_code="ROOT",
         position=0,
@@ -367,11 +367,11 @@ async def transition_engagement_status(
 
     # Validate transition
     valid_transitions = {
-        EngagementStatus.DRAFT: [EngagementStatus.PLANNING],
-        EngagementStatus.PLANNING: [EngagementStatus.FIELDWORK, EngagementStatus.DRAFT],
-        EngagementStatus.FIELDWORK: [EngagementStatus.REVIEW, EngagementStatus.PLANNING],
-        EngagementStatus.REVIEW: [EngagementStatus.FINALIZED, EngagementStatus.FIELDWORK],
-        EngagementStatus.FINALIZED: []  # Terminal state
+        EngagementStatus.draft: [EngagementStatus.planning],
+        EngagementStatus.planning: [EngagementStatus.fieldwork, EngagementStatus.draft],
+        EngagementStatus.fieldwork: [EngagementStatus.review, EngagementStatus.planning],
+        EngagementStatus.review: [EngagementStatus.finalized, EngagementStatus.fieldwork],
+        EngagementStatus.finalized: []  # Terminal state
     }
 
     if new_status not in valid_transitions.get(engagement.status, []):
@@ -381,7 +381,7 @@ async def transition_engagement_status(
         )
 
     # Finalized requires additional checks (partner approval, QC pass)
-    if new_status == EngagementStatus.FINALIZED:
+    if new_status == EngagementStatus.finalized:
         # Check QC policies passed
         qc_check_query = text("""
             SELECT
@@ -432,7 +432,7 @@ async def transition_engagement_status(
     engagement.status = new_status
     engagement.updated_at = datetime.utcnow()
 
-    if new_status == EngagementStatus.FINALIZED:
+    if new_status == EngagementStatus.finalized:
         engagement.locked_at = datetime.utcnow()
         engagement.locked_by = current_user_id
 
