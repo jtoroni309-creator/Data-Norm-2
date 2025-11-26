@@ -68,7 +68,11 @@ class EngagementService {
   }
 
   async listEngagements(): Promise<Engagement[]> {
-    const response = await this.api.get<{ engagements: Engagement[] }>('/engagements');
+    const response = await this.api.get<Engagement[] | { engagements: Engagement[] }>('/engagements');
+    // Handle both array response and object with engagements property
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
     return response.data.engagements || [];
   }
 
@@ -78,7 +82,12 @@ class EngagementService {
   }
 
   async createEngagement(data: EngagementCreate): Promise<Engagement> {
-    const response = await this.api.post<Engagement>('/engagements', data);
+    // Clean up empty strings to avoid validation errors on the backend
+    const cleanedData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      cleanedData[key] = value === '' ? null : value;
+    }
+    const response = await this.api.post<Engagement>('/engagements', cleanedData);
     return response.data;
   }
 
