@@ -32,7 +32,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: azure-ml-training
-        image: auraauditaiprodacr.azurecr.io/aura/training-data:ml-ready
+        image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
         ports:
         - containerPort: 8000
           name: http
@@ -131,7 +131,12 @@ spec:
               name: aura-db-connection
               key: password
         - name: AZURE_POSTGRES_DATABASE
-          value: "aura_ml_training"
+          value: "atlas"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
         # EDGAR Scraper Configuration
         - name: EDGAR_SCRAPER_START_DATE
           value: "2015-01-01"
@@ -255,7 +260,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: edgar-scraper
-            image: auraauditaiprodacr.azurecr.io/aura/training-data:ml-ready
+            image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
             command: ["python", "-m", "data_acquisition.edgar_scraper.edgar_scraper"]
             args: ["--sp500", "--start-date", "2020-01-01"]
             env:
@@ -315,7 +320,7 @@ spec:
             effect: NoSchedule
           containers:
           - name: ml-trainer
-            image: auraauditaiprodacr.azurecr.io/aura/training-data:ml-ready
+            image: auraauditaiprodacr.azurecr.io/aura/azure-ml-training:latest
             command: ["python"]
             args:
             - "-c"
