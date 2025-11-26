@@ -12,8 +12,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application (skip tsc, just use vite)
-RUN npx vite build
+# Fix permissions and build the application
+RUN chmod +x node_modules/.bin/* && npm exec vite -- build
 
 # Production stage
 FROM nginx:alpine
