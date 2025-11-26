@@ -28,45 +28,45 @@ from .database import Base
 
 class EngagementStatus(str, Enum):
     """Engagement lifecycle status"""
-    DRAFT = "draft"
-    PLANNING = "planning"
-    FIELDWORK = "fieldwork"
-    REVIEW = "review"
-    FINALIZED = "finalized"
+    draft = "draft"
+    planning = "planning"
+    fieldwork = "fieldwork"
+    review = "review"
+    finalized = "finalized"
 
 
 class EngagementType(str, Enum):
     """Type of engagement"""
-    AUDIT = "audit"
-    REVIEW = "review"
-    COMPILATION = "compilation"
-    AGREED_UPON_PROCEDURES = "agreed_upon_procedures"
+    audit = "audit"
+    review = "review"
+    compilation = "compilation"
+    agreed_upon_procedures = "agreed_upon_procedures"
 
 
 class UserRole(str, Enum):
     """User role on engagement team"""
-    PARTNER = "partner"
-    MANAGER = "manager"
-    SENIOR = "senior"
-    STAFF = "staff"
-    QC_REVIEWER = "qc_reviewer"
-    CLIENT_CONTACT = "client_contact"
+    partner = "partner"
+    manager = "manager"
+    senior = "senior"
+    staff = "staff"
+    qc_reviewer = "qc_reviewer"
+    client_contact = "client_contact"
 
 
 class BinderNodeType(str, Enum):
     """Type of binder node"""
-    FOLDER = "folder"
-    WORKPAPER = "workpaper"
-    EVIDENCE = "evidence"
-    NOTE = "note"
+    folder = "folder"
+    workpaper = "workpaper"
+    evidence = "evidence"
+    note = "note"
 
 
 class WorkpaperStatus(str, Enum):
     """Workpaper review status"""
-    DRAFT = "draft"
-    PREPARED = "prepared"
-    REVIEWED = "reviewed"
-    APPROVED = "approved"
+    draft = "draft"
+    prepared = "prepared"
+    reviewed = "reviewed"
+    approved = "approved"
 
 
 # ========================================
@@ -93,7 +93,7 @@ class Engagement(Base):
     status = Column(
         SQLEnum(EngagementStatus, name="engagement_status", create_type=False, schema="atlas"),
         nullable=False,
-        default=EngagementStatus.DRAFT,
+        default=EngagementStatus.draft,
         index=True
     )
     fiscal_year_end = Column(Date, nullable=False)
@@ -235,7 +235,7 @@ class BinderNode(Base):
     position = Column(Integer, nullable=False, default=0)
     status = Column(
         SQLEnum(WorkpaperStatus, name="workpaper_status", create_type=False, schema="atlas"),
-        default=WorkpaperStatus.DRAFT
+        default=WorkpaperStatus.draft
     )
     created_by = Column(PGUUID(as_uuid=True))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
