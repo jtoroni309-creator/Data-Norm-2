@@ -20,6 +20,7 @@ import {
   LogOut,
   Building2,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 
 // Pages
@@ -45,11 +46,13 @@ import AuditTesting from './pages/AuditTesting';
 import RiskAssessment from './pages/RiskAssessment';
 import DocumentRepository from './pages/DocumentRepository';
 import AuditReporting from './pages/AuditReporting';
+import SOCEngagements from './pages/SOCEngagements';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/firm/dashboard' },
   { id: 'clients', label: 'Clients', icon: Building2, path: '/firm/clients' },
   { id: 'audits', label: 'Audits', icon: FileText, path: '/firm/audits' },
+  { id: 'soc', label: 'SOC Audits', icon: Shield, path: '/firm/soc-engagements' },
   { id: 'employees', label: 'Team', icon: Users, path: '/firm/employees' },
   { id: 'reports', label: 'Reports', icon: BarChart3, path: '/firm/reports' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/firm/settings' },
@@ -358,6 +361,7 @@ const App: React.FC = () => {
         <Route path="/firm/settings" element={<RouteGuard portalType="firm"><AppLayout><FirmSettings /></AppLayout></RouteGuard>} />
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><AppLayout><EmployeeManagement /></AppLayout></RouteGuard>} />
         <Route path="/firm/audits" element={<RouteGuard portalType="firm"><AppLayout><FirmAudits /></AppLayout></RouteGuard>} />
+        <Route path="/firm/soc-engagements" element={<RouteGuard portalType="firm"><AppLayout><SOCEngagements /></AppLayout></RouteGuard>} />
         <Route path="/firm/reports" element={<RouteGuard portalType="firm"><AppLayout><FirmReports /></AppLayout></RouteGuard>} />
         {/* Engagement Workspace Routes - Protected by RouteGuard */}
         <Route path="/firm/engagements/:id/workspace" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />
