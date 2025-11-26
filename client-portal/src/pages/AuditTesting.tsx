@@ -3,7 +3,7 @@
  * Complete testing modules for all audit areas - Revenue, AR, Inventory, Fixed Assets, Liabilities
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -29,8 +29,10 @@ import {
   ChevronRight,
   Plus,
   X,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { substantiveTestingService, TestModule as APITestModule, Test as APITest, AIAnomaly } from '../services/substantive-testing.service';
 
 interface TestModule {
   id: string;
@@ -53,153 +55,69 @@ interface Test {
   aiFlags?: number;
 }
 
+const iconMap: Record<string, any> = {
+  DollarSign,
+  FileText,
+  Package,
+  Building,
+  CreditCard,
+};
+
 const AuditTesting: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [runningTest, setRunningTest] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const testModules: TestModule[] = [
-    {
-      id: 'revenue',
-      name: 'Revenue Testing',
-      icon: DollarSign,
-      color: 'green',
-      description: 'Revenue recognition, invoicing, and cut-off testing',
-      tests: 8,
-      completed: 6,
-      anomalies: 3,
-    },
-    {
-      id: 'receivables',
-      name: 'Accounts Receivable',
-      icon: FileText,
-      color: 'blue',
-      description: 'AR aging, confirmations, and collectability',
-      tests: 6,
-      completed: 5,
-      anomalies: 2,
-    },
-    {
-      id: 'inventory',
-      name: 'Inventory',
-      icon: Package,
-      color: 'purple',
-      description: 'Observation, valuation, and obsolescence',
-      tests: 7,
-      completed: 4,
-      anomalies: 1,
-    },
-    {
-      id: 'fixed_assets',
-      name: 'Fixed Assets',
-      icon: Building,
-      color: 'cyan',
-      description: 'Additions, disposals, and depreciation',
-      tests: 5,
-      completed: 3,
-      anomalies: 0,
-    },
-    {
-      id: 'liabilities',
-      name: 'Liabilities & Equity',
-      icon: CreditCard,
-      color: 'orange',
-      description: 'Debt, payables, and covenant compliance',
-      tests: 6,
-      completed: 2,
-      anomalies: 1,
-    },
-  ];
+  // Data from API
+  const [testModules, setTestModules] = useState<TestModule[]>([]);
+  const [moduleTests, setModuleTests] = useState<Test[]>([]);
+  const [aiAnomalies, setAiAnomalies] = useState<AIAnomaly[]>([]);
 
-  const revenueTests: Test[] = [
-    {
-      id: '1',
-      name: 'Revenue Recognition Testing',
-      description: 'Test revenue recognition policies and procedures',
-      status: 'completed',
-      sampleSize: 60,
-      exceptions: 0,
-      aiFlags: 2,
-    },
-    {
-      id: '2',
-      name: 'Statistical Sample Selection',
-      description: 'Select statistically valid revenue sample',
-      status: 'completed',
-      sampleSize: 60,
-    },
-    {
-      id: '3',
-      name: 'Invoice Testing',
-      description: 'Test invoice to supporting documentation',
-      status: 'in_progress',
-      sampleSize: 60,
-      exceptions: 1,
-      aiFlags: 3,
-    },
-    {
-      id: '4',
-      name: 'Cut-off Testing',
-      description: 'Test revenue recorded in correct period',
-      status: 'completed',
-      sampleSize: 30,
-      exceptions: 0,
-    },
-    {
-      id: '5',
-      name: 'Completeness Testing',
-      description: 'Test completeness of revenue recording',
-      status: 'completed',
-      sampleSize: 40,
-      exceptions: 0,
-    },
-    {
-      id: '6',
-      name: 'AI Anomaly Detection',
-      description: 'AI-powered pattern and anomaly analysis',
-      status: 'completed',
-      aiFlags: 5,
-    },
-    {
-      id: '7',
-      name: 'Revenue Analytics',
-      description: 'Analytical procedures and trend analysis',
-      status: 'in_progress',
-    },
-    {
-      id: '8',
-      name: 'Contract Review',
-      description: 'Review revenue contracts for ASC 606 compliance',
-      status: 'not_started',
-      sampleSize: 15,
-    },
-  ];
+  useEffect(() => {
+    loadTestModules();
+  }, [id]);
 
-  const aiAnomalies = [
-    {
-      type: 'high',
-      title: 'Unusual Revenue Spike - Customer XYZ',
-      description: 'Revenue from Customer XYZ increased 450% in Q4. Single invoice for $1.2M on Dec 30.',
-      recommendation: 'Review invoice, contract, and delivery documentation. Verify revenue recognition timing.',
-      testArea: 'Revenue Recognition',
-    },
-    {
-      type: 'medium',
-      title: 'Pricing Variance Detected',
-      description: '12 invoices show pricing 15-20% below standard rates without documented approvals.',
-      recommendation: 'Obtain pricing approval documentation. Assess impact on revenue completeness.',
-      testArea: 'Invoice Testing',
-    },
-    {
-      type: 'medium',
-      title: 'Missing Sequential Invoice Numbers',
-      description: 'Invoice sequence shows gaps: #1045-1048 missing. May indicate completeness issue.',
-      recommendation: 'Investigate missing invoices. Confirm void/cancelled or potential completeness concern.',
-      testArea: 'Completeness',
-    },
-  ];
+  useEffect(() => {
+    if (selectedModule) {
+      loadModuleTests(selectedModule);
+    }
+  }, [selectedModule]);
+
+  const loadTestModules = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const modules = await substantiveTestingService.getTestModules(id);
+      // Map API data to component format with icons
+      const mappedModules = modules.map(m => ({
+        ...m,
+        icon: iconMap[m.icon] || DollarSign,
+      }));
+      setTestModules(mappedModules);
+    } catch (error) {
+      console.error('Failed to load test modules:', error);
+      toast.error('Failed to load test modules');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadModuleTests = async (moduleId: string) => {
+    if (!id) return;
+    try {
+      const [tests, anomalies] = await Promise.all([
+        substantiveTestingService.getTestsForModule(id, moduleId),
+        substantiveTestingService.getAIAnomalies(id, moduleId)
+      ]);
+      setModuleTests(tests);
+      setAiAnomalies(anomalies);
+    } catch (error) {
+      console.error('Failed to load module tests:', error);
+    }
+  };
 
   const getStatusConfig = (status: string) => {
     const configs = {
@@ -210,15 +128,32 @@ const AuditTesting: React.FC = () => {
     return configs[status as keyof typeof configs] || configs.not_started;
   };
 
-  const handleRunTest = () => {
+  const handleRunTest = async () => {
+    if (!id || !selectedModule) return;
     setRunningTest(true);
     toast.success('Running AI-powered test analysis...');
 
-    setTimeout(() => {
+    try {
+      const anomalies = await substantiveTestingService.runAIAnalysis(id, selectedModule);
+      setAiAnomalies(anomalies);
+      toast.success(`Test completed - ${anomalies.length} anomalies detected`);
+    } catch (error) {
+      toast.error('AI analysis failed');
+    } finally {
       setRunningTest(false);
-      toast.success('Test completed - 3 anomalies detected');
-    }, 2000);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+          <p className="text-body text-neutral-600">Loading audit tests...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1800px]">
@@ -390,7 +325,7 @@ const AuditTesting: React.FC = () => {
 
           {/* Tests List */}
           <div className="space-y-3">
-            {revenueTests.map((test, index) => {
+            {moduleTests.map((test, index) => {
               const statusConfig = getStatusConfig(test.status);
               const StatusIcon = statusConfig.icon;
 

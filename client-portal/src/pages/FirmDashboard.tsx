@@ -19,17 +19,31 @@ import {
   Clock,
   CheckCircle2,
   Circle,
+  File,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { firmService } from '../services/firm.service';
+import { activityService, ActivityItem } from '../services/activity.service';
 import { FirmStats, Organization, FirmUser } from '../types';
 import toast from 'react-hot-toast';
+
+// Icon mapping for activity items
+const activityIconMap: Record<string, any> = {
+  Users,
+  FileText,
+  Settings,
+  CheckCircle2,
+  File,
+  Building2,
+  Circle,
+};
 
 const FirmDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<FirmStats | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [recentUsers, setRecentUsers] = useState<FirmUser[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,15 +53,17 @@ const FirmDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsData, orgData, usersData] = await Promise.all([
+      const [statsData, orgData, usersData, activityData] = await Promise.all([
         firmService.getFirmStats(),
         firmService.getMyOrganization(),
-        firmService.listUsers()
+        firmService.listUsers(),
+        activityService.getFirmActivity(5)
       ]);
 
       setStats(statsData);
       setOrganization(orgData);
       setRecentUsers(usersData.slice(0, 5));
+      setRecentActivity(activityData);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       toast.error('Failed to load dashboard data');
@@ -116,35 +132,10 @@ const FirmDashboard: React.FC = () => {
     },
   ];
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'user',
-      title: 'New employee joined',
-      description: 'Sarah Johnson accepted invitation',
-      time: '2 hours ago',
-      icon: Users,
-      color: 'primary'
-    },
-    {
-      id: 2,
-      type: 'engagement',
-      title: 'Engagement completed',
-      description: 'Q4 2024 Financial Audit finalized',
-      time: '1 day ago',
-      icon: CheckCircle2,
-      color: 'success'
-    },
-    {
-      id: 3,
-      type: 'settings',
-      title: 'Firm branding updated',
-      description: 'Logo and color scheme refreshed',
-      time: '3 days ago',
-      icon: Settings,
-      color: 'accent'
-    },
-  ];
+  // Helper to get icon component from string
+  const getActivityIcon = (iconName: string | undefined) => {
+    return activityIconMap[iconName || 'Circle'] || Circle;
+  };
 
   if (loading) {
     return (
@@ -310,7 +301,8 @@ const FirmDashboard: React.FC = () => {
             </div>
             <div className="space-y-3">
               {recentActivity.map((activity, index) => {
-                const Icon = activity.icon;
+                const Icon = getActivityIcon(activity.icon);
+                const color = activity.color || 'primary';
                 return (
                   <motion.div
                     key={activity.id}
@@ -319,8 +311,8 @@ const FirmDashboard: React.FC = () => {
                     transition={{ delay: 0.4 + index * 0.05 }}
                     className="flex items-start gap-3 p-3 rounded-fluent hover:bg-neutral-50 transition-colors"
                   >
-                    <div className={`p-2 rounded-fluent-sm bg-${activity.color}-50 flex-shrink-0`}>
-                      <Icon className={`w-4 h-4 text-${activity.color}-600`} />
+                    <div className={`p-2 rounded-fluent-sm bg-${color}-50 flex-shrink-0`}>
+                      <Icon className={`w-4 h-4 text-${color}-600`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-body-strong text-neutral-900 mb-0.5">

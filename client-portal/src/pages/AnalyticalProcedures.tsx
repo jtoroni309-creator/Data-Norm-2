@@ -3,7 +3,7 @@
  * AI-powered financial analysis, ratio analysis, trend analysis, and benchmarking
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -25,195 +25,42 @@ import {
   Calendar,
   ChevronRight,
   Info,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-interface FinancialRatio {
-  name: string;
-  value: number;
-  priorYear: number;
-  industry: number;
-  category: string;
-  description: string;
-  variance: number;
-  status: 'normal' | 'warning' | 'alert';
-}
-
-interface TrendData {
-  period: string;
-  revenue: number;
-  expenses: number;
-  netIncome: number;
-  grossMargin: number;
-}
+import { financialAnalysisService, FinancialRatio, TrendData, AIInsight } from '../services/financial-analysis.service';
 
 const AnalyticalProcedures: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'ratios' | 'trends' | 'variance' | 'benchmarks'>('ratios');
   const [showAIInsights, setShowAIInsights] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Mock financial ratios
-  const financialRatios: FinancialRatio[] = [
-    {
-      name: 'Current Ratio',
-      value: 2.3,
-      priorYear: 2.5,
-      industry: 2.1,
-      category: 'Liquidity',
-      description: 'Ability to pay short-term obligations',
-      variance: -8.0,
-      status: 'normal',
-    },
-    {
-      name: 'Quick Ratio',
-      value: 1.5,
-      priorYear: 1.8,
-      industry: 1.4,
-      category: 'Liquidity',
-      description: 'Ability to meet short-term obligations with liquid assets',
-      variance: -16.7,
-      status: 'warning',
-    },
-    {
-      name: 'Gross Margin %',
-      value: 42.5,
-      priorYear: 45.2,
-      industry: 44.0,
-      category: 'Profitability',
-      description: 'Percentage of revenue retained after COGS',
-      variance: -6.0,
-      status: 'warning',
-    },
-    {
-      name: 'Net Profit Margin %',
-      value: 8.2,
-      priorYear: 10.5,
-      industry: 9.8,
-      category: 'Profitability',
-      description: 'Net income as percentage of revenue',
-      variance: -21.9,
-      status: 'alert',
-    },
-    {
-      name: 'Return on Assets',
-      value: 7.5,
-      priorYear: 8.1,
-      industry: 8.0,
-      category: 'Profitability',
-      description: 'Efficiency in using assets to generate profit',
-      variance: -7.4,
-      status: 'normal',
-    },
-    {
-      name: 'Debt to Equity',
-      value: 0.65,
-      priorYear: 0.58,
-      industry: 0.70,
-      category: 'Leverage',
-      description: 'Financial leverage and capital structure',
-      variance: 12.1,
-      status: 'normal',
-    },
-    {
-      name: 'Interest Coverage',
-      value: 4.2,
-      priorYear: 5.8,
-      industry: 5.0,
-      category: 'Leverage',
-      description: 'Ability to meet interest payments',
-      variance: -27.6,
-      status: 'warning',
-    },
-    {
-      name: 'Inventory Turnover',
-      value: 6.8,
-      priorYear: 7.2,
-      industry: 7.5,
-      category: 'Efficiency',
-      description: 'How quickly inventory is sold',
-      variance: -5.6,
-      status: 'normal',
-    },
-    {
-      name: 'Days Sales Outstanding',
-      value: 52,
-      priorYear: 48,
-      industry: 45,
-      category: 'Efficiency',
-      description: 'Average collection period for receivables',
-      variance: 8.3,
-      status: 'warning',
-    },
-    {
-      name: 'Asset Turnover',
-      value: 1.45,
-      priorYear: 1.52,
-      industry: 1.50,
-      category: 'Efficiency',
-      description: 'Efficiency in using assets to generate revenue',
-      variance: -4.6,
-      status: 'normal',
-    },
-  ];
+  // Data from API
+  const [financialRatios, setFinancialRatios] = useState<FinancialRatio[]>([]);
+  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
 
-  // Mock trend data
-  const trendData: TrendData[] = [
-    { period: 'Q1 2023', revenue: 2500000, expenses: 2100000, netIncome: 400000, grossMargin: 44.0 },
-    { period: 'Q2 2023', revenue: 2650000, expenses: 2200000, netIncome: 450000, grossMargin: 45.5 },
-    { period: 'Q3 2023', revenue: 2800000, expenses: 2350000, netIncome: 450000, grossMargin: 46.2 },
-    { period: 'Q4 2023', revenue: 3200000, expenses: 2750000, netIncome: 450000, grossMargin: 45.8 },
-    { period: 'Q1 2024', revenue: 2450000, expenses: 2050000, netIncome: 400000, grossMargin: 43.5 },
-    { period: 'Q2 2024', revenue: 2600000, expenses: 2180000, netIncome: 420000, grossMargin: 42.8 },
-    { period: 'Q3 2024', revenue: 2750000, expenses: 2300000, netIncome: 450000, grossMargin: 42.2 },
-    { period: 'Q4 2024', revenue: 2900000, expenses: 2480000, netIncome: 420000, grossMargin: 41.5 },
-  ];
+  useEffect(() => {
+    loadFinancialData();
+  }, [id]);
 
-  const aiInsights = [
-    {
-      type: 'critical',
-      title: 'Significant Margin Compression',
-      description: 'Gross margin has declined from 45.2% to 42.5% year-over-year. Net profit margin down 21.9%. Investigate: 1) Pricing pressure, 2) COGS increases, 3) Product mix changes.',
-      recommendations: [
-        'Perform detailed variance analysis on COGS by product line',
-        'Review pricing strategy and competitive positioning',
-        'Analyze product mix shift impact on margins',
-      ],
-      impact: 'high',
-    },
-    {
-      type: 'warning',
-      title: 'Declining Interest Coverage',
-      description: 'Interest coverage ratio decreased 27.6% to 4.2x. While still adequate, this trend warrants attention given increasing debt levels.',
-      recommendations: [
-        'Review debt covenant compliance',
-        'Assess refinancing opportunities',
-        'Evaluate debt repayment schedule',
-      ],
-      impact: 'medium',
-    },
-    {
-      type: 'info',
-      title: 'Working Capital Management',
-      description: 'Days Sales Outstanding increased from 48 to 52 days. Collection efficiency has declined slightly but remains close to industry average.',
-      recommendations: [
-        'Review aging of receivables',
-        'Assess credit policies',
-        'Identify slow-paying customers',
-      ],
-      impact: 'medium',
-    },
-    {
-      type: 'positive',
-      title: 'Strong Liquidity Position',
-      description: 'Current ratio of 2.3x exceeds industry average of 2.1x. Quick ratio of 1.5x also above industry norm, indicating solid short-term liquidity.',
-      recommendations: [
-        'Continue monitoring working capital',
-        'Evaluate optimal cash levels',
-      ],
-      impact: 'low',
-    },
-  ];
+  const loadFinancialData = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await financialAnalysisService.getFinancialAnalysis(id);
+      setFinancialRatios(data.ratios);
+      setTrendData(data.trends);
+      setAiInsights(data.insights);
+    } catch (error) {
+      console.error('Failed to load financial data:', error);
+      toast.error('Failed to load financial analysis data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = ['All', 'Liquidity', 'Profitability', 'Leverage', 'Efficiency'];
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -244,6 +91,17 @@ const AnalyticalProcedures: React.FC = () => {
   const formatPercent = (value: number, decimals: number = 1) => {
     return `${value.toFixed(decimals)}%`;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+          <p className="text-body text-neutral-600">Loading financial analysis...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1800px]">

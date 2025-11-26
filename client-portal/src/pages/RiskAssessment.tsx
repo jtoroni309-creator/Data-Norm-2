@@ -3,7 +3,7 @@
  * Risk matrix, materiality calculator, fraud risk assessment, and going concern analysis
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -19,26 +19,46 @@ import {
   XCircle,
   Download,
   FileText,
+  Loader2,
 } from 'lucide-react';
-
-interface RiskArea {
-  area: string;
-  inherentRisk: 'low' | 'medium' | 'high';
-  controlRisk: 'low' | 'medium' | 'high';
-  detectionRisk: 'low' | 'medium' | 'high';
-  auditRisk: 'low' | 'medium' | 'high';
-  rationale: string;
-}
+import { riskAssessmentService, RiskArea, FraudRisk, GoingConcernIndicator } from '../services/risk-assessment.service';
+import toast from 'react-hot-toast';
 
 const RiskAssessment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'matrix' | 'materiality' | 'fraud' | 'going_concern'>('matrix');
+  const [loading, setLoading] = useState(true);
+
+  // Data from API
+  const [riskAreas, setRiskAreas] = useState<RiskArea[]>([]);
+  const [fraudRisks, setFraudRisks] = useState<FraudRisk[]>([]);
+  const [goingConcernIndicators, setGoingConcernIndicators] = useState<GoingConcernIndicator[]>([]);
 
   // Materiality calculations
   const [revenue, setRevenue] = useState(10000000);
   const [assets, setAssets] = useState(8000000);
   const [netIncome, setNetIncome] = useState(500000);
+
+  useEffect(() => {
+    loadRiskData();
+  }, [id]);
+
+  const loadRiskData = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await riskAssessmentService.getRiskAssessment(id);
+      setRiskAreas(data.riskAreas);
+      setFraudRisks(data.fraudRisks);
+      setGoingConcernIndicators(data.goingConcernIndicators);
+    } catch (error) {
+      console.error('Failed to load risk data:', error);
+      toast.error('Failed to load risk assessment data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const calculateMateriality = () => {
     const revenueBased = revenue * 0.005; // 0.5% of revenue
@@ -53,104 +73,6 @@ const RiskAssessment: React.FC = () => {
   };
 
   const materiality = calculateMateriality();
-
-  const riskAreas: RiskArea[] = [
-    {
-      area: 'Revenue Recognition',
-      inherentRisk: 'high',
-      controlRisk: 'medium',
-      detectionRisk: 'low',
-      auditRisk: 'medium',
-      rationale: 'Complex revenue streams with multiple performance obligations. Controls are adequate but require substantive testing.',
-    },
-    {
-      area: 'Inventory Valuation',
-      inherentRisk: 'medium',
-      controlRisk: 'low',
-      detectionRisk: 'medium',
-      auditRisk: 'low',
-      rationale: 'Established valuation methods with strong controls. Annual physical count with reconciliation.',
-    },
-    {
-      area: 'Accounts Receivable',
-      inherentRisk: 'medium',
-      controlRisk: 'medium',
-      detectionRisk: 'medium',
-      auditRisk: 'medium',
-      rationale: 'Aging showing some collectability concerns. Allowance estimation requires judgment.',
-    },
-    {
-      area: 'Management Override',
-      inherentRisk: 'high',
-      controlRisk: 'high',
-      detectionRisk: 'low',
-      auditRisk: 'high',
-      rationale: 'Presumed fraud risk per auditing standards. Requires unpredictable procedures and professional skepticism.',
-    },
-    {
-      area: 'Payroll',
-      inherentRisk: 'low',
-      controlRisk: 'low',
-      detectionRisk: 'high',
-      auditRisk: 'low',
-      rationale: 'Routine transactions with strong automated controls and segregation of duties.',
-    },
-  ];
-
-  const fraudRisks = [
-    {
-      type: 'Fraudulent Financial Reporting',
-      risk: 'medium',
-      factors: [
-        'Pressure to meet earnings targets',
-        'Complex revenue recognition',
-        'Significant estimates and judgments',
-      ],
-      procedures: [
-        'Test journal entries near year-end',
-        'Review significant estimates for bias',
-        'Test revenue recognition near period end',
-      ],
-    },
-    {
-      type: 'Misappropriation of Assets',
-      risk: 'low',
-      factors: [
-        'Inventory susceptible to theft',
-        'Cash handling at retail locations',
-      ],
-      procedures: [
-        'Observe inventory counts',
-        'Test cash reconciliations',
-        'Review unusual transactions',
-      ],
-    },
-    {
-      type: 'Management Override',
-      risk: 'high',
-      factors: [
-        'Presumed risk per AU-C 240',
-        'Management has ability to override controls',
-        'Bonus structure tied to performance',
-      ],
-      procedures: [
-        'Test appropriateness of journal entries',
-        'Review accounting estimates for bias',
-        'Review unusual or one-time transactions',
-      ],
-    },
-  ];
-
-  const goingConcernIndicators = [
-    { indicator: 'Negative working capital', present: false, impact: 'high' },
-    { indicator: 'Recurring operating losses', present: false, impact: 'high' },
-    { indicator: 'Negative cash flows from operations', present: false, impact: 'high' },
-    { indicator: 'Debt covenant violations', present: false, impact: 'high' },
-    { indicator: 'Loss of major customer', present: false, impact: 'medium' },
-    { indicator: 'Legal proceedings', present: true, impact: 'low' },
-    { indicator: 'Difficulty in paying obligations', present: false, impact: 'high' },
-    { indicator: 'Need for major refinancing', present: false, impact: 'medium' },
-  ];
 
   const getRiskColor = (risk: string) => {
     const colors = {
@@ -169,6 +91,17 @@ const RiskAssessment: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+          <p className="text-body text-neutral-600">Loading risk assessment...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1800px]">
