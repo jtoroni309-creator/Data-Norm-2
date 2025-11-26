@@ -24,6 +24,7 @@ export interface Engagement {
 }
 
 export interface EngagementCreate {
+  client_id?: string;
   client_name?: string;
   name: string;
   engagement_type: 'audit' | 'review' | 'compilation';

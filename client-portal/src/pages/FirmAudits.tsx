@@ -42,6 +42,7 @@ const FirmAudits: React.FC = () => {
 
   // Create form state
   const [createForm, setCreateForm] = useState<EngagementCreate>({
+    client_id: '',
     client_name: '',
     name: '',
     engagement_type: 'audit',
@@ -79,7 +80,9 @@ const FirmAudits: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    if (!createForm.client_name || !createForm.name || !createForm.fiscal_year_end) {
+    // Require client_id if clients exist, otherwise client_name
+    const hasValidClient = clients.length > 0 ? createForm.client_id : createForm.client_name;
+    if (!hasValidClient || !createForm.name || !createForm.fiscal_year_end) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -89,6 +92,7 @@ const FirmAudits: React.FC = () => {
       toast.success('Engagement created successfully!');
       setShowCreateModal(false);
       setCreateForm({
+        client_id: '',
         client_name: '',
         name: '',
         engagement_type: 'audit',
@@ -380,13 +384,20 @@ const FirmAudits: React.FC = () => {
                   <label className="block text-body-strong text-neutral-700 mb-2">Client *</label>
                   {clients.length > 0 ? (
                     <select
-                      value={createForm.client_name}
-                      onChange={(e) => setCreateForm({ ...createForm, client_name: e.target.value })}
+                      value={createForm.client_id}
+                      onChange={(e) => {
+                        const selectedClient = clients.find(c => c.id === e.target.value);
+                        setCreateForm({
+                          ...createForm,
+                          client_id: e.target.value,
+                          client_name: selectedClient?.name || ''
+                        });
+                      }}
                       className="fluent-input"
                     >
                       <option value="">Select a client</option>
                       {clients.map((client) => (
-                        <option key={client.id} value={client.name}>
+                        <option key={client.id} value={client.id}>
                           {client.name}
                         </option>
                       ))}
