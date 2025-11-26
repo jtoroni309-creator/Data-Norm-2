@@ -1,0 +1,56 @@
+name: Build and Deploy Client Portal
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'client-portal/**'
+      - '.github/workflows/deploy-client-portal.yml'
+
+env:
+  ACR_NAME: auraauditaiprodacr
+  IMAGE_NAME: aura/client-portal
+  AKS_CLUSTER: aura-audit-ai-prod-aks
+  AKS_RESOURCE_GROUP: aura-audit-ai-prod-rg
+  NAMESPACE: aura-audit-ai
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push image
+        run: |
+          cd client-portal
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ env.AKS_CLUSTER }}
+
+      - name: Deploy to AKS
+        run: |
+          kubectl set image deployment/client-portal client-portal=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} -n ${{ env.NAMESPACE }}
+          kubectl rollout status deployment/client-portal -n ${{ env.NAMESPACE }} --timeout=120s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -l app=client-portal -n ${{ env.NAMESPACE }}
