@@ -47,7 +47,7 @@ spec:
     targetPort: 8000
   type: ClusterIP
 ---
-# AI Testing Deployment (GPU)
+# AI Testing Deployment (CPU fallback)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -63,8 +63,6 @@ spec:
       labels:
         app: ai-testing
     spec:
-      nodeSelector:
-        workload: gpu
       tolerations:
       - key: sku
         operator: Equal
@@ -83,13 +81,11 @@ spec:
               key: connection-string
         resources:
           requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
             memory: "2Gi"
             cpu: "1000m"
-            nvidia.com/gpu: 1
-          limits:
-            memory: "4Gi"
-            cpu: "2000m"
-            nvidia.com/gpu: 1
 ---
 apiVersion: v1
 kind: Service
@@ -152,7 +148,7 @@ spec:
     targetPort: 8000
   type: ClusterIP
 ---
-# Document Intelligence Deployment (GPU)
+# Document Intelligence Deployment (CPU fallback)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -168,8 +164,6 @@ spec:
       labels:
         app: document-intelligence
     spec:
-      nodeSelector:
-        workload: gpu
       tolerations:
       - key: sku
         operator: Equal
@@ -188,13 +182,11 @@ spec:
               key: connection-string
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "1000m"
-            nvidia.com/gpu: 1
+            memory: "1Gi"
+            cpu: "500m"
           limits:
-            memory: "8Gi"
-            cpu: "2000m"
-            nvidia.com/gpu: 1
+            memory: "2Gi"
+            cpu: "1000m"
 ---
 apiVersion: v1
 kind: Service
@@ -209,7 +201,7 @@ spec:
     targetPort: 8000
   type: ClusterIP
 ---
-# Full Population Analysis Deployment (GPU)
+# Full Population Analysis Deployment (CPU fallback)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -225,8 +217,6 @@ spec:
       labels:
         app: full-population-analysis
     spec:
-      nodeSelector:
-        workload: gpu
       tolerations:
       - key: sku
         operator: Equal
@@ -245,13 +235,11 @@ spec:
               key: connection-string
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "1000m"
-            nvidia.com/gpu: 1
+            memory: "1Gi"
+            cpu: "500m"
           limits:
-            memory: "8Gi"
-            cpu: "2000m"
-            nvidia.com/gpu: 1
+            memory: "2Gi"
+            cpu: "1000m"
 ---
 apiVersion: v1
 kind: Service
@@ -314,7 +302,7 @@ spec:
     targetPort: 8000
   type: ClusterIP
 ---
-# Predictive Failure Deployment (GPU)
+# Predictive Failure Deployment (CPU fallback)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -330,8 +318,6 @@ spec:
       labels:
         app: predictive-failure
     spec:
-      nodeSelector:
-        workload: gpu
       tolerations:
       - key: sku
         operator: Equal
@@ -350,13 +336,11 @@ spec:
               key: connection-string
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "1000m"
-            nvidia.com/gpu: 1
+            memory: "1Gi"
+            cpu: "500m"
           limits:
-            memory: "8Gi"
-            cpu: "2000m"
-            nvidia.com/gpu: 1
+            memory: "2Gi"
+            cpu: "1000m"
 ---
 apiVersion: v1
 kind: Service
@@ -467,7 +451,7 @@ spec:
     targetPort: 8000
   type: ClusterIP
 ---
-# Variance Intelligence Deployment (GPU)
+# Variance Intelligence Deployment (CPU fallback)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -483,8 +467,6 @@ spec:
       labels:
         app: variance-intelligence
     spec:
-      nodeSelector:
-        workload: gpu
       tolerations:
       - key: sku
         operator: Equal
@@ -503,13 +485,11 @@ spec:
               key: connection-string
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "1000m"
-            nvidia.com/gpu: 1
+            memory: "1Gi"
+            cpu: "500m"
           limits:
-            memory: "8Gi"
-            cpu: "2000m"
-            nvidia.com/gpu: 1
+            memory: "2Gi"
+            cpu: "1000m"
 ---
 apiVersion: v1
 kind: Service

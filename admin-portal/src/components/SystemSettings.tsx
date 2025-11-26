@@ -35,7 +35,7 @@ export const SystemSettings: React.FC = () => {
     sessionTimeout: 30,
     passwordMinLength: 12,
     requireStrongPassword: true,
-    apiKey: 'your-api-key-here',
+    apiKey: '', // API key should be configured via environment variables
 
     // Notification Settings
     emailNotifications: true,

@@ -1,0 +1,5 @@
+{
+  "model_type": "audit_opinion",
+  "target_accuracy": 0.995,
+  "use_azure_compute": true
+}

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Users,
   Search,
   UserPlus,
   Mail,
@@ -10,6 +9,7 @@ import {
   CheckCircle,
   XCircle,
   X,
+  Key,
 } from 'lucide-react';
 import { userAPI, tenantAPI, type UserListItem, type Tenant, type CreateUserRequest } from '../services/api';
 
@@ -21,6 +21,15 @@ export const UserManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Password reset modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [requirePasswordChange, setRequirePasswordChange] = useState(true);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CreateUserRequest>({
@@ -88,6 +97,48 @@ export const UserManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenPasswordReset = (user: UserListItem) => {
+    setSelectedUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setRequirePasswordChange(true);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    setShowPasswordModal(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
+    if (!selectedUser) return;
+
+    try {
+      setIsLoading(true);
+      await userAPI.resetPassword(selectedUser.id, newPassword, requirePasswordChange);
+      setPasswordSuccess(true);
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setSelectedUser(null);
+        setPasswordSuccess(false);
+      }, 1500);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Failed to reset password');
     } finally {
       setIsLoading(false);
     }
@@ -204,18 +255,21 @@ export const UserManagement: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     Loading users...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     No users found
                   </td>
                 </tr>
@@ -286,6 +340,16 @@ export const UserManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {formatDate(user.createdAt)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleOpenPasswordReset(user)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                        title="Reset Password"
+                      >
+                        <Key className="w-4 h-4" />
+                        Reset Password
+                      </button>
                     </td>
                   </motion.tr>
                 ))
@@ -476,6 +540,118 @@ export const UserManagement: React.FC = () => {
                   Cancel
                 </button>
               </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {showPasswordModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full"
+          >
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">Reset Password</h2>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  Resetting password for:
+                </p>
+                <p className="font-medium text-gray-900">
+                  {selectedUser.firstName && selectedUser.lastName
+                    ? `${selectedUser.firstName} ${selectedUser.lastName}`
+                    : selectedUser.email}
+                </p>
+                <p className="text-sm text-gray-500">{selectedUser.email}</p>
+              </div>
+
+              {passwordError && (
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Password reset successfully!
+                </div>
+              )}
+
+              {!passwordSuccess && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Minimum 8 characters"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Re-enter password"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="requireChange"
+                      checked={requirePasswordChange}
+                      onChange={(e) => setRequirePasswordChange(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                    />
+                    <label htmlFor="requireChange" className="text-sm text-gray-700">
+                      Require user to change password on next login
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? 'Resetting...' : 'Reset Password'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordModal(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
             </form>
           </motion.div>
         </div>

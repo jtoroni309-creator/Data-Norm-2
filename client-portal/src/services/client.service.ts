@@ -90,7 +90,11 @@ class ClientService {
   }
 
   async listClients(): Promise<Client[]> {
-    const response = await this.api.get<{ clients: Client[] }>('/');
+    const response = await this.api.get<{ clients: Client[] } | Client[]>('');
+    // Handle both formats: {clients: [...]} and plain array
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
     return response.data.clients || [];
   }
 
@@ -100,12 +104,22 @@ class ClientService {
   }
 
   async createClient(data: ClientCreate): Promise<Client> {
-    const response = await this.api.post<Client>('/', data);
+    // Clean up empty strings to avoid validation errors on the backend
+    const cleanedData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      cleanedData[key] = value === '' ? null : value;
+    }
+    const response = await this.api.post<Client>('', cleanedData);
     return response.data;
   }
 
   async updateClient(id: string, data: ClientUpdate): Promise<Client> {
-    const response = await this.api.patch<Client>(`/${id}`, data);
+    // Clean up empty strings to avoid validation errors on the backend
+    const cleanedData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      cleanedData[key] = value === '' ? null : value;
+    }
+    const response = await this.api.patch<Client>(`/${id}`, cleanedData);
     return response.data;
   }
 

@@ -19,7 +19,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import get_db as get_async_session
+from .database import get_db
 from .permission_service import PermissionService
 from .permissions_models import PermissionScope, User, UserRole
 

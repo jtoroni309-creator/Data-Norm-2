@@ -5,15 +5,17 @@ import {
   Search,
   Settings,
   Users,
-  MoreVertical,
   CheckCircle,
   XCircle,
   Edit,
-  Trash2,
   Shield,
-  Globe
+  X,
+  Loader2,
+  AlertCircle,
+  Eye,
+  Mail,
 } from 'lucide-react';
-import { tenantAPI, Tenant } from '../services/api';
+import { tenantAPI, userAPI, Tenant, CreateTenantRequest, UserListItem } from '../services/api';
 import { SERVICE_CATALOG } from '../config';
 
 interface ServiceToggle {
@@ -25,24 +27,32 @@ interface ServiceToggle {
 
 interface FirmWithServices extends Tenant {
   services: ServiceToggle[];
-  userCount?: number;  // Computed field
+  userCount: number;
 }
+
+type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
 
 const FirmManagement: React.FC = () => {
   const [firms, setFirms] = useState<FirmWithServices[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showServicesModal, setShowServicesModal] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
+  const [firmUsers, setFirmUsers] = useState<UserListItem[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedFirm, setSelectedFirm] = useState<FirmWithServices | null>(null);
-  const [newFirm, setNewFirm] = useState({
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [newFirm, setNewFirm] = useState<CreateTenantRequest>({
     firm_name: '',
     legal_name: '',
     ein: '',
     primary_contact_name: '',
     primary_contact_email: '',
     primary_contact_phone: '',
-    subscription_tier: 'professional' as const,
+    subscription_tier: 'professional',
   });
 
   // Available services that can be toggled per firm - imported from config
@@ -57,30 +67,98 @@ const FirmManagement: React.FC = () => {
     loadFirms();
   }, []);
 
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   const loadFirms = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await tenantAPI.list();
-      // Map enabled_services from backend to service toggles
-      const firmsWithServices = data.map(firm => ({
-        ...firm,
-        services: availableServices.map(service => ({
-          ...service,
-          enabled: firm.enabled_services?.[service.id] ?? true  // Default to enabled if not specified
-        })),
-        userCount: 0  // TODO: Fetch actual user count from backend
-      }));
+
+      // Load user counts for each firm
+      const firmsWithServices = await Promise.all(
+        data.map(async (firm) => {
+          let userCount = 0;
+          try {
+            const users = await userAPI.list({ tenantId: firm.id });
+            userCount = users.length;
+          } catch {
+            userCount = 0;
+          }
+
+          return {
+            ...firm,
+            services: availableServices.map(service => ({
+              ...service,
+              enabled: firm.enabled_services?.[service.id] ?? service.enabled,
+            })),
+            userCount,
+          };
+        })
+      );
       setFirms(firmsWithServices);
-    } catch (error) {
-      console.error('Error loading firms:', error);
-      alert('Failed to load CPA firms. Please check your network connection.');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load CPA firms';
+      setError(errorMessage);
+      console.error('Error loading firms:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateFirm = async () => {
+  const loadFirmUsers = async (firm: FirmWithServices) => {
+    setSelectedFirm(firm);
+    setShowUsersModal(true);
+    setLoadingUsers(true);
     try {
+      const users = await tenantAPI.getUsers(firm.id);
+      setFirmUsers(users);
+    } catch (err) {
+      console.error('Failed to load firm users:', err);
+      setFirmUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const validateForm = (): string | null => {
+    if (!newFirm.firm_name.trim()) {
+      return 'Firm name is required';
+    }
+    if (!newFirm.primary_contact_email.trim()) {
+      return 'Primary contact email is required';
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newFirm.primary_contact_email)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  };
+
+  const handleCreateFirm = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
       await tenantAPI.create(newFirm);
       setShowCreateModal(false);
       setNewFirm({
@@ -92,9 +170,14 @@ const FirmManagement: React.FC = () => {
         primary_contact_phone: '',
         subscription_tier: 'professional',
       });
-      loadFirms();
-    } catch (error) {
-      console.error('Error creating firm:', error);
+      setSuccessMessage('CPA Firm created successfully!');
+      await loadFirms();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create firm';
+      setError(errorMessage);
+      console.error('Error creating firm:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -108,51 +191,70 @@ const FirmManagement: React.FC = () => {
             service.id === serviceId
               ? { ...service, enabled: !service.enabled }
               : service
-          )
+          ),
         };
       }
       return firm;
     });
     setFirms(updatedFirms);
 
-    // Persist to backend
-    try {
-      const firm = updatedFirms.find(f => f.id === firmId);
-      if (firm) {
-        const enabledServices = firm.services.reduce((acc, service) => {
-          acc[service.id] = service.enabled;
-          return acc;
-        }, {} as Record<string, boolean>);
+    // Also update selectedFirm if it's open
+    if (selectedFirm && selectedFirm.id === firmId) {
+      setSelectedFirm({
+        ...selectedFirm,
+        services: selectedFirm.services.map(service =>
+          service.id === serviceId
+            ? { ...service, enabled: !service.enabled }
+            : service
+        ),
+      });
+    }
+  };
 
-        await tenantAPI.updateServices(firmId, enabledServices);
-      }
-    } catch (error) {
-      console.error('Error updating services:', error);
-      alert('Failed to update services. Changes will be reverted.');
-      // Revert optimistic update on error
-      loadFirms();
+  const handleSaveServices = async () => {
+    if (!selectedFirm) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const enabledServices = selectedFirm.services.reduce((acc, service) => {
+        acc[service.id] = service.enabled;
+        return acc;
+      }, {} as Record<string, boolean>);
+
+      await tenantAPI.updateServices(selectedFirm.id, enabledServices);
+      setSuccessMessage('Services updated successfully!');
+      setShowServicesModal(false);
+      await loadFirms();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update services';
+      setError(errorMessage);
+      console.error('Error updating services:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
   const getStatusColor = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       active: 'bg-green-100 text-green-800',
       trial: 'bg-blue-100 text-blue-800',
       suspended: 'bg-red-100 text-red-800',
       cancelled: 'bg-gray-100 text-gray-800',
     };
-    return colors[status as keyof typeof colors] || colors.active;
+    return colors[status] || colors.active;
   };
 
   const getTierBadge = (tier: string) => {
-    const badges = {
+    const badges: Record<string, string> = {
       trial: 'bg-gray-100 text-gray-800',
       starter: 'bg-blue-100 text-blue-800',
       professional: 'bg-purple-100 text-purple-800',
       enterprise: 'bg-indigo-100 text-indigo-800',
       custom: 'bg-pink-100 text-pink-800',
     };
-    return badges[tier as keyof typeof badges] || badges.professional;
+    return badges[tier] || badges.professional;
   };
 
   const filteredFirms = firms.filter(firm =>
@@ -184,6 +286,25 @@ const FirmManagement: React.FC = () => {
           Add CPA Firm
         </button>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <span className="text-green-800">{successMessage}</span>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <span className="text-red-800">{error}</span>
+          <button onClick={() => setError(null)} className="ml-auto text-red-600 hover:text-red-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="flex gap-4 mb-6">
@@ -227,14 +348,15 @@ const FirmManagement: React.FC = () => {
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                  Loading firms...
+                <td colSpan={6} className="px-6 py-12 text-center">
+                  <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
+                  <span className="text-gray-500">Loading firms...</span>
                 </td>
               </tr>
             ) : filteredFirms.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                  No firms found
+                  {searchTerm ? 'No firms match your search' : 'No CPA firms found. Click "Add CPA Firm" to create one.'}
                 </td>
               </tr>
             ) : (
@@ -247,12 +369,12 @@ const FirmManagement: React.FC = () => {
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">{firm.firm_name}</div>
-                        <div className="text-sm text-gray-500">{firm.legal_name}</div>
+                        <div className="text-sm text-gray-500">{firm.legal_name || '-'}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{firm.primary_contact_name}</div>
+                    <div className="text-sm text-gray-900">{firm.primary_contact_name || '-'}</div>
                     <div className="text-sm text-gray-500">{firm.primary_contact_email}</div>
                   </td>
                   <td className="px-6 py-4">
@@ -268,11 +390,18 @@ const FirmManagement: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm text-gray-900">
                       <Users className="w-4 h-4 text-gray-400" />
-                      {firm.userCount || 0} / {firm.max_users || '∞'}
+                      {firm.userCount} / {firm.max_users === -1 ? '∞' : firm.max_users}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => loadFirmUsers(firm)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View Users"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedFirm(firm);
@@ -302,12 +431,20 @@ const FirmManagement: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Add New CPA Firm</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Add New CPA Firm</h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Firm Name *
+                  Firm Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -347,7 +484,7 @@ const FirmManagement: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Primary Contact Name *
+                    Primary Contact Name
                   </label>
                   <input
                     type="text"
@@ -360,7 +497,7 @@ const FirmManagement: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Primary Contact Email *
+                    Primary Contact Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -391,14 +528,12 @@ const FirmManagement: React.FC = () => {
                 </label>
                 <select
                   value={newFirm.subscription_tier}
-                  onChange={(e) => setNewFirm({ ...newFirm, subscription_tier: e.target.value as any })}
+                  onChange={(e) => setNewFirm({ ...newFirm, subscription_tier: e.target.value as SubscriptionTier })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option value="trial">Trial</option>
                   <option value="starter">Starter</option>
                   <option value="professional">Professional</option>
                   <option value="enterprise">Enterprise</option>
-                  <option value="custom">Custom</option>
                 </select>
               </div>
             </div>
@@ -406,15 +541,24 @@ const FirmManagement: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateFirm}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Create Firm
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Firm'
+                )}
               </button>
             </div>
           </div>
@@ -434,7 +578,7 @@ const FirmManagement: React.FC = () => {
                 onClick={() => setShowServicesModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                ×
+                <X className="w-6 h-6" />
               </button>
             </div>
 
@@ -484,18 +628,144 @@ const FirmManagement: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowServicesModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // TODO: Save service toggles to backend
-                  setShowServicesModal(false);
-                }}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                onClick={handleSaveServices}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Save Changes
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Users Modal */}
+      {showUsersModal && selectedFirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Firm Users</h2>
+                <p className="text-gray-600 mt-1">{selectedFirm.firm_name}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowUsersModal(false);
+                  setFirmUsers([]);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {loadingUsers ? (
+              <div className="py-12 text-center">
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
+                <span className="text-gray-500">Loading users...</span>
+              </div>
+            ) : firmUsers.length === 0 ? (
+              <div className="py-12 text-center text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No users found for this firm</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Login
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {firmUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white font-semibold">
+                              {user.firstName?.[0] || user.email[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {user.firstName && user.lastName
+                                  ? `${user.firstName} ${user.lastName}`
+                                  : user.email}
+                              </div>
+                              <div className="text-sm text-gray-500 flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                {user.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            {user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            user.isActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {user.isActive ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <XCircle className="w-3 h-3" />
+                            )}
+                            {user.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {user.lastLoginAt
+                            ? new Date(user.lastLoginAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : 'Never'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => {
+                  setShowUsersModal(false);
+                  setFirmUsers([]);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Close
               </button>
             </div>
           </div>

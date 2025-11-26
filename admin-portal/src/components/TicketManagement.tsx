@@ -5,8 +5,6 @@ import {
   Lightbulb,
   HelpCircle,
   Search,
-  Filter,
-  ChevronDown,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -28,7 +26,6 @@ import {
 
 type Priority = 'Low' | 'Medium' | 'High' | 'Critical';
 type TicketStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
-type IssueType = 'Bug' | 'Feature' | 'Support';
 
 interface Ticket {
   key: string;
@@ -78,7 +75,7 @@ export const TicketManagement: React.FC = () => {
   const [issueTypeFilter, setIssueTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [customerFilter, setCustomerFilter] = useState<string>('');
+  const [customerFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Comment state
@@ -158,25 +155,6 @@ export const TicketManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to update status:', error);
-    }
-  };
-
-  const assignTicket = async (issueKey: string, assigneeEmail: string) => {
-    try {
-      const response = await fetch(`/api/jira/admin/issues/${issueKey}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({ assignee_email: assigneeEmail }),
-      });
-
-      if (response.ok) {
-        await loadTickets();
-      }
-    } catch (error) {
-      console.error('Failed to assign ticket:', error);
     }
   };
 

@@ -202,6 +202,16 @@ export function LoginPage() {
                 </div>
               </div>
 
+              <div className="flex justify-end mb-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-caption text-primary-500 hover:text-primary-600 font-medium"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
               <motion.button
                 type="submit"
                 whileHover={{ scale: 1.01 }}

@@ -333,7 +333,7 @@ export const SystemAnalytics: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {topPages.map((page, index) => (
+              {topPages.map((page) => (
                 <tr key={page.path} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4 font-mono text-sm text-gray-900">{page.path}</td>
                   <td className="px-4 py-4 text-right font-semibold text-gray-900">{page.views.toLocaleString()}</td>
@@ -358,7 +358,7 @@ export const SystemAnalytics: React.FC = () => {
           <Activity className="w-5 h-5 text-gray-400" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {performanceMetrics.map((metric, index) => {
+          {performanceMetrics.map((metric) => {
             const Icon = metric.icon;
             return (
               <div key={metric.label} className="p-4 bg-gray-50 rounded-xl">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -13,6 +13,11 @@ import {
   Search,
   Building2,
   Loader2,
+  CheckCircle,
+  AlertTriangle,
+  Info,
+  XCircle,
+  Check,
 } from 'lucide-react';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserManagement } from './components/UserManagement';
@@ -22,6 +27,7 @@ import { SystemSettings } from './components/SystemSettings';
 import { TicketManagement } from './components/TicketManagement';
 import { Login } from './components/Login';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { notificationAPI, type Notification } from './services/api';
 
 type Page = 'dashboard' | 'users' | 'firms' | 'analytics' | 'tickets' | 'settings';
 
@@ -29,6 +35,90 @@ function AppContent() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Load notifications
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadNotifications();
+      // Refresh notifications every 30 seconds
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      setNotificationsLoading(true);
+      const data = await notificationAPI.list();
+      setNotifications(data);
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await notificationAPI.markAsRead(notificationId);
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationAPI.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+    }
+  };
+
+  const getNotificationIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'warning':
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+      case 'error':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Info className="w-4 h-4 text-blue-500" />;
+    }
+  };
+
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  };
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -157,7 +247,7 @@ function AppContent() {
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                A
+                {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'A'}
               </div>
               <AnimatePresence mode="wait">
                 {sidebarOpen && (
@@ -218,10 +308,107 @@ function AppContent() {
               </div>
             </div>
             <div className="flex items-center gap-4 ml-6">
-              <button className="relative p-3 hover:bg-gray-100 rounded-xl transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              {/* Notification Bell with Dropdown */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-3 hover:bg-gray-100 rounded-xl transition-colors"
+                >
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50"
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+                        <h3 className="font-semibold text-gray-900">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllAsRead}
+                            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                          >
+                            <Check className="w-4 h-4" />
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Notification List */}
+                      <div className="max-h-96 overflow-y-auto">
+                        {notificationsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="py-8 text-center text-gray-500">
+                            <Bell className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p>No notifications</p>
+                          </div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                                !notification.read ? 'bg-blue-50' : ''
+                              }`}
+                              onClick={() => handleMarkAsRead(notification.id)}
+                            >
+                              <div className="flex gap-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                  {getNotificationIcon(notification.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {formatTimeAgo(notification.timestamp)}
+                                  </p>
+                                </div>
+                                {!notification.read && (
+                                  <div className="flex-shrink-0">
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full block"></span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Footer */}
+                      {notifications.length > 0 && (
+                        <div className="p-3 border-t border-gray-200 bg-gray-50">
+                          <button
+                            onClick={() => {
+                              setShowNotifications(false);
+                              // Could navigate to a full notifications page
+                            }}
+                            className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            View all notifications
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>

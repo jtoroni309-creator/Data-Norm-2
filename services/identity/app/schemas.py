@@ -160,15 +160,25 @@ class OrganizationResponse(BaseModel):
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
-    require_two_factor_auth: bool
+    require_two_factor_auth: bool = False
     session_timeout_minutes: Optional[int] = None
-    subscription_tier: str
-    subscription_status: str
-    max_users: int
+    subscription_tier: str = "professional"
+    subscription_status: str = "active"
+    max_users: int = 10
     enabled_services: Optional[dict] = None
-    is_active: bool
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
+
+    @field_validator('subscription_tier', 'subscription_status', mode='before')
+    @classmethod
+    def convert_enum_to_string(cls, v):
+        """Convert enum values to strings"""
+        if v is None:
+            return None
+        if hasattr(v, 'value'):
+            return v.value
+        return str(v)
 
 
 # ========================================
@@ -256,3 +266,135 @@ class UserPermissionResponse(BaseModel):
     can_delete_documents: bool
     created_at: datetime
     updated_at: datetime
+
+
+# ========================================
+# Client (Audit Client) Schemas
+# ========================================
+
+class ClientStatusEnum(str, Enum):
+    """Client status values"""
+    active = "active"
+    inactive = "inactive"
+    prospect = "prospect"
+    onboarding = "onboarding"
+    terminated = "terminated"
+
+
+class ClientBase(BaseModel):
+    """Base client fields"""
+    name: str = Field(..., min_length=1, max_length=255)
+    ein: Optional[str] = None
+    industry: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_email: Optional[EmailStr] = None
+    primary_contact_phone: Optional[str] = None
+    status: Optional[str] = Field(default="active", pattern="^(active|inactive|prospect|onboarding|terminated)$")
+    fiscal_year_end: Optional[str] = None
+    notes: Optional[str] = None
+
+    @field_validator('email', 'primary_contact_email', mode='before')
+    @classmethod
+    def empty_string_to_none_email(cls, v):
+        """Convert empty strings to None for email fields"""
+        if v == '' or v is None:
+            return None
+        return v
+
+    @field_validator('ein', 'industry', 'address', 'phone', 'primary_contact_name', 'primary_contact_phone', 'fiscal_year_end', 'notes', mode='before')
+    @classmethod
+    def empty_string_to_none(cls, v):
+        """Convert empty strings to None for optional string fields"""
+        if v == '':
+            return None
+        return v
+
+
+class ClientCreate(ClientBase):
+    """Client creation request"""
+    pass
+
+
+class ClientUpdate(BaseModel):
+    """Client update request"""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    ein: Optional[str] = None
+    industry: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_email: Optional[EmailStr] = None
+    primary_contact_phone: Optional[str] = None
+    status: Optional[str] = Field(None, pattern="^(active|inactive|prospect|onboarding|terminated)$")
+    fiscal_year_end: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ClientResponse(BaseModel):
+    """Client response"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    organization_id: UUID
+    name: str
+    ein: Optional[str] = None
+    industry: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    primary_contact_email: Optional[str] = None
+    primary_contact_phone: Optional[str] = None
+    status: str = "active"
+    fiscal_year_end: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def convert_status_enum(cls, v):
+        """Convert enum values to strings"""
+        if v is None:
+            return "active"
+        if hasattr(v, 'value'):
+            return v.value
+        return str(v)
+
+
+# ========================================
+# Password Reset Schemas
+# ========================================
+
+class PasswordResetRequest(BaseModel):
+    """Password reset request (forgot password)"""
+    email: EmailStr
+
+
+class PasswordResetResponse(BaseModel):
+    """Password reset response"""
+    message: str
+
+
+class PasswordResetConfirm(BaseModel):
+    """Confirm password reset with token"""
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Validate password meets complexity requirements"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        return v

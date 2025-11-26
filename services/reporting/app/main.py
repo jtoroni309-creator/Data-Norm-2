@@ -39,7 +39,7 @@ from .schemas import (
     ReportScheduleUpdate,
     ReportScheduleResponse,
     ReportingStats,
-    HTML to PDFRequest,
+    HTMLToPDFRequest,
     PDFGenerationOptions
 )
 from .pdf_service import pdf_service

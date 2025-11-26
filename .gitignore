@@ -126,3 +126,4 @@ temp/
 Thumbs.db
 nul
 services/engagement/nul
+.claude/settings.local.json

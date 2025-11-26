@@ -25,6 +25,8 @@ import {
 // Pages
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { HomePage } from './pages/HomePage';
 import FirmDashboard from './pages/FirmDashboard';
 import FirmSettings from './pages/FirmSettings';
@@ -35,7 +37,7 @@ import FirmReports from './pages/FirmReports';
 import { DashboardPage } from './pages/DashboardPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
-n// Engagement Workspace Pages
+// Engagement Workspace Pages
 import EngagementWorkspace from './pages/EngagementWorkspace';
 import WorkpaperManager from './pages/WorkpaperManager';
 import AnalyticalProcedures from './pages/AnalyticalProcedures';
@@ -347,6 +349,8 @@ const App: React.FC = () => {
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Firm Portal Routes with Layout - Protected by RouteGuard */}
         <Route path="/firm/dashboard" element={<RouteGuard portalType="firm"><AppLayout><FirmDashboard /></AppLayout></RouteGuard>} />
@@ -355,7 +359,7 @@ const App: React.FC = () => {
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><AppLayout><EmployeeManagement /></AppLayout></RouteGuard>} />
         <Route path="/firm/audits" element={<RouteGuard portalType="firm"><AppLayout><FirmAudits /></AppLayout></RouteGuard>} />
         <Route path="/firm/reports" element={<RouteGuard portalType="firm"><AppLayout><FirmReports /></AppLayout></RouteGuard>} />
-n        {/* Engagement Workspace Routes - Protected by RouteGuard */}
+        {/* Engagement Workspace Routes - Protected by RouteGuard */}
         <Route path="/firm/engagements/:id/workspace" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/workpapers" element={<RouteGuard portalType="firm"><AppLayout><WorkpaperManager /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/analytics" element={<RouteGuard portalType="firm"><AppLayout><AnalyticalProcedures /></AppLayout></RouteGuard>} />

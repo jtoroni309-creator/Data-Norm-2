@@ -1,10 +1,13 @@
 import { Configuration, PopupRequest } from "@azure/msal-browser";
 
-// MSAL configuration
+// MSAL configuration - credentials should be set via environment variables
+const AZURE_CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID || '';
+const AZURE_TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID || '';
+
 export const msalConfig: Configuration = {
   auth: {
-    clientId: "a5608ed5-c6f8-4db9-b50f-b62e2b24c966",
-    authority: "https://login.microsoftonline.com/002fa7de-1afd-4945-86e1-79281af841ad",
+    clientId: AZURE_CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${AZURE_TENANT_ID}`,
     redirectUri: window.location.origin + "/auth/callback",
   },
   cache: {
