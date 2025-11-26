@@ -3,7 +3,7 @@ from datetime import datetime, date
 from typing import Optional, List
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from .models import (
     EngagementStatus,
@@ -43,6 +43,30 @@ class EngagementCreate(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @field_validator('start_date', 'expected_completion_date', mode='before')
+    @classmethod
+    def empty_string_to_none_date(cls, v):
+        """Convert empty strings to None for optional date fields"""
+        if v == '' or v is None:
+            return None
+        return v
+
+    @field_validator('client_id', 'partner_id', 'manager_id', mode='before')
+    @classmethod
+    def empty_string_to_none_uuid(cls, v):
+        """Convert empty strings to None for optional UUID fields"""
+        if v == '' or v is None:
+            return None
+        return v
+
+    @field_validator('client_name', mode='before')
+    @classmethod
+    def empty_string_to_none_str(cls, v):
+        """Convert empty strings to None for optional string fields"""
+        if v == '':
+            return None
+        return v
+
 
 class EngagementUpdate(BaseModel):
     """Update engagement"""
@@ -53,6 +77,30 @@ class EngagementUpdate(BaseModel):
     manager_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('start_date', 'expected_completion_date', mode='before')
+    @classmethod
+    def empty_string_to_none_date(cls, v):
+        """Convert empty strings to None for optional date fields"""
+        if v == '' or v is None:
+            return None
+        return v
+
+    @field_validator('partner_id', 'manager_id', mode='before')
+    @classmethod
+    def empty_string_to_none_uuid(cls, v):
+        """Convert empty strings to None for optional UUID fields"""
+        if v == '' or v is None:
+            return None
+        return v
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def empty_string_to_none_str(cls, v):
+        """Convert empty strings to None for optional string fields"""
+        if v == '':
+            return None
+        return v
 
 
 class EngagementResponse(BaseModel):
