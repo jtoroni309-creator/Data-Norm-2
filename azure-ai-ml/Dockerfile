@@ -40,13 +40,13 @@ COPY main.py /app/
 COPY config.py /app/
 
 # Copy training pipelines
-COPY training-pipelines /app/training-pipelines
+COPY training_pipelines /app/training_pipelines
 
 # Copy data acquisition (EDGAR scraper)
-COPY data-acquisition /app/data_acquisition
+COPY data_acquisition /app/data_acquisition
 
 # Copy data normalization
-COPY data-normalization /app/data-normalization
+COPY data_normalization /app/data_normalization
 
 # Copy environment template if it exists (optional)
 COPY .env.exampl[e] /app/
