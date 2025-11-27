@@ -286,7 +286,29 @@ const DocumentRepository: React.FC = () => {
             <p className="text-caption text-neutral-600">Total Size</p>
             <FileSpreadsheet className="w-4 h-4 text-success-600" />
           </div>
-          <p className="text-title-large text-success-600 font-semibold">22.6 MB</p>
+          <p className="text-title-large text-success-600 font-semibold">
+            {documents.reduce((acc, doc) => {
+              const sizeStr = doc.size;
+              const match = sizeStr.match(/([\d.]+)\s*(Bytes|KB|MB|GB)/);
+              if (match) {
+                const value = parseFloat(match[1]);
+                const unit = match[2];
+                const multipliers: Record<string, number> = { 'Bytes': 1, 'KB': 1024, 'MB': 1024*1024, 'GB': 1024*1024*1024 };
+                return acc + value * (multipliers[unit] || 1);
+              }
+              return acc;
+            }, 0) > 0 ? formatFileSize(documents.reduce((acc, doc) => {
+              const sizeStr = doc.size;
+              const match = sizeStr.match(/([\d.]+)\s*(Bytes|KB|MB|GB)/);
+              if (match) {
+                const value = parseFloat(match[1]);
+                const unit = match[2];
+                const multipliers: Record<string, number> = { 'Bytes': 1, 'KB': 1024, 'MB': 1024*1024, 'GB': 1024*1024*1024 };
+                return acc + value * (multipliers[unit] || 1);
+              }
+              return acc;
+            }, 0)) : '0 Bytes'}
+          </p>
         </div>
       </div>
 

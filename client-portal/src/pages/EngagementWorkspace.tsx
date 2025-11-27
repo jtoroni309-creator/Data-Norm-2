@@ -27,7 +27,7 @@ import {
   Download,
   Brain,
 } from 'lucide-react';
-import { engagementService, Engagement } from '../services/engagement.service';
+import { engagementService, Engagement, WorkspaceStats } from '../services/engagement.service';
 import { apiService } from '../services/api.service';
 import { auditPlanningService } from '../services/audit-planning.service';
 import toast from 'react-hot-toast';
@@ -62,7 +62,14 @@ const EngagementWorkspace: React.FC = () => {
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [workspaceStats, setWorkspaceStats] = useState<Record<string, { total: number; completed: number }>>({});
+  const [workspaceStats, setWorkspaceStats] = useState<WorkspaceStats>({
+    workpapers: { total: 0, completed: 0 },
+    analytics: { total: 0, completed: 0 },
+    testing: { total: 0, completed: 0 },
+    risk: { total: 0, completed: 0 },
+    documents: { total: 0, completed: 0 },
+    reports: { total: 0, completed: 0 },
+  });
 
   useEffect(() => {
     if (id) {
@@ -70,6 +77,7 @@ const EngagementWorkspace: React.FC = () => {
       loadAIInsights(id);
       loadActivity(id);
       loadTeamMembers(id);
+      loadWorkspaceStats(id);
     }
   }, [id]);
 
@@ -150,6 +158,15 @@ const EngagementWorkspace: React.FC = () => {
     }
   };
 
+  const loadWorkspaceStats = async (engagementId: string) => {
+    try {
+      const stats = await engagementService.getWorkspaceStats(engagementId);
+      setWorkspaceStats(stats);
+    } catch (error) {
+      console.log('Workspace stats not available');
+    }
+  };
+
   const handleUploadDocuments = () => {
     navigate(`/firm/engagements/${id}/documents`);
   };
@@ -201,7 +218,7 @@ const EngagementWorkspace: React.FC = () => {
       icon: FileText,
       color: 'blue',
       path: `/firm/engagements/${id}/workpapers`,
-      stats: { total: 45, completed: 32 },
+      stats: workspaceStats.workpapers,
     },
     {
       id: 'analytics',
@@ -210,7 +227,7 @@ const EngagementWorkspace: React.FC = () => {
       icon: TrendingUp,
       color: 'purple',
       path: `/firm/engagements/${id}/analytics`,
-      stats: { total: 12, completed: 8 },
+      stats: workspaceStats.analytics,
     },
     {
       id: 'testing',
@@ -219,7 +236,7 @@ const EngagementWorkspace: React.FC = () => {
       icon: ClipboardList,
       color: 'green',
       path: `/firm/engagements/${id}/testing`,
-      stats: { total: 28, completed: 15 },
+      stats: workspaceStats.testing,
     },
     {
       id: 'risk',
@@ -228,7 +245,7 @@ const EngagementWorkspace: React.FC = () => {
       icon: Shield,
       color: 'orange',
       path: `/firm/engagements/${id}/risk`,
-      stats: { total: 8, completed: 8 },
+      stats: workspaceStats.risk,
     },
     {
       id: 'documents',
@@ -237,7 +254,7 @@ const EngagementWorkspace: React.FC = () => {
       icon: FolderOpen,
       color: 'cyan',
       path: `/firm/engagements/${id}/documents`,
-      stats: { total: 156, completed: 156 },
+      stats: workspaceStats.documents,
     },
     {
       id: 'reports',
@@ -246,7 +263,7 @@ const EngagementWorkspace: React.FC = () => {
       icon: BarChart3,
       color: 'indigo',
       path: `/firm/engagements/${id}/reports`,
-      stats: { total: 5, completed: 2 },
+      stats: workspaceStats.reports,
     },
   ];
 
@@ -361,7 +378,9 @@ const EngagementWorkspace: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {workspaceModules.map((module, index) => {
                 const Icon = module.icon;
-                const completionRate = Math.round((module.stats.completed / module.stats.total) * 100);
+                const completionRate = module.stats.total > 0
+                  ? Math.round((module.stats.completed / module.stats.total) * 100)
+                  : 0;
 
                 return (
                   <motion.button
