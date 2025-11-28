@@ -140,6 +140,7 @@ const AIAuditPlanning: React.FC = () => {
   const [detectingFraud, setDetectingFraud] = useState(false);
   const [generatingPrograms, setGeneratingPrograms] = useState(false);
   const [generatingMemo, setGeneratingMemo] = useState(false);
+  const [completingPlanning, setCompletingPlanning] = useState(false);
 
   const industries = [
     { value: 'manufacturing', label: 'Manufacturing' },
@@ -781,6 +782,41 @@ const AIAuditPlanning: React.FC = () => {
       toast.error(error.response?.data?.detail || 'Memo generation failed');
     } finally {
       setGeneratingMemo(false);
+    }
+  };
+
+  const isPlanningComplete = (): boolean => {
+    // Planning is complete when at minimum risk analysis and materiality are done
+    return !!riskAnalysis && !!materialityResult;
+  };
+
+  const handleCompletePlanning = async () => {
+    if (!id || !engagement) return;
+
+    if (!isPlanningComplete()) {
+      toast.error('Please complete at least Risk Analysis and Materiality before advancing');
+      return;
+    }
+
+    setCompletingPlanning(true);
+    try {
+      // First update engagement status to "planning" if it's in draft
+      if (engagement.status === 'draft') {
+        await engagementService.transitionStatus(id, 'planning', 'AI-powered planning initiated');
+      }
+
+      // Then advance to fieldwork
+      await engagementService.transitionStatus(id, 'fieldwork', 'Planning phase completed with AI assistance');
+
+      toast.success('Planning complete! Engagement advanced to Fieldwork phase.');
+
+      // Navigate back to engagement workspace
+      navigate(`/firm/engagements/${id}`);
+    } catch (error: any) {
+      console.error('Failed to advance engagement:', error);
+      toast.error(error.response?.data?.detail || 'Failed to advance engagement phase');
+    } finally {
+      setCompletingPlanning(false);
     }
   };
 
@@ -1782,6 +1818,36 @@ const AIAuditPlanning: React.FC = () => {
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Complete Planning Button */}
+            <div className="mt-6 pt-4 border-t border-neutral-200">
+              <button
+                onClick={handleCompletePlanning}
+                disabled={completingPlanning || !isPlanningComplete()}
+                className={`w-full py-3 px-4 rounded-fluent font-medium transition-all flex items-center justify-center gap-2 ${
+                  isPlanningComplete()
+                    ? 'bg-success-500 hover:bg-success-600 text-white'
+                    : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+                }`}
+              >
+                {completingPlanning ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Advancing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Complete Planning & Advance to Fieldwork
+                  </>
+                )}
+              </button>
+              {!isPlanningComplete() && (
+                <p className="text-caption text-neutral-500 mt-2 text-center">
+                  Complete Risk Analysis and Materiality to advance
+                </p>
+              )}
             </div>
           </div>
 

@@ -111,6 +111,11 @@ class FirmService {
     return response.data;
   }
 
+  async resendInvitation(invitationId: string): Promise<UserInvitation> {
+    const response = await this.api.post<UserInvitation>(`/invitations/${invitationId}/resend`);
+    return response.data;
+  }
+
   // ========================================
   // User Permissions
   // ========================================

@@ -20,7 +20,11 @@ import {
   Clock,
   ChevronDown,
   Eye,
-  EyeOff
+  EyeOff,
+  Copy,
+  RefreshCw,
+  Info,
+  CheckCircle
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { firmService } from '../services/firm.service';
@@ -150,14 +154,37 @@ const EmployeeManagement: React.FC = () => {
   const activeInvitations = invitations.filter(inv => !inv.is_expired && !inv.accepted_at);
   const expiredInvitations = invitations.filter(inv => inv.is_expired || inv.accepted_at);
 
-  const roles: { value: UserRole; label: string; color: string }[] = [
-    { value: 'partner', label: 'Partner', color: 'purple' },
-    { value: 'manager', label: 'Manager', color: 'blue' },
-    { value: 'senior', label: 'Senior', color: 'green' },
-    { value: 'staff', label: 'Staff', color: 'gray' },
-    { value: 'qc_reviewer', label: 'QC Reviewer', color: 'orange' },
-    { value: 'client_contact', label: 'Client Contact', color: 'pink' }
+  const roles: { value: UserRole; label: string; color: string; description: string }[] = [
+    { value: 'partner', label: 'Partner', color: 'purple', description: 'Full access including firm settings, billing, and user management' },
+    { value: 'manager', label: 'Manager', color: 'blue', description: 'Manage engagements, supervise staff, and invite team members' },
+    { value: 'senior', label: 'Senior', color: 'green', description: 'Lead fieldwork, review workpapers, and edit engagements' },
+    { value: 'staff', label: 'Staff', color: 'gray', description: 'Perform testing procedures and upload documents' },
+    { value: 'qc_reviewer', label: 'QC Reviewer', color: 'orange', description: 'Review completed work and approve quality control' },
+    { value: 'client_contact', label: 'Client Contact', color: 'pink', description: 'View shared documents and communicate with audit team' }
   ];
+
+  // Copy invitation link to clipboard
+  const copyInvitationLink = async (invitation: UserInvitation) => {
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/accept-invitation?token=${invitation.token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success('Invitation link copied to clipboard');
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  // Resend invitation
+  const handleResendInvitation = async (invitation: UserInvitation) => {
+    try {
+      await firmService.resendInvitation(invitation.id);
+      toast.success(`Invitation resent to ${invitation.email}`);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to resend invitation');
+    }
+  };
 
   const getRoleBadgeColor = (role: UserRole) => {
     const roleConfig = roles.find(r => r.value === role);
@@ -368,7 +395,23 @@ const EmployeeManagement: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <span className="badge-warning">Pending</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copyInvitationLink(invitation)}
+                          className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
+                          title="Copy invitation link"
+                        >
+                          <Copy className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleResendInvitation(invitation)}
+                          className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
+                          title="Resend invitation email"
+                        >
+                          <RefreshCw className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <span className="badge-warning">Pending</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -461,6 +504,20 @@ const EmployeeManagement: React.FC = () => {
                       <option key={role.value} value={role.value}>{role.label}</option>
                     ))}
                   </select>
+                  {/* Role Description */}
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">
+                          {roles.find(r => r.value === inviteForm.role)?.label}
+                        </p>
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          {roles.find(r => r.value === inviteForm.role)?.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

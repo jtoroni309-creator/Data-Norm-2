@@ -21,11 +21,15 @@ import {
   Building2,
   ChevronRight,
   Shield,
+  FlaskConical,
+  Calculator,
+  ShieldAlert,
 } from 'lucide-react';
 
 // Pages
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { AcceptInvitation } from './pages/AcceptInvitation';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { HomePage } from './pages/HomePage';
@@ -48,12 +52,24 @@ import DocumentRepository from './pages/DocumentRepository';
 import AuditReporting from './pages/AuditReporting';
 import SOCEngagements from './pages/SOCEngagements';
 import AIAuditPlanning from './pages/AIAuditPlanning';
+// R&D Tax Credit Pages
+import RDStudies from './pages/RDStudies';
+import RDStudyWorkspace from './pages/RDStudyWorkspace';
+// Tax Engine Pages
+import TaxReturns from './pages/TaxReturns';
+import TaxReturnWorkspace from './pages/TaxReturnWorkspace';
+// Fraud Detection Pages
+import FraudDetection from './pages/FraudDetection';
+import FraudCaseWorkspace from './pages/FraudCaseWorkspace';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/firm/dashboard' },
   { id: 'clients', label: 'Clients', icon: Building2, path: '/firm/clients' },
   { id: 'audits', label: 'Audits', icon: FileText, path: '/firm/audits' },
   { id: 'soc', label: 'SOC Audits', icon: Shield, path: '/firm/soc-engagements' },
+  { id: 'rd-studies', label: 'R&D Credits', icon: FlaskConical, path: '/firm/rd-studies' },
+  { id: 'tax-returns', label: 'Tax Returns', icon: Calculator, path: '/firm/tax-returns' },
+  { id: 'fraud-detection', label: 'Fraud Detection', icon: ShieldAlert, path: '/firm/fraud-detection' },
   { id: 'employees', label: 'Team', icon: Users, path: '/firm/employees' },
   { id: 'reports', label: 'Reports', icon: BarChart3, path: '/firm/reports' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/firm/settings' },
@@ -353,6 +369,7 @@ const App: React.FC = () => {
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/accept-invitation" element={<AcceptInvitation />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -363,6 +380,12 @@ const App: React.FC = () => {
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><AppLayout><EmployeeManagement /></AppLayout></RouteGuard>} />
         <Route path="/firm/audits" element={<RouteGuard portalType="firm"><AppLayout><FirmAudits /></AppLayout></RouteGuard>} />
         <Route path="/firm/soc-engagements" element={<RouteGuard portalType="firm"><AppLayout><SOCEngagements /></AppLayout></RouteGuard>} />
+        <Route path="/firm/rd-studies" element={<RouteGuard portalType="firm"><AppLayout><RDStudies /></AppLayout></RouteGuard>} />
+        <Route path="/firm/rd-studies/:id" element={<RouteGuard portalType="firm"><AppLayout><RDStudyWorkspace /></AppLayout></RouteGuard>} />
+        <Route path="/firm/tax-returns" element={<RouteGuard portalType="firm"><AppLayout><TaxReturns /></AppLayout></RouteGuard>} />
+        <Route path="/firm/tax-returns/:id" element={<RouteGuard portalType="firm"><AppLayout><TaxReturnWorkspace /></AppLayout></RouteGuard>} />
+        <Route path="/firm/fraud-detection" element={<RouteGuard portalType="firm"><AppLayout><FraudDetection /></AppLayout></RouteGuard>} />
+        <Route path="/firm/fraud-detection/cases/:id" element={<RouteGuard portalType="firm"><AppLayout><FraudCaseWorkspace /></AppLayout></RouteGuard>} />
         <Route path="/firm/reports" element={<RouteGuard portalType="firm"><AppLayout><FirmReports /></AppLayout></RouteGuard>} />
         {/* Engagement Workspace Routes - Protected by RouteGuard */}
         <Route path="/firm/engagements/:id" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />

@@ -168,7 +168,7 @@ export function RegisterPage() {
             transition={{ delay: 0.2, duration: 0.4 }}
             className="text-display-large text-neutral-900 mb-3 font-semibold"
           >
-            Create Your Account
+            Register Your Firm
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -176,7 +176,7 @@ export function RegisterPage() {
             transition={{ delay: 0.3, duration: 0.4 }}
             className="text-subtitle text-neutral-600"
           >
-            Start managing your audit practice
+            Create a new CPA firm account on Aura Audit AI
           </motion.p>
         </div>
 
@@ -315,7 +315,7 @@ export function RegisterPage() {
             </motion.button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-neutral-200">
+          <div className="mt-6 pt-6 border-t border-neutral-200 space-y-4">
             <p className="text-caption text-neutral-600 text-center">
               Already have an account?{' '}
               <button
@@ -325,6 +325,13 @@ export function RegisterPage() {
                 Sign In
               </button>
             </p>
+            <div className="p-3 bg-neutral-50 rounded-fluent border border-neutral-200">
+              <p className="text-caption text-neutral-600 text-center">
+                <strong>Been invited to join an existing firm?</strong>
+                <br />
+                Check your email for an invitation link from your firm administrator.
+              </p>
+            </div>
           </div>
         </motion.div>
 
