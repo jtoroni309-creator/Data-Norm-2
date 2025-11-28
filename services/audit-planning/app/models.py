@@ -63,11 +63,15 @@ class AccountType(str, enum.Enum):
 
 class AssertionType(str, enum.Enum):
     """Financial statement assertions (PCAOB AS 1105)"""
-    EXISTENCE = "existence"  # Assets, liabilities exist
+    EXISTENCE = "existence"  # Assets, liabilities exist (balance sheet)
+    OCCURRENCE = "occurrence"  # Transactions actually occurred (income statement)
     COMPLETENESS = "completeness"  # All transactions recorded
     RIGHTS_OBLIGATIONS = "rights_obligations"  # Entity has rights/obligations
     VALUATION_ALLOCATION = "valuation_allocation"  # Appropriate amounts
-    PRESENTATION_DISCLOSURE = "presentation_disclosure"  # Proper classification
+    ACCURACY = "accuracy"  # Transactions recorded at correct amounts
+    CUTOFF = "cutoff"  # Transactions recorded in correct period
+    CLASSIFICATION = "classification"  # Transactions recorded in proper accounts
+    PRESENTATION_DISCLOSURE = "presentation_disclosure"  # Proper classification and disclosure
 
 
 class ControlEffectiveness(str, enum.Enum):
