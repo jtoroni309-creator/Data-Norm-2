@@ -175,28 +175,9 @@ const EngagementWorkspace: React.FC = () => {
     navigate(`/firm/engagements/${id}/workpapers`);
   };
 
-  const handleStartPlanning = async () => {
-    if (!engagement) return;
-    try {
-      toast.loading('Initializing audit plan...');
-      await auditPlanningService.createAuditPlan({
-        engagement_id: id!,
-        fiscal_year_end: engagement.fiscal_year_end,
-        materiality_amount: 50000, // Default, user should calculate
-        risk_level: 'moderate',
-      });
-      toast.dismiss();
-      toast.success('Audit plan created! Navigate to Risk Assessment to continue.');
-      navigate(`/firm/engagements/${id}/risk`);
-    } catch (error: any) {
-      toast.dismiss();
-      if (error.response?.status === 409) {
-        toast.success('Audit plan already exists');
-        navigate(`/firm/engagements/${id}/risk`);
-      } else {
-        toast.error('Failed to create audit plan');
-      }
-    }
+  const handleStartPlanning = () => {
+    // Navigate to AI-powered audit planning page
+    navigate(`/firm/engagements/${id}/ai-planning`);
   };
 
   const getProgressPercentage = (status: string): number => {

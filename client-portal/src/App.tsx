@@ -47,6 +47,7 @@ import RiskAssessment from './pages/RiskAssessment';
 import DocumentRepository from './pages/DocumentRepository';
 import AuditReporting from './pages/AuditReporting';
 import SOCEngagements from './pages/SOCEngagements';
+import AIAuditPlanning from './pages/AIAuditPlanning';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/firm/dashboard' },
@@ -364,6 +365,7 @@ const App: React.FC = () => {
         <Route path="/firm/soc-engagements" element={<RouteGuard portalType="firm"><AppLayout><SOCEngagements /></AppLayout></RouteGuard>} />
         <Route path="/firm/reports" element={<RouteGuard portalType="firm"><AppLayout><FirmReports /></AppLayout></RouteGuard>} />
         {/* Engagement Workspace Routes - Protected by RouteGuard */}
+        <Route path="/firm/engagements/:id" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/workspace" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/workpapers" element={<RouteGuard portalType="firm"><AppLayout><WorkpaperManager /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/analytics" element={<RouteGuard portalType="firm"><AppLayout><AnalyticalProcedures /></AppLayout></RouteGuard>} />
@@ -371,6 +373,7 @@ const App: React.FC = () => {
         <Route path="/firm/engagements/:id/risk" element={<RouteGuard portalType="firm"><AppLayout><RiskAssessment /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/documents" element={<RouteGuard portalType="firm"><AppLayout><DocumentRepository /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/reports" element={<RouteGuard portalType="firm"><AppLayout><AuditReporting /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/ai-planning" element={<RouteGuard portalType="firm"><AppLayout><AIAuditPlanning /></AppLayout></RouteGuard>} />
 
         {/* Customer Portal Routes - Protected by RouteGuard */}
         <Route path="/customer/dashboard" element={<RouteGuard portalType="client"><DashboardPage /></RouteGuard>} />
