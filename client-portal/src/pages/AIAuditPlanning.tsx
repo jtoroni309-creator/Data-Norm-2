@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import {
   ArrowLeft,
   Brain,
@@ -250,72 +251,377 @@ const AIAuditPlanning: React.FC = () => {
       return parseCSVData(text);
     }
 
-    // For Excel/PDF, we would typically send to backend for processing
-    // For now, simulate extraction with sample data based on file size
-    // In production, this would call an API endpoint
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulate extracted data - in production this would parse actual file
-        const sampleData: FinancialData = {
-          total_assets: Math.round(Math.random() * 50000000) + 5000000,
-          total_liabilities: Math.round(Math.random() * 20000000) + 2000000,
-          current_assets: Math.round(Math.random() * 15000000) + 1500000,
-          current_liabilities: Math.round(Math.random() * 8000000) + 800000,
-          total_revenue: Math.round(Math.random() * 40000000) + 10000000,
-          net_income: Math.round(Math.random() * 5000000) + 500000,
-          pretax_income: Math.round(Math.random() * 6000000) + 600000,
-          total_equity: Math.round(Math.random() * 30000000) + 3000000,
-          inventory: Math.round(Math.random() * 5000000) + 500000,
-          accounts_receivable: Math.round(Math.random() * 8000000) + 800000,
-          cost_of_goods_sold: Math.round(Math.random() * 25000000) + 6000000,
-          operating_expenses: Math.round(Math.random() * 10000000) + 2000000,
-          allowance_doubtful: Math.round(Math.random() * 200000) + 20000,
+    // For Excel files, use xlsx library to parse
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = e.target?.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+
+            // Get the first sheet
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+
+            // Convert to JSON - array of rows
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (string | number)[][];
+
+            // Parse the Excel data to extract financial values
+            const extractedData = parseExcelData(jsonData);
+            resolve(extractedData);
+          } catch (error) {
+            console.error('Excel parsing error:', error);
+            reject(error);
+          }
         };
-        resolve(sampleData);
-      }, 500);
-    });
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsBinaryString(file);
+      });
+    }
+
+    // For PDF files, we'd need backend processing - show a message
+    if (file.name.endsWith('.pdf')) {
+      toast.error('PDF parsing requires backend processing. Please use Excel or CSV format.');
+      return emptyFinancialData;
+    }
+
+    return emptyFinancialData;
+  };
+
+  // Parse Excel data (array of rows) into FinancialData
+  const parseExcelData = (rows: (string | number)[][]): FinancialData => {
+    const data: FinancialData = { ...emptyFinancialData };
+
+    // Extended field mappings for balance sheets and trial balances
+    const fieldMappings: Record<string, keyof FinancialData> = {
+      // Total Assets variations
+      'total assets': 'total_assets',
+      'assets total': 'total_assets',
+      'total asset': 'total_assets',
+      'assets': 'total_assets',
+      'sum of assets': 'total_assets',
+
+      // Total Liabilities variations
+      'total liabilities': 'total_liabilities',
+      'liabilities total': 'total_liabilities',
+      'total liability': 'total_liabilities',
+      'liabilities': 'total_liabilities',
+      'sum of liabilities': 'total_liabilities',
+
+      // Current Assets variations
+      'current assets': 'current_assets',
+      'total current assets': 'current_assets',
+      'current assets total': 'current_assets',
+
+      // Current Liabilities variations
+      'current liabilities': 'current_liabilities',
+      'total current liabilities': 'current_liabilities',
+      'current liabilities total': 'current_liabilities',
+
+      // Revenue variations
+      'revenue': 'total_revenue',
+      'total revenue': 'total_revenue',
+      'revenues': 'total_revenue',
+      'net revenue': 'total_revenue',
+      'net revenues': 'total_revenue',
+      'sales': 'total_revenue',
+      'net sales': 'total_revenue',
+      'total sales': 'total_revenue',
+      'gross sales': 'total_revenue',
+      'service revenue': 'total_revenue',
+      'operating revenue': 'total_revenue',
+
+      // Net Income variations
+      'net income': 'net_income',
+      'net profit': 'net_income',
+      'net earnings': 'net_income',
+      'net income (loss)': 'net_income',
+      'profit (loss)': 'net_income',
+      'profit': 'net_income',
+      'earnings': 'net_income',
+      'bottom line': 'net_income',
+
+      // Pre-tax Income variations
+      'pretax income': 'pretax_income',
+      'pre-tax income': 'pretax_income',
+      'income before tax': 'pretax_income',
+      'income before taxes': 'pretax_income',
+      'earnings before tax': 'pretax_income',
+      'ebt': 'pretax_income',
+      'income before income tax': 'pretax_income',
+      'profit before tax': 'pretax_income',
+
+      // Equity variations
+      'equity': 'total_equity',
+      'total equity': 'total_equity',
+      'stockholders equity': 'total_equity',
+      "stockholders' equity": 'total_equity',
+      'shareholders equity': 'total_equity',
+      "shareholders' equity": 'total_equity',
+      'owners equity': 'total_equity',
+      "owner's equity": 'total_equity',
+      'net worth': 'total_equity',
+      'total stockholders equity': 'total_equity',
+      'total shareholders equity': 'total_equity',
+      'capital': 'total_equity',
+
+      // Inventory variations
+      'inventory': 'inventory',
+      'inventories': 'inventory',
+      'merchandise inventory': 'inventory',
+      'finished goods': 'inventory',
+      'raw materials': 'inventory',
+      'work in progress': 'inventory',
+      'stock': 'inventory',
+
+      // Accounts Receivable variations
+      'accounts receivable': 'accounts_receivable',
+      'receivables': 'accounts_receivable',
+      'trade receivables': 'accounts_receivable',
+      'a/r': 'accounts_receivable',
+      'ar': 'accounts_receivable',
+      'net receivables': 'accounts_receivable',
+      'accounts receivable net': 'accounts_receivable',
+      'trade accounts receivable': 'accounts_receivable',
+      'customer receivables': 'accounts_receivable',
+
+      // COGS variations
+      'cost of goods sold': 'cost_of_goods_sold',
+      'cogs': 'cost_of_goods_sold',
+      'cost of sales': 'cost_of_goods_sold',
+      'cost of revenue': 'cost_of_goods_sold',
+      'cost of products sold': 'cost_of_goods_sold',
+      'cost of services': 'cost_of_goods_sold',
+      'direct costs': 'cost_of_goods_sold',
+
+      // Operating Expenses variations
+      'operating expenses': 'operating_expenses',
+      'opex': 'operating_expenses',
+      'total operating expenses': 'operating_expenses',
+      'operating costs': 'operating_expenses',
+      'sg&a': 'operating_expenses',
+      'sga': 'operating_expenses',
+      'selling general administrative': 'operating_expenses',
+      'general and administrative': 'operating_expenses',
+
+      // Allowance for Doubtful Accounts variations
+      'allowance for doubtful accounts': 'allowance_doubtful',
+      'allowance for bad debts': 'allowance_doubtful',
+      'allowance doubtful': 'allowance_doubtful',
+      'bad debt reserve': 'allowance_doubtful',
+      'provision for bad debts': 'allowance_doubtful',
+    };
+
+    // Helper to clean and parse numeric values
+    const parseNumericValue = (val: string | number | undefined): number => {
+      if (val === undefined || val === null || val === '') return 0;
+      if (typeof val === 'number') return Math.abs(val);
+
+      // Remove currency symbols, commas, parentheses (for negatives), spaces
+      const cleaned = String(val)
+        .replace(/[$€£¥,\s]/g, '')
+        .replace(/\(([^)]+)\)/g, '-$1') // Convert (123) to -123
+        .trim();
+
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : Math.abs(num);
+    };
+
+    // Process each row looking for label-value pairs
+    for (const row of rows) {
+      if (!row || row.length < 2) continue;
+
+      // Try different column arrangements
+      // Format 1: [Label, Value] or [Label, ..., Value]
+      // Format 2: [AccountNumber, Label, Value]
+      // Format 3: [Label, Debit, Credit]
+
+      for (let colIdx = 0; colIdx < row.length - 1; colIdx++) {
+        const cell = row[colIdx];
+        if (typeof cell !== 'string') continue;
+
+        const label = cell.toLowerCase().trim();
+        if (!label) continue;
+
+        // Check if this label matches any field mapping
+        for (const [pattern, field] of Object.entries(fieldMappings)) {
+          if (label === pattern || label.includes(pattern)) {
+            // Look for a numeric value in subsequent columns
+            for (let valIdx = colIdx + 1; valIdx < row.length; valIdx++) {
+              const value = parseNumericValue(row[valIdx]);
+              if (value > 0) {
+                // Only update if we haven't found a value for this field yet,
+                // or if this value is from a more specific match
+                if (data[field] === 0 || label === pattern) {
+                  data[field] = value;
+                }
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    return data;
   };
 
   const parseCSVData = (csvText: string): FinancialData => {
     const lines = csvText.trim().split('\n');
     const data: FinancialData = { ...emptyFinancialData };
 
-    // Common field mappings from trial balance exports
+    // Extended field mappings for CSV balance sheets and trial balances
     const fieldMappings: Record<string, keyof FinancialData> = {
+      // Total Assets variations
       'total assets': 'total_assets',
+      'assets total': 'total_assets',
+      'total asset': 'total_assets',
+      'sum of assets': 'total_assets',
+
+      // Total Liabilities variations
       'total liabilities': 'total_liabilities',
+      'liabilities total': 'total_liabilities',
+      'total liability': 'total_liabilities',
+      'sum of liabilities': 'total_liabilities',
+
+      // Current Assets variations
       'current assets': 'current_assets',
+      'total current assets': 'current_assets',
+      'current assets total': 'current_assets',
+
+      // Current Liabilities variations
       'current liabilities': 'current_liabilities',
+      'total current liabilities': 'current_liabilities',
+      'current liabilities total': 'current_liabilities',
+
+      // Revenue variations
       'revenue': 'total_revenue',
       'total revenue': 'total_revenue',
+      'revenues': 'total_revenue',
+      'net revenue': 'total_revenue',
+      'net revenues': 'total_revenue',
       'sales': 'total_revenue',
+      'net sales': 'total_revenue',
+      'total sales': 'total_revenue',
+      'gross sales': 'total_revenue',
+      'service revenue': 'total_revenue',
+      'operating revenue': 'total_revenue',
+
+      // Net Income variations
       'net income': 'net_income',
+      'net profit': 'net_income',
+      'net earnings': 'net_income',
+      'net income (loss)': 'net_income',
+      'profit (loss)': 'net_income',
+      'profit': 'net_income',
+      'earnings': 'net_income',
+
+      // Pre-tax Income variations
       'pretax income': 'pretax_income',
+      'pre-tax income': 'pretax_income',
       'income before tax': 'pretax_income',
+      'income before taxes': 'pretax_income',
+      'earnings before tax': 'pretax_income',
+      'ebt': 'pretax_income',
+      'income before income tax': 'pretax_income',
+      'profit before tax': 'pretax_income',
+
+      // Equity variations
       'equity': 'total_equity',
       'total equity': 'total_equity',
       'stockholders equity': 'total_equity',
+      "stockholders' equity": 'total_equity',
+      'shareholders equity': 'total_equity',
+      "shareholders' equity": 'total_equity',
+      'owners equity': 'total_equity',
+      "owner's equity": 'total_equity',
+      'net worth': 'total_equity',
+      'total stockholders equity': 'total_equity',
+      'total shareholders equity': 'total_equity',
+      'capital': 'total_equity',
+
+      // Inventory variations
       'inventory': 'inventory',
+      'inventories': 'inventory',
+      'merchandise inventory': 'inventory',
+      'finished goods': 'inventory',
+      'raw materials': 'inventory',
+      'work in progress': 'inventory',
+      'stock': 'inventory',
+
+      // Accounts Receivable variations
       'accounts receivable': 'accounts_receivable',
       'receivables': 'accounts_receivable',
+      'trade receivables': 'accounts_receivable',
+      'a/r': 'accounts_receivable',
+      'ar': 'accounts_receivable',
+      'net receivables': 'accounts_receivable',
+      'accounts receivable net': 'accounts_receivable',
+      'trade accounts receivable': 'accounts_receivable',
+      'customer receivables': 'accounts_receivable',
+
+      // COGS variations
       'cost of goods sold': 'cost_of_goods_sold',
       'cogs': 'cost_of_goods_sold',
       'cost of sales': 'cost_of_goods_sold',
+      'cost of revenue': 'cost_of_goods_sold',
+      'cost of products sold': 'cost_of_goods_sold',
+      'cost of services': 'cost_of_goods_sold',
+      'direct costs': 'cost_of_goods_sold',
+
+      // Operating Expenses variations
       'operating expenses': 'operating_expenses',
       'opex': 'operating_expenses',
-      'allowance for doubtful': 'allowance_doubtful',
-      'allowance doubtful accounts': 'allowance_doubtful',
+      'total operating expenses': 'operating_expenses',
+      'operating costs': 'operating_expenses',
+      'sg&a': 'operating_expenses',
+      'sga': 'operating_expenses',
+      'selling general administrative': 'operating_expenses',
+      'general and administrative': 'operating_expenses',
+
+      // Allowance for Doubtful Accounts variations
+      'allowance for doubtful accounts': 'allowance_doubtful',
+      'allowance for bad debts': 'allowance_doubtful',
+      'allowance doubtful': 'allowance_doubtful',
+      'bad debt reserve': 'allowance_doubtful',
+      'provision for bad debts': 'allowance_doubtful',
+    };
+
+    // Helper to parse numeric values from CSV cells
+    const parseNumericValue = (val: string | undefined): number => {
+      if (!val) return 0;
+      // Remove currency symbols, commas, parentheses, spaces
+      const cleaned = val
+        .replace(/[$€£¥,\s]/g, '')
+        .replace(/\(([^)]+)\)/g, '-$1')
+        .trim();
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : Math.abs(num);
     };
 
     lines.forEach(line => {
-      const parts = line.split(',');
-      if (parts.length >= 2) {
-        const label = parts[0].trim().toLowerCase();
-        const value = parseFloat(parts[1].replace(/[$,]/g, '').trim()) || 0;
+      // Handle quoted CSV values and various delimiters
+      const parts = line.split(/[,\t;]/).map(p => p.replace(/^["']|["']$/g, '').trim());
 
+      if (parts.length >= 2) {
+        const label = parts[0].toLowerCase();
+
+        // Find the best matching field
         for (const [pattern, field] of Object.entries(fieldMappings)) {
-          if (label.includes(pattern)) {
-            data[field] = Math.abs(value);
+          if (label === pattern || label.includes(pattern)) {
+            // Look for numeric value in any subsequent column
+            for (let i = 1; i < parts.length; i++) {
+              const value = parseNumericValue(parts[i]);
+              if (value > 0) {
+                // Prefer exact matches over partial matches
+                if (data[field] === 0 || label === pattern) {
+                  data[field] = value;
+                }
+                break;
+              }
+            }
             break;
           }
         }
