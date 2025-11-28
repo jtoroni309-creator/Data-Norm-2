@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -26,6 +26,10 @@ import {
   Upload,
   Download,
   Brain,
+  Save,
+  X,
+  Settings,
+  Loader2,
 } from 'lucide-react';
 import { engagementService, Engagement, WorkspaceStats } from '../services/engagement.service';
 import { apiService } from '../services/api.service';
@@ -69,6 +73,18 @@ const EngagementWorkspace: React.FC = () => {
     risk: { total: 0, completed: 0 },
     documents: { total: 0, completed: 0 },
     reports: { total: 0, completed: 0 },
+  });
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    engagement_type: 'audit' as 'audit' | 'review' | 'compilation',
+    status: 'draft' as 'draft' | 'planning' | 'fieldwork' | 'review' | 'finalized',
+    fiscal_year_end: '',
+    start_date: '',
+    expected_completion_date: '',
   });
 
   useEffect(() => {
@@ -178,6 +194,49 @@ const EngagementWorkspace: React.FC = () => {
   const handleStartPlanning = () => {
     // Navigate to AI-powered audit planning page
     navigate(`/firm/engagements/${id}/ai-planning`);
+  };
+
+  const handleOpenEditModal = () => {
+    if (engagement) {
+      setEditForm({
+        name: engagement.name,
+        engagement_type: engagement.engagement_type,
+        status: engagement.status,
+        fiscal_year_end: engagement.fiscal_year_end ? engagement.fiscal_year_end.split('T')[0] : '',
+        start_date: engagement.start_date ? engagement.start_date.split('T')[0] : '',
+        expected_completion_date: engagement.expected_completion_date ? engagement.expected_completion_date.split('T')[0] : '',
+      });
+      setShowEditModal(true);
+    }
+  };
+
+  const handleSaveEngagement = async () => {
+    if (!id || !engagement) return;
+
+    try {
+      setSaving(true);
+      await engagementService.updateEngagement(id, {
+        name: editForm.name,
+        engagement_type: editForm.engagement_type,
+        fiscal_year_end: editForm.fiscal_year_end,
+        start_date: editForm.start_date || undefined,
+        expected_completion_date: editForm.expected_completion_date || undefined,
+      });
+
+      // If status changed, use transition endpoint
+      if (editForm.status !== engagement.status) {
+        await engagementService.transitionStatus(id, editForm.status);
+      }
+
+      toast.success('Engagement saved successfully!');
+      setShowEditModal(false);
+      loadEngagement(id); // Reload to get updated data
+    } catch (error: any) {
+      console.error('Failed to save engagement:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save engagement');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getProgressPercentage = (status: string): number => {
@@ -298,6 +357,15 @@ const EngagementWorkspace: React.FC = () => {
             </div>
           </div>
         </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleOpenEditModal}
+          className="fluent-btn-secondary"
+        >
+          <Settings className="w-4 h-4" />
+          Edit Engagement
+        </motion.button>
       </motion.div>
 
       {/* Progress Tracker */}
@@ -554,6 +622,158 @@ const EngagementWorkspace: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Engagement Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-fluent-lg p-6 max-w-lg w-full shadow-fluent-16"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-fluent flex items-center justify-center">
+                    <Settings className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-title text-neutral-900">Edit Engagement</h2>
+                </div>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="p-2 hover:bg-neutral-100 rounded-fluent-sm transition-colors"
+                >
+                  <X className="w-5 h-5 text-neutral-600" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-body-strong text-neutral-700 mb-2">
+                    Engagement Name <span className="text-error-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="fluent-input"
+                    placeholder="e.g., 2024 Annual Audit"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-body-strong text-neutral-700 mb-2">
+                      Engagement Type
+                    </label>
+                    <select
+                      value={editForm.engagement_type}
+                      onChange={(e) => setEditForm({ ...editForm, engagement_type: e.target.value as any })}
+                      className="fluent-input"
+                    >
+                      <option value="audit">Audit</option>
+                      <option value="review">Review</option>
+                      <option value="compilation">Compilation</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-body-strong text-neutral-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                      className="fluent-input"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="planning">Planning</option>
+                      <option value="fieldwork">Fieldwork</option>
+                      <option value="review">Review</option>
+                      <option value="finalized">Finalized</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-body-strong text-neutral-700 mb-2">
+                    Fiscal Year End <span className="text-error-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.fiscal_year_end}
+                    onChange={(e) => setEditForm({ ...editForm, fiscal_year_end: e.target.value })}
+                    className="fluent-input"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-body-strong text-neutral-700 mb-2">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editForm.start_date}
+                      onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                      className="fluent-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-body-strong text-neutral-700 mb-2">
+                      Expected Completion
+                    </label>
+                    <input
+                      type="date"
+                      value={editForm.expected_completion_date}
+                      onChange={(e) => setEditForm({ ...editForm, expected_completion_date: e.target.value })}
+                      className="fluent-input"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6 pt-6 border-t border-neutral-200">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="fluent-btn-secondary flex-1"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSaveEngagement}
+                  disabled={saving}
+                  className="fluent-btn-primary flex-1"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
