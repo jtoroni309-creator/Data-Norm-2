@@ -64,6 +64,78 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'review', label: 'Review Queue', icon: CheckCircle },
 ];
 
+// Demo data generator for when backend is unavailable
+const generateDemoStudy = (studyId: string): RDStudy => {
+  const isNew = studyId.startsWith('demo-new-');
+  return {
+    id: studyId,
+    name: isNew ? 'New R&D Study' : 'TechCorp Solutions - 2024 R&D Study',
+    entity_name: 'TechCorp Solutions Inc.',
+    client_id: 'demo-client-1',
+    client_name: 'TechCorp Solutions',
+    tax_year: 2024,
+    status: 'draft' as RDStudyStatus,
+    ein: '12-3456789',
+    naics_code: '541512',
+    fiscal_year_end: '12/31',
+    total_credits: 0,
+    federal_credit_final: 0,
+    total_state_credits: 0,
+    qre_wages: 0,
+    qre_supplies: 0,
+    qre_contract: 0,
+    has_open_flags: false,
+    risk_flags: [],
+    base_period_gross_receipts: [],
+    current_year_gross_receipts: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+};
+
+const generateDemoProjects = (): RDProject[] => [
+  {
+    id: 'demo-proj-1',
+    study_id: 'demo-1',
+    project_name: 'AI-Powered Customer Analytics Platform',
+    project_description: 'Development of machine learning algorithms for predictive customer behavior analysis',
+    start_date: '2024-01-15',
+    end_date: '2024-12-31',
+    department: 'Engineering',
+    technical_uncertainty: 'Novel approach to real-time pattern recognition in unstructured customer data',
+    process_of_experimentation: 'Systematic evaluation of transformer architectures vs traditional ML approaches',
+    technological_nature: 'Software development requiring computer science expertise',
+    qualification_status: 'qualified',
+    four_part_test_scores: { permitted_purpose: 0.95, technological_nature: 0.92, elimination_of_uncertainty: 0.88, process_of_experimentation: 0.90 },
+    total_qres: 185000,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-proj-2',
+    study_id: 'demo-1',
+    project_name: 'Next-Gen API Gateway',
+    project_description: 'Development of high-performance API gateway with advanced rate limiting and caching',
+    start_date: '2024-03-01',
+    end_date: '2024-11-30',
+    department: 'Platform',
+    technical_uncertainty: 'Achieving sub-millisecond latency at scale with complex routing rules',
+    process_of_experimentation: 'Benchmarking different in-memory data structures and algorithms',
+    technological_nature: 'Computer architecture and distributed systems',
+    qualification_status: 'needs_review',
+    four_part_test_scores: { permitted_purpose: 0.90, technological_nature: 0.85, elimination_of_uncertainty: 0.75, process_of_experimentation: 0.80 },
+    total_qres: 120000,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+const generateDemoEmployees = (): RDEmployee[] => [
+  { id: 'demo-emp-1', study_id: 'demo-1', employee_name: 'Sarah Chen', job_title: 'Senior Software Engineer', department: 'Engineering', annual_wages: 185000, rd_percentage: 75, adjusted_percentage: 75, qre_amount: 138750, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'demo-emp-2', study_id: 'demo-1', employee_name: 'Michael Rodriguez', job_title: 'ML Engineer', department: 'AI Team', annual_wages: 175000, rd_percentage: 85, adjusted_percentage: 85, qre_amount: 148750, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'demo-emp-3', study_id: 'demo-1', employee_name: 'Emily Watson', job_title: 'Platform Architect', department: 'Platform', annual_wages: 200000, rd_percentage: 60, adjusted_percentage: 60, qre_amount: 120000, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+];
+
 const RDStudyWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -75,6 +147,7 @@ const RDStudyWorkspace: React.FC = () => {
   const [qreSummary, setQreSummary] = useState<any>(null);
   const [reviewQueue, setReviewQueue] = useState<any>(null);
   const [calculating, setCalculating] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -91,12 +164,20 @@ const RDStudyWorkspace: React.FC = () => {
   const loadStudy = async () => {
     try {
       setLoading(true);
+      // Check if this is a demo study
+      if (id?.startsWith('demo-')) {
+        setStudy(generateDemoStudy(id));
+        setDemoMode(true);
+        return;
+      }
       const data = await rdStudyService.getStudy(id!);
       setStudy(data);
+      setDemoMode(false);
     } catch (error) {
       console.error('Failed to load study:', error);
-      toast.error('Failed to load R&D study');
-      navigate('/firm/rd-studies');
+      // Fallback to demo mode instead of navigating away
+      setStudy(generateDemoStudy(id || 'demo-fallback'));
+      setDemoMode(true);
     } finally {
       setLoading(false);
     }
@@ -104,6 +185,39 @@ const RDStudyWorkspace: React.FC = () => {
 
   const loadTabData = async () => {
     if (!study) return;
+
+    // If in demo mode, use demo data
+    if (demoMode) {
+      switch (activeTab) {
+        case 'projects':
+          setProjects(generateDemoProjects());
+          break;
+        case 'employees':
+          setEmployees(generateDemoEmployees());
+          break;
+        case 'qres':
+          setQreSummary({
+            by_category: {
+              wages: { count: 3, gross: 560000, qualified: 407500 },
+              supplies: { count: 12, gross: 45000, qualified: 38250 },
+              contract: { count: 2, gross: 80000, qualified: 52000 },
+            },
+            total_gross: 685000,
+            total_qualified: 497750,
+          });
+          break;
+        case 'review':
+          setReviewQueue({
+            total_items: 8,
+            reviewed_items: 5,
+            pending_items: 3,
+            high_priority_items: 1,
+            items: [],
+          });
+          break;
+      }
+      return;
+    }
 
     try {
       switch (activeTab) {
@@ -131,6 +245,27 @@ const RDStudyWorkspace: React.FC = () => {
 
   const handleCalculate = async () => {
     if (!study) return;
+
+    if (demoMode) {
+      setCalculating(true);
+      // Simulate calculation in demo mode
+      setTimeout(() => {
+        setStudy(prev => prev ? {
+          ...prev,
+          total_credits: 97550,
+          federal_credit_final: 78040,
+          total_state_credits: 19510,
+          qre_wages: 407500,
+          qre_supplies: 38250,
+          qre_contract: 52000,
+          status: 'calculation' as RDStudyStatus,
+        } : null);
+        setCalculating(false);
+        toast.success('Credits calculated successfully! (Demo)');
+      }, 2000);
+      return;
+    }
+
     try {
       setCalculating(true);
       await rdStudyService.calculateCredits(study.id);
@@ -189,6 +324,23 @@ const RDStudyWorkspace: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Banner */}
+      {demoMode && (
+        <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg px-6 py-3 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Brain className="w-5 h-5" />
+            <span className="font-medium">Demo Mode - Explore the R&D study workflow. Connect backend service for live data.</span>
+          </div>
+          <button
+            onClick={loadStudy}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
