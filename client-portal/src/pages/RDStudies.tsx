@@ -21,14 +21,12 @@ import {
   FileText,
   TrendingUp,
   X,
-  Sparkles,
   Users,
   FolderOpen,
   ArrowRight,
   Lightbulb,
   Target,
-  BarChart3,
-  RefreshCw
+  BarChart3
 } from 'lucide-react';
 import { rdStudyService } from '../services/rd-study.service';
 import { RDStudySummary, RDStudyStatus } from '../types';
@@ -48,37 +46,6 @@ const statusConfig: Record<RDStudyStatus, { label: string; color: string; bgColo
   locked: { label: 'Locked', color: 'slate', bgColor: 'bg-slate-100', textColor: 'text-slate-700' },
 };
 
-// Demo data for when backend is unavailable
-const generateDemoStudies = (): RDStudySummary[] => {
-  const statuses: RDStudyStatus[] = ['draft', 'data_collection', 'ai_analysis', 'cpa_review', 'finalized'];
-  const companies = [
-    { name: 'TechCorp Solutions', entity: 'TechCorp Solutions Inc.' },
-    { name: 'BioMed Research', entity: 'BioMed Research LLC' },
-    { name: 'Advanced Manufacturing', entity: 'Advanced Manufacturing Co.' },
-    { name: 'Software Dynamics', entity: 'Software Dynamics Corp' },
-    { name: 'Green Energy Labs', entity: 'Green Energy Labs Inc.' },
-  ];
-
-  return companies.map((company, index) => ({
-    id: `demo-${index + 1}`,
-    name: `${company.name} - ${2024 - (index % 2)} R&D Study`,
-    client_id: `demo-client-${index + 1}`,
-    client_name: company.name,
-    entity_name: company.entity,
-    entity_type: 'c_corp' as const,
-    tax_year: 2024 - (index % 2),
-    status: statuses[index % statuses.length],
-    total_qre: Math.floor(Math.random() * 800000) + 100000,
-    total_credits: Math.floor(Math.random() * 500000) + 50000,
-    federal_credit_final: Math.floor(Math.random() * 400000) + 40000,
-    total_state_credits: Math.floor(Math.random() * 100000) + 10000,
-    has_open_flags: index === 2,
-    cpa_approved: index === 4,
-    created_at: new Date(Date.now() - index * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - index * 2 * 24 * 60 * 60 * 1000).toISOString(),
-  }));
-};
-
 const RDStudies: React.FC = () => {
   const navigate = useNavigate();
   const [studies, setStudies] = useState<RDStudySummary[]>([]);
@@ -86,7 +53,6 @@ const RDStudies: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<RDStudyStatus | 'all'>('all');
   const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
-  const [demoMode, setDemoMode] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Create form state
@@ -119,16 +85,13 @@ const RDStudies: React.FC = () => {
       const response = await rdStudyService.listStudies(params as any);
       const studyList = response.items || [];
       setStudies(studyList);
-      setDemoMode(false);
       calculateStats(studyList);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load studies:', error);
-      // Use demo data when backend is unavailable
-      const demoStudies = generateDemoStudies();
-      setStudies(demoStudies);
-      setDemoMode(true);
-      calculateStats(demoStudies);
-      // Don't show error toast, just use demo mode
+      // DO NOT use demo data - show error and let user retry
+      setStudies([]);
+      calculateStats([]);
+      toast.error(error?.response?.data?.detail || 'Failed to load R&D studies. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -152,51 +115,22 @@ const RDStudies: React.FC = () => {
     const studyName = createForm.study_name ||
       `${createForm.client_name} - ${createForm.tax_year} R&D Tax Credit Study`;
 
-    if (demoMode) {
-      // Create demo study
-      const newStudy: RDStudySummary = {
-        id: `demo-new-${Date.now()}`,
+    try {
+      const newStudy = await rdStudyService.createStudy({
         name: studyName,
-        client_id: `demo-client-${Date.now()}`,
-        client_name: createForm.client_name,
         entity_name: createForm.entity_name,
         entity_type: 'c_corp',
+        client_name: createForm.client_name, // Human-readable name
         tax_year: createForm.tax_year,
-        status: 'draft',
-        total_qre: 0,
-        total_credits: 0,
-        federal_credit_final: 0,
-        total_state_credits: 0,
-        has_open_flags: false,
-        cpa_approved: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setStudies(prev => [newStudy, ...prev]);
-      calculateStats([newStudy, ...studies]);
+        // fiscal_year_start/end will default based on tax_year in backend
+      });
       toast.success('R&D Study created successfully!');
       setShowCreateModal(false);
       resetCreateForm();
-      // Navigate to the new study
       navigate(`/firm/rd-studies/${newStudy.id}`);
-    } else {
-      try {
-        const newStudy = await rdStudyService.createStudy({
-          name: studyName,
-          entity_name: createForm.entity_name,
-          entity_type: 'c_corp',
-          client_name: createForm.client_name, // Human-readable name
-          tax_year: createForm.tax_year,
-          // fiscal_year_start/end will default based on tax_year in backend
-        });
-        toast.success('R&D Study created successfully!');
-        setShowCreateModal(false);
-        resetCreateForm();
-        navigate(`/firm/rd-studies/${newStudy.id}`);
-      } catch (error: any) {
-        console.error('Study creation error:', error);
-        toast.error(error.response?.data?.detail || 'Failed to create study');
-      }
+    } catch (error: any) {
+      console.error('Study creation error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to create study');
     }
   };
 
@@ -244,27 +178,6 @@ const RDStudies: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-[1600px]">
-      {/* Demo Mode Banner */}
-      {demoMode && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-fluent-lg px-6 py-3 text-white flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5" />
-            <span className="font-medium">Demo Mode - Showing sample R&D studies. Connect backend service for live data.</span>
-          </div>
-          <button
-            onClick={loadStudies}
-            className="flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-fluent-sm transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Retry
-          </button>
-        </motion.div>
-      )}
-
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

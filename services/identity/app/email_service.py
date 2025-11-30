@@ -389,8 +389,9 @@ Aura Audit AI Team
         Clients can upload documents, enter employee data, and describe projects.
         They do NOT have access to calculations or final reports.
         """
-        app_url = os.getenv("APP_URL", "http://localhost:3000")
-        invitation_url = f"{app_url}/rd-study-data-collection?token={invitation_token}"
+        # Use separate URL for R&D client portal (different from CPA portal)
+        rd_client_url = os.getenv("RD_CLIENT_APP_URL", os.getenv("APP_URL", "http://localhost:3000"))
+        invitation_url = f"{rd_client_url}/rd-study-data-collection?token={invitation_token}"
 
         subject = f"Action Required: Provide R&D Tax Credit Information - {study_name}"
 

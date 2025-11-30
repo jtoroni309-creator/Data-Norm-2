@@ -47,6 +47,7 @@ from .schemas import (
     PaginatedResponse, ErrorResponse
 )
 from .engines import RulesEngine, QualificationEngine, QREEngine, CalculationEngine
+from .routes import ai_processing, outputs
 
 # Configure logging
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -133,6 +134,10 @@ app.add_middleware(
 
 # Security
 security = HTTPBearer()
+
+# Include routers
+app.include_router(ai_processing.router, prefix="", tags=["AI Processing"])
+app.include_router(outputs.router, prefix="", tags=["Outputs"])
 
 
 # =============================================================================

@@ -31,6 +31,341 @@ router = APIRouter()
 
 
 # =============================================================================
+# UNIFIED FILE UPLOAD & ANALYSIS (Expected by Frontend)
+# =============================================================================
+
+@router.post("/studies/{study_id}/upload/analyze")
+async def analyze_uploaded_file(
+    study_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    AI-powered analysis of uploaded Excel/CSV file.
+    Detects data types, column mappings, and provides import recommendations.
+    """
+    study = await db.get(RDStudy, study_id)
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Read file content
+    content = await file.read()
+    filename = file.filename or "unknown"
+
+    try:
+        # Detect file type and parse
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(content))
+        else:
+            wb = openpyxl.load_workbook(io.BytesIO(content))
+            sheets_info = []
+            for sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                row_count = sum(1 for _ in sheet.iter_rows(min_row=2, values_only=True) if any(cell for cell in _))
+                sheets_info.append({
+                    "name": sheet_name,
+                    "row_count": row_count,
+                    "columns": [cell.value for cell in sheet[1] if cell.value]
+                })
+            # Use first sheet for analysis
+            df = pd.read_excel(io.BytesIO(content), sheet_name=wb.sheetnames[0])
+
+        columns = list(df.columns)
+        sample_data = df.head(5).to_dict('records')
+
+        # AI-powered column mapping detection
+        column_mappings = []
+        detected_types = []
+
+        # Detect payroll/employee data
+        payroll_indicators = {
+            'name': ['name', 'employee', 'full_name', 'employee_name'],
+            'title': ['title', 'job_title', 'position', 'role'],
+            'department': ['department', 'dept', 'division', 'cost_center'],
+            'wages': ['wages', 'salary', 'w2', 'gross_pay', 'total_wages', 'compensation'],
+            'qualified_time': ['qualified', 'rd_time', 'r&d', 'research_pct', 'percent']
+        }
+
+        # Detect project data
+        project_indicators = {
+            'name': ['project', 'project_name', 'name', 'title'],
+            'description': ['description', 'desc', 'details', 'summary', 'overview'],
+            'business_component': ['business_component', 'component', 'product', 'service']
+        }
+
+        # Detect expense data
+        expense_indicators = {
+            'description': ['description', 'desc', 'item', 'expense'],
+            'amount': ['amount', 'total', 'cost', 'value', 'price'],
+            'vendor': ['vendor', 'supplier', 'payee', 'company']
+        }
+
+        for col in columns:
+            col_lower = str(col).lower().strip()
+            mapping = {
+                "source_column": col,
+                "confidence": 0.0,
+                "suggested_field": None,
+                "data_type": None
+            }
+
+            # Check payroll indicators
+            for field, indicators in payroll_indicators.items():
+                for ind in indicators:
+                    if ind in col_lower:
+                        mapping["suggested_field"] = field
+                        mapping["confidence"] = 0.85 if ind == col_lower else 0.7
+                        mapping["data_type"] = "payroll"
+                        if "payroll" not in detected_types:
+                            detected_types.append("payroll")
+                        break
+                if mapping["suggested_field"]:
+                    break
+
+            # Check project indicators if no payroll match
+            if not mapping["suggested_field"]:
+                for field, indicators in project_indicators.items():
+                    for ind in indicators:
+                        if ind in col_lower:
+                            mapping["suggested_field"] = field
+                            mapping["confidence"] = 0.85 if ind == col_lower else 0.7
+                            mapping["data_type"] = "projects"
+                            if "projects" not in detected_types:
+                                detected_types.append("projects")
+                            break
+                    if mapping["suggested_field"]:
+                        break
+
+            # Check expense indicators if no match yet
+            if not mapping["suggested_field"]:
+                for field, indicators in expense_indicators.items():
+                    for ind in indicators:
+                        if ind in col_lower:
+                            mapping["suggested_field"] = field
+                            mapping["confidence"] = 0.80 if ind == col_lower else 0.65
+                            mapping["data_type"] = "expenses"
+                            if "supplies" not in detected_types:
+                                detected_types.append("supplies")
+                            break
+                    if mapping["suggested_field"]:
+                        break
+
+            column_mappings.append(mapping)
+
+        # Determine primary data type
+        primary_type = "unknown"
+        if detected_types:
+            primary_type = max(set(detected_types), key=detected_types.count)
+
+        # Calculate overall confidence
+        mapped_count = sum(1 for m in column_mappings if m["confidence"] > 0.5)
+        overall_confidence = mapped_count / len(columns) if columns else 0
+
+        # Generate issues and recommendations
+        issues = []
+        if overall_confidence < 0.5:
+            issues.append({
+                "type": "low_confidence",
+                "message": "Low column mapping confidence. Please verify mappings before import.",
+                "severity": "warning"
+            })
+
+        # Check for missing critical fields
+        if primary_type == "payroll":
+            required = ["name", "wages"]
+            found = [m["suggested_field"] for m in column_mappings if m["confidence"] > 0.5]
+            missing = [r for r in required if r not in found]
+            if missing:
+                issues.append({
+                    "type": "missing_fields",
+                    "message": f"Missing recommended fields: {', '.join(missing)}",
+                    "severity": "warning"
+                })
+
+        return {
+            "success": True,
+            "filename": filename,
+            "file_size": len(content),
+            "sheets": sheets_info if 'sheets_info' in dir() else [{"name": "Sheet1", "row_count": len(df)}],
+            "detected_data_types": detected_types,
+            "primary_data_type": primary_type,
+            "columns": columns,
+            "column_mappings": column_mappings,
+            "sample_data": sample_data,
+            "total_rows": len(df),
+            "overall_confidence": overall_confidence,
+            "issues": issues,
+            "recommendations": [
+                f"Detected as {primary_type} data with {overall_confidence:.0%} confidence",
+                "Review column mappings before importing",
+                "Ensure all required fields are mapped correctly"
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Error analyzing file: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error analyzing file: {str(e)}")
+
+
+@router.post("/studies/{study_id}/upload/import")
+async def import_analyzed_data(
+    study_id: UUID,
+    import_request: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Import data based on analyzed column mappings.
+    """
+    study = await db.get(RDStudy, study_id)
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    data_type = import_request.get("data_type", "payroll")
+    mappings = import_request.get("mappings", {})
+    data = import_request.get("data", [])
+
+    imported_count = 0
+    errors = []
+
+    try:
+        if data_type == "payroll":
+            # Import as employees
+            for row in data:
+                try:
+                    name = row.get(mappings.get("name", "name"), "")
+                    if not name:
+                        continue
+
+                    wages_str = str(row.get(mappings.get("wages", "wages"), "0"))
+                    wages_str = wages_str.replace("$", "").replace(",", "").strip()
+                    w2_wages = Decimal(wages_str) if wages_str else Decimal("0")
+
+                    qualified_pct_str = str(row.get(mappings.get("qualified_time", ""), "0"))
+                    qualified_pct_str = qualified_pct_str.replace("%", "").strip()
+                    try:
+                        qualified_pct = Decimal(qualified_pct_str) if qualified_pct_str else Decimal("50")
+                        if qualified_pct > 100:
+                            qualified_pct = Decimal("50")
+                    except:
+                        qualified_pct = Decimal("50")
+
+                    employee = RDEmployee(
+                        study_id=study_id,
+                        name=str(name).strip(),
+                        title=str(row.get(mappings.get("title", ""), "")).strip() or None,
+                        department=str(row.get(mappings.get("department", ""), "")).strip() or None,
+                        w2_wages=w2_wages,
+                        total_wages=w2_wages,
+                        qualified_time_percentage=qualified_pct,
+                        qualified_wages=w2_wages * (qualified_pct / 100),
+                        qualified_time_source="excel_import"
+                    )
+                    db.add(employee)
+                    imported_count += 1
+                except Exception as e:
+                    errors.append(f"Row error: {str(e)}")
+
+        elif data_type == "projects":
+            for row in data:
+                try:
+                    name = row.get(mappings.get("name", "name"), "")
+                    if not name:
+                        continue
+
+                    project = RDProject(
+                        study_id=study_id,
+                        name=str(name).strip(),
+                        description=str(row.get(mappings.get("description", ""), "")).strip() or None,
+                        business_component=str(row.get(mappings.get("business_component", ""), "")).strip() or None,
+                        qualification_status=QualificationStatus.pending
+                    )
+                    db.add(project)
+                    imported_count += 1
+                except Exception as e:
+                    errors.append(f"Row error: {str(e)}")
+
+        elif data_type in ["supplies", "expenses"]:
+            for row in data:
+                try:
+                    desc = row.get(mappings.get("description", "description"), "")
+                    amount_str = str(row.get(mappings.get("amount", "amount"), "0"))
+                    amount_str = amount_str.replace("$", "").replace(",", "").strip()
+                    try:
+                        gross_amount = Decimal(amount_str)
+                    except:
+                        continue
+
+                    qre = QualifiedResearchExpense(
+                        study_id=study_id,
+                        category=QRECategory.supplies,
+                        description=str(desc).strip() or "Imported supply",
+                        supply_vendor=str(row.get(mappings.get("vendor", ""), "")).strip() or None,
+                        gross_amount=gross_amount,
+                        qualified_percentage=Decimal("100"),
+                        qualified_amount=gross_amount
+                    )
+                    db.add(qre)
+                    imported_count += 1
+                except Exception as e:
+                    errors.append(f"Row error: {str(e)}")
+
+        await db.commit()
+
+        return {
+            "success": True,
+            "imported_count": imported_count,
+            "data_type": data_type,
+            "errors": errors[:10] if errors else [],
+            "message": f"Successfully imported {imported_count} {data_type} records"
+        }
+
+    except Exception as e:
+        logger.error(f"Error importing data: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error importing data: {str(e)}")
+
+
+@router.post("/studies/{study_id}/payroll/connect")
+async def connect_payroll_provider(
+    study_id: UUID,
+    connection: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Connect to a payroll provider for automated data import."""
+    study = await db.get(RDStudy, study_id)
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    provider = connection.get("provider", "").lower()
+    supported_providers = ["adp", "gusto", "paychex", "quickbooks", "sage", "intuit"]
+
+    if provider not in supported_providers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported provider. Supported: {', '.join(supported_providers)}"
+        )
+
+    # Store connection config (would be encrypted in production)
+    if not study.ai_analysis:
+        study.ai_analysis = {}
+    study.ai_analysis["payroll_connection"] = {
+        "provider": provider,
+        "status": "pending_oauth",
+        "configured_at": datetime.utcnow().isoformat()
+    }
+
+    await db.commit()
+
+    # Return OAuth URL (in production, would generate actual OAuth URL)
+    return {
+        "success": True,
+        "provider": provider,
+        "status": "pending_oauth",
+        "oauth_url": f"/api/rd-study/oauth/{provider}/authorize?study_id={study_id}",
+        "message": f"Please complete OAuth authentication with {provider}"
+    }
+
+
+# =============================================================================
 # AI HELPER FUNCTIONS
 # =============================================================================
 

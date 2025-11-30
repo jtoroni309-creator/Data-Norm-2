@@ -1,1776 +1,1379 @@
 /**
- * R&D Study Workspace - Fully Functional
- * Comprehensive workspace for managing R&D tax credit studies
- * with AI-powered data import, payroll integrations, and complete study generation
+ * R&D Study Workspace
+ *
+ * Comprehensive workspace for managing individual R&D tax credit studies.
+ * Enhanced UI/UX with working import tools, manual data entry, and progress saving.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import { useTheme } from '../App';
 import {
-  FlaskConical,
-  ArrowLeft,
-  Building2,
-  Calendar,
-  DollarSign,
-  Users,
-  FileText,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Upload,
-  Calculator,
-  Download,
-  Check,
-  X,
-  ChevronRight,
-  Brain,
-  Target,
-  TrendingUp,
-  Loader2,
-  RefreshCw,
-  FileSpreadsheet,
-  File,
-  Wand2,
-  UploadCloud,
-  Link,
-  Edit,
-  Trash2,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  Info,
-  Database,
-  Zap,
-  Mail,
-  Send,
-  Copy,
-  ExternalLink,
-} from 'lucide-react';
-import { rdStudyService } from '../services/rd-study.service';
-import { RDStudy, RDProject, RDEmployee, RDStudyStatus } from '../types';
-import toast from 'react-hot-toast';
-
-type TabId = 'data-collection' | 'client-invitations' | 'employees' | 'projects' | 'qres' | 'calculations' | 'generate';
+  RDStudy,
+  RDProject,
+  RDEmployee,
+  RDQRE,
+  RDStudyStatus,
+  RDQualificationStatus,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-const statusConfig: Record<RDStudyStatus, { label: string; color: string; bgColor: string }> = {
-  draft: { label: 'Draft', color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  intake: { label: 'Intake', color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  data_collection: { label: 'Data Collection', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
-  ai_analysis: { label: 'AI Analysis', color: 'text-purple-600', bgColor: 'bg-purple-100' },
-  cpa_review: { label: 'CPA Review', color: 'text-orange-600', bgColor: 'bg-orange-100' },
-  calculation: { label: 'Calculation', color: 'text-cyan-600', bgColor: 'bg-cyan-100' },
-  narrative_generation: { label: 'Narratives', color: 'text-pink-600', bgColor: 'bg-pink-100' },
-  final_review: { label: 'Final Review', color: 'text-amber-600', bgColor: 'bg-amber-100' },
-  approved: { label: 'Approved', color: 'text-green-600', bgColor: 'bg-green-100' },
-  finalized: { label: 'Finalized', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
-  locked: { label: 'Locked', color: 'text-slate-600', bgColor: 'bg-slate-100' },
+// Status badge component
+const StatusBadge: React.FC<{ status: string; className?: string }> = ({ status, className = '' }) => {
+  const getStatusColor = (s: string) => {
+    const colors: Record<string, string> = {
+      draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      intake: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+      data_collection: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+      qualification: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+      qre_analysis: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+      calculation: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
+      review: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+      cpa_review: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+      cpa_approval: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300',
+      approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
+      finalized: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      locked: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+      qualified: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      not_qualified: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+      needs_review: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+      pending: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+    };
+    return colors[s.toLowerCase()] || colors.draft;
+  };
+
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)} ${className}`}>
+      {status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+    </span>
+  );
 };
 
-const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: 'data-collection', label: 'Data Collection', icon: Database },
-  { id: 'client-invitations', label: 'Client Invitations', icon: Mail },
-  { id: 'employees', label: 'Employees', icon: Users },
-  { id: 'projects', label: 'Projects', icon: FlaskConical },
-  { id: 'qres', label: 'QRE Summary', icon: DollarSign },
-  { id: 'calculations', label: 'Calculations', icon: Calculator },
-  { id: 'generate', label: 'Generate & Export', icon: Download },
-];
+// Progress bar component
+const ProgressBar: React.FC<{ progress: number; label?: string }> = ({ progress, label }) => (
+  <div className="w-full">
+    {label && <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</div>}
+    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+      <div
+        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+      />
+    </div>
+  </div>
+);
 
-// Interfaces
-interface UploadAnalysis {
+// Modal component
+const Modal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}> = ({ isOpen, onClose, title, children, size = 'md' }) => {
+  if (!isOpen) return null;
+
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+        <div className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl ${sizes[size]} w-full transform transition-all`}>
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="p-4">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Employee form interface
+interface EmployeeFormData {
+  name: string;
+  title: string;
+  department: string;
+  total_wages: string;
+  qualified_time_percentage: string;
+}
+
+// Project form interface
+interface ProjectFormData {
+  name: string;
+  description: string;
+  department: string;
+  business_component: string;
+  start_date: string;
+  end_date: string;
+  is_ongoing: boolean;
+}
+
+// File analysis result interface
+interface FileAnalysisResult {
+  success: boolean;
   filename: string;
-  sheets: {
-    sheet_name: string;
-    category: string;
-    category_confidence: number;
-    row_count: number;
-    column_mappings: {
-      source_column: string;
-      target_field: string;
-      confidence: number;
-      sample_values: any[];
-    }[];
-    issues: string[];
-    preview_data: any[];
-  }[];
-  missing_data_types: string[];
+  file_size: number;
+  sheets: Array<{ name: string; row_count: number }>;
+  detected_data_types: string[];
+  primary_data_type: string;
+  columns: string[];
+  column_mappings: Array<{
+    source_column: string;
+    confidence: number;
+    suggested_field: string | null;
+    data_type: string | null;
+  }>;
+  sample_data: Record<string, unknown>[];
+  total_rows: number;
+  overall_confidence: number;
+  issues: Array<{ type: string; message: string; severity: string }>;
   recommendations: string[];
 }
 
-interface QRECategory {
-  count: number;
-  gross: number;
-  qualified: number;
-}
-
-interface QRESummary {
-  by_category: Record<string, QRECategory>;
-  total_gross: number;
-  total_qualified: number;
-}
-
-interface ClientInvitation {
-  id: string;
-  client_email: string;
-  client_name: string;
-  study_id: string;
-  study_name: string;
-  tax_year: number;
-  firm_id: string;
-  firm_name: string;
-  invited_by_user_id: string;
-  invited_by_name: string;
-  token: string;
-  deadline?: string;
-  status: 'pending' | 'accepted' | 'expired';
-  expires_at: string;
-  accepted_at?: string;
-  created_at: string;
-}
-
-// Client Invitations Tab - CPA firms can invite clients to submit R&D data
-const ClientInvitationsTab: React.FC<{
-  studyId: string;
-  study: RDStudy | null;
-  onRefresh: () => void;
-}> = ({ studyId, study, onRefresh }) => {
-  const [invitations, setInvitations] = useState<ClientInvitation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [resending, setResending] = useState<string | null>(null);
-
-  const [newInvite, setNewInvite] = useState({
-    client_name: '',
-    client_email: '',
-    deadline: '',
-    message: '',
-  });
-
-  const loadInvitations = useCallback(async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/identity/rd-study/client-invitations?study_id=${studyId}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setInvitations(data);
-      }
-    } catch (error) {
-      console.error('Failed to load invitations:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [studyId]);
-
-  useEffect(() => {
-    loadInvitations();
-  }, [loadInvitations]);
-
-  const handleSendInvitation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!study) return;
-
-    setSending(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/identity/rd-study/client-invitations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_email: newInvite.client_email,
-          client_name: newInvite.client_name,
-          study_id: studyId,
-          study_name: study.name,
-          tax_year: study.tax_year,
-          deadline: newInvite.deadline || null,
-          message: newInvite.message || null,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success(`Invitation sent to ${newInvite.client_email}`);
-        setShowInviteModal(false);
-        setNewInvite({ client_name: '', client_email: '', deadline: '', message: '' });
-        loadInvitations();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to send invitation');
-      }
-    } catch (error) {
-      console.error('Failed to send invitation:', error);
-      toast.error('Failed to send invitation');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleResendInvitation = async (invitationId: string) => {
-    setResending(invitationId);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/identity/rd-study/client-invitations/${invitationId}/resend`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        toast.success('Invitation resent successfully');
-        loadInvitations();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to resend invitation');
-      }
-    } catch (error) {
-      console.error('Failed to resend invitation:', error);
-      toast.error('Failed to resend invitation');
-    } finally {
-      setResending(null);
-    }
-  };
-
-  const copyInviteLink = (token: string) => {
-    const url = `${window.location.origin}/rd-study-data-collection?token=${token}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Link copied to clipboard');
-  };
-
-  const getStatusBadge = (status: string, expiresAt: string) => {
-    const isExpired = new Date(expiresAt) < new Date();
-    if (status === 'accepted') {
-      return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Completed</span>;
-    }
-    if (isExpired || status === 'expired') {
-      return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">Expired</span>;
-    }
-    return <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">Pending</span>;
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Client Data Collection</h3>
-          <p className="text-sm text-gray-500">
-            Invite clients to submit their R&D data. Clients can upload or manually enter employees, projects, and documents.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowInviteModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Send className="w-4 h-4" />
-          Invite Client
-        </button>
-      </div>
-
-      {/* Info Card */}
-      <div className="card bg-blue-50 border-blue-200">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Info className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h4 className="font-medium text-blue-900">How Client Invitations Work</h4>
-            <ul className="mt-2 space-y-1 text-sm text-blue-700">
-              <li>• Clients receive a secure link to submit their R&D data</li>
-              <li>• They can upload Excel files or manually enter employees and projects</li>
-              <li>• AI assists clients in writing project descriptions</li>
-              <li>• Clients <strong>cannot</strong> see calculations, credits, or final reports</li>
-              <li>• All data is automatically imported into this study when submitted</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Invitations List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-        </div>
-      ) : invitations.length === 0 ? (
-        <div className="card text-center py-12">
-          <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h4 className="text-gray-900 font-medium mb-2">No invitations sent yet</h4>
-          <p className="text-gray-500 text-sm mb-4">
-            Invite your client to submit their R&D data for this study
-          </p>
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            <Send className="w-4 h-4" />
-            Send First Invitation
-          </button>
-        </div>
-      ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Client</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Email</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Sent</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Expires</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {invitations.map(inv => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{inv.client_name}</td>
-                  <td className="px-4 py-3 text-gray-600">{inv.client_email}</td>
-                  <td className="px-4 py-3 text-center">{getStatusBadge(inv.status, inv.expires_at)}</td>
-                  <td className="px-4 py-3 text-gray-500 text-sm">{formatDate(inv.created_at)}</td>
-                  <td className="px-4 py-3 text-gray-500 text-sm">{formatDate(inv.expires_at)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => copyInviteLink(inv.token)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                        title="Copy link"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      {inv.status === 'pending' && (
-                        <button
-                          onClick={() => handleResendInvitation(inv.id)}
-                          disabled={resending === inv.id}
-                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded"
-                          title="Resend invitation"
-                        >
-                          {resending === inv.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4" />
-                          )}
-                        </button>
-                      )}
-                      <a
-                        href={`/rd-study-data-collection?token=${inv.token}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Preview client view"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Send Invitation Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl w-full max-w-lg"
-          >
-            <div className="p-6 border-b flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Send className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Invite Client</h2>
-                  <p className="text-sm text-gray-500">Request R&D data for {study?.name}</p>
-                </div>
-              </div>
-              <button onClick={() => setShowInviteModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSendInvitation} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
-                <input
-                  type="text"
-                  value={newInvite.client_name}
-                  onChange={(e) => setNewInvite(prev => ({ ...prev, client_name: e.target.value }))}
-                  required
-                  placeholder="John Smith"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client Email *</label>
-                <input
-                  type="email"
-                  value={newInvite.client_email}
-                  onChange={(e) => setNewInvite(prev => ({ ...prev, client_email: e.target.value }))}
-                  required
-                  placeholder="john@company.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deadline (optional)</label>
-                <input
-                  type="date"
-                  value={newInvite.deadline}
-                  onChange={(e) => setNewInvite(prev => ({ ...prev, deadline: e.target.value }))}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Personal Message (optional)</label>
-                <textarea
-                  value={newInvite.message}
-                  onChange={(e) => setNewInvite(prev => ({ ...prev, message: e.target.value }))}
-                  rows={3}
-                  placeholder="Add a personal note to include in the invitation email..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  <strong>What the client will receive:</strong>
-                </p>
-                <ul className="mt-1 text-xs text-gray-500 space-y-1">
-                  <li>• Professional email from your firm</li>
-                  <li>• Secure link to submit R&D data (valid for 30 days)</li>
-                  <li>• Instructions for what data to provide</li>
-                </ul>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={sending}
-                  className="btn-primary flex items-center gap-2"
-                >
-                  {sending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  Send Invitation
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Data Collection Tab
-const DataCollectionTab: React.FC<{
-  studyId: string;
-  onDataImported: () => void;
-}> = ({ studyId, onDataImported }) => {
-  const [uploading, setUploading] = useState(false);
-  const [analysis, setAnalysis] = useState<UploadAnalysis | null>(null);
-  const [showMappingModal, setShowMappingModal] = useState(false);
-  const [payrollProvider, setPayrollProvider] = useState('');
-  const [connectingPayroll, setConnectingPayroll] = useState(false);
-  const [expandedSheet, setExpandedSheet] = useState<number>(0);
-  const [dataStatus, setDataStatus] = useState({
-    employees: 'missing',
-    payroll: 'missing',
-    projects: 'missing',
-    time_tracking: 'missing',
-    supplies: 'missing',
-  });
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/rd-study/studies/${studyId}/upload/analyze`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setAnalysis(result);
-        setShowMappingModal(true);
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to analyze file');
-      }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Failed to upload file');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleImportData = async () => {
-    if (!analysis) return;
-
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/rd-study/studies/${studyId}/upload/import`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: analysis.filename,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success('Data imported successfully!');
-        setShowMappingModal(false);
-        setAnalysis(null);
-        onDataImported();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to import data');
-      }
-    } catch (error) {
-      console.error('Import failed:', error);
-      toast.error('Failed to import data');
-    }
-  };
-
-  const handleConnectPayroll = async () => {
-    if (!payrollProvider) return;
-
-    setConnectingPayroll(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/rd-study/studies/${studyId}/payroll/connect`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ provider: payrollProvider }),
-      });
-
-      if (response.ok) {
-        const { auth_url } = await response.json();
-        window.location.href = auth_url;
-      } else {
-        toast.error('Failed to connect payroll provider');
-      }
-    } catch (error) {
-      console.error('Payroll connection failed:', error);
-      toast.error('Failed to connect payroll provider');
-    } finally {
-      setConnectingPayroll(false);
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'complete': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'partial': return <AlertTriangle className="w-5 h-5 text-amber-500" />;
-      default: return <X className="w-5 h-5 text-red-400" />;
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Upload Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Excel Upload */}
-        <div className="card">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <UploadCloud className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Import Excel Data</h3>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
-                <Wand2 className="w-3 h-3" /> AI-Powered
-              </span>
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-500 mb-4">
-            Upload Excel files with payroll, employee, project, or time tracking data.
-            Our AI will automatically detect data types and map columns.
-          </p>
-
-          <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-purple-300 rounded-xl bg-purple-50/50 hover:bg-purple-100/50 cursor-pointer transition-colors">
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={handleFileUpload}
-              disabled={uploading}
-            />
-            {uploading ? (
-              <div className="flex flex-col items-center">
-                <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
-                <p className="mt-2 text-sm text-purple-600">Analyzing file...</p>
-              </div>
-            ) : (
-              <>
-                <Upload className="w-10 h-10 text-purple-400" />
-                <p className="mt-2 text-sm text-gray-600">Click or drag Excel/CSV files</p>
-                <p className="text-xs text-gray-400">Supports .xlsx, .xls, .csv</p>
-              </>
-            )}
-          </label>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {['Payroll/W-2', 'Employees', 'Time Tracking', 'Projects', 'GL/Expenses', 'Contracts'].map(type => (
-              <span key={type} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                {type}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Payroll Integration */}
-        <div className="card">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Link className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Connect Payroll Provider</h3>
-              <p className="text-xs text-gray-500">Automatic data sync</p>
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-500 mb-4">
-            Connect directly to your payroll provider to automatically import employee and wage data.
-          </p>
-
-          <div className="space-y-3">
-            {[
-              { id: 'adp', name: 'ADP Workforce Now', icon: '🅰️' },
-              { id: 'justworks', name: 'Justworks', icon: '💼' },
-              { id: 'paychex', name: 'Paychex Flex', icon: '📊' },
-            ].map(provider => (
-              <button
-                key={provider.id}
-                onClick={() => setPayrollProvider(provider.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
-                  payrollProvider === provider.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <span className="text-xl">{provider.icon}</span>
-                <span className="font-medium text-gray-700">{provider.name}</span>
-                {payrollProvider === provider.id && (
-                  <CheckCircle className="w-5 h-5 text-blue-500 ml-auto" />
-                )}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={handleConnectPayroll}
-            disabled={!payrollProvider || connectingPayroll}
-            className="mt-4 w-full btn-primary flex items-center justify-center gap-2"
-          >
-            {connectingPayroll ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Zap className="w-4 h-4" />
-            )}
-            Connect & Import
-          </button>
-
-          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-            <p className="text-xs text-blue-700 flex items-center gap-2">
-              <Info className="w-4 h-4" />
-              Secure OAuth connection. We never store your credentials.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Data Status */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-4">Data Collection Status</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {Object.entries(dataStatus).map(([key, status]) => (
-            <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              {getStatusIcon(status)}
-              <div>
-                <p className="text-sm font-medium text-gray-700 capitalize">
-                  {key.replace('_', ' ')}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">{status}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Column Mapping Modal */}
-      {showMappingModal && analysis && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-          >
-            <div className="p-6 border-b flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">AI Data Analysis</h2>
-                  <p className="text-sm text-gray-500">{analysis.filename}</p>
-                </div>
-              </div>
-              <button onClick={() => setShowMappingModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              {analysis.sheets.map((sheet, idx) => (
-                <div key={idx} className="mb-4 border rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setExpandedSheet(expandedSheet === idx ? -1 : idx)}
-                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileSpreadsheet className="w-5 h-5 text-gray-400" />
-                      <span className="font-medium text-gray-900">{sheet.sheet_name}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        sheet.category_confidence > 0.7
-                          ? 'bg-green-100 text-green-700'
-                          : sheet.category_confidence > 0.4
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}>
-                        {sheet.category} ({(sheet.category_confidence * 100).toFixed(0)}%)
-                      </span>
-                      <span className="text-sm text-gray-500">{sheet.row_count} rows</span>
-                    </div>
-                    {expandedSheet === idx ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </button>
-
-                  {expandedSheet === idx && (
-                    <div className="p-4 border-t">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Column Mappings</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-2 text-left text-gray-600">Source Column</th>
-                              <th className="px-3 py-2 text-left text-gray-600">Maps To</th>
-                              <th className="px-3 py-2 text-center text-gray-600">Confidence</th>
-                              <th className="px-3 py-2 text-left text-gray-600">Sample Values</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y">
-                            {sheet.column_mappings.map((mapping, midx) => (
-                              <tr key={midx} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 font-medium">{mapping.source_column}</td>
-                                <td className="px-3 py-2">
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                                    {mapping.target_field}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                    mapping.confidence > 0.7
-                                      ? 'bg-green-100 text-green-700'
-                                      : mapping.confidence > 0.4
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-red-100 text-red-700'
-                                  }`}>
-                                    {(mapping.confidence * 100).toFixed(0)}%
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 text-gray-500 text-xs">
-                                  {mapping.sample_values.slice(0, 2).join(', ')}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {sheet.issues.length > 0 && (
-                        <div className="mt-3 p-3 bg-amber-50 rounded-lg">
-                          <p className="text-sm text-amber-700 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4" />
-                            {sheet.issues.join('. ')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {analysis.recommendations.length > 0 && (
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-800 mb-2">Recommendations</h4>
-                  <ul className="space-y-1">
-                    {analysis.recommendations.map((rec, idx) => (
-                      <li key={idx} className="text-sm text-blue-700 flex items-center gap-2">
-                        <Info className="w-4 h-4 flex-shrink-0" />
-                        {rec}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => setShowMappingModal(false)} className="btn-secondary">
-                Cancel
-              </button>
-              <button onClick={handleImportData} className="btn-primary flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Import Data
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Employees Tab
-const EmployeesTab: React.FC<{
-  studyId: string;
-  employees: RDEmployee[];
-  onRefresh: () => void;
-}> = ({ studyId, employees, onRefresh }) => {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const totalWages = employees.reduce((sum, e) => sum + (e.total_wages || 0), 0);
-  const totalQualified = employees.reduce((sum, e) => sum + (e.qualified_wages || 0), 0);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const handleUpdateEmployee = async (employeeId: string, updates: Partial<RDEmployee>) => {
-    setSaving(true);
-    try {
-      await rdStudyService.updateEmployee(studyId, employeeId, updates);
-      toast.success('Employee updated');
-      setEditingId(null);
-      onRefresh();
-    } catch (error) {
-      toast.error('Failed to update employee');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">{employees.length} Employees</h3>
-          <p className="text-sm text-gray-500">
-            Total W-2: {formatCurrency(totalWages)} | Qualified: {formatCurrency(totalQualified)}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onRefresh} className="btn-secondary flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-          <button className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Employee
-          </button>
-        </div>
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Title</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Department</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">W-2 Wages</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qualified %</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qualified Wages</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Source</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Reviewed</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {employees.map(emp => (
-                <tr key={emp.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{emp.title || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{emp.department || '-'}</td>
-                  <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(emp.total_wages || 0)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      (emp.qualified_time_percentage || 0) >= 50
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {emp.qualified_time_percentage || 0}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-green-600">
-                    {formatCurrency(emp.qualified_wages || 0)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                      {emp.qualified_time_source || 'Manual'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {emp.cpa_reviewed ? (
-                      <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
-                    ) : (
-                      <Clock className="w-5 h-5 text-gray-400 mx-auto" />
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setEditingId(emp.id)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-gray-50 font-medium">
-              <tr>
-                <td className="px-4 py-3" colSpan={3}>Total</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(totalWages)}</td>
-                <td className="px-4 py-3"></td>
-                <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalQualified)}</td>
-                <td className="px-4 py-3" colSpan={3}></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Projects Tab
-const ProjectsTab: React.FC<{
-  studyId: string;
-  projects: RDProject[];
-  onRefresh: () => void;
-}> = ({ studyId, projects, onRefresh }) => {
-  const qualified = projects.filter(p => p.qualification_status === 'qualified').length;
-  const partial = projects.filter(p => p.qualification_status === 'partially_qualified').length;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'qualified': return 'bg-green-100 text-green-700';
-      case 'partially_qualified': return 'bg-amber-100 text-amber-700';
-      case 'not_qualified': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">{projects.length} Projects</h3>
-          <p className="text-sm text-gray-500">
-            {qualified} Qualified | {partial} Partially Qualified
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onRefresh} className="btn-secondary flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-          <button className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Project
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {projects.map(project => (
-          <div key={project.id} className="card hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-semibold text-gray-900">{project.name}</h4>
-                <p className="text-sm text-gray-500">{project.department}</p>
-              </div>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(project.qualification_status || 'pending')}`}>
-                {(project.qualification_status || 'pending').replace('_', ' ')}
-              </span>
-            </div>
-
-            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{project.description}</p>
-
-            <div className="border-t pt-3">
-              <p className="text-xs text-gray-500 mb-2">4-Part Test Scores</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: 'Purpose', value: project.permitted_purpose_score },
-                  { label: 'Tech', value: project.technological_nature_score },
-                  { label: 'Uncertain', value: project.uncertainty_score },
-                  { label: 'Experiment', value: project.experimentation_score },
-                ].map(score => (
-                  <div key={score.label} className="text-center">
-                    <div className={`text-lg font-bold ${
-                      (score.value || 0) >= 0.7 ? 'text-green-600' :
-                      (score.value || 0) >= 0.5 ? 'text-amber-600' : 'text-red-600'
-                    }`}>
-                      {((score.value || 0) * 100).toFixed(0)}%
-                    </div>
-                    <div className="text-xs text-gray-500">{score.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mt-4 pt-3 border-t">
-              <span className="text-sm text-gray-600">
-                QRE: <strong>{formatCurrency(project.total_qre || 0)}</strong>
-              </span>
-              <button className="text-purple-600 hover:text-purple-700 text-sm font-medium">
-                Edit Details
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// QRE Summary Tab
-const QRESummaryTab: React.FC<{
-  studyId: string;
-  qreSummary: QRESummary | null;
-  study: RDStudy | null;
-}> = ({ studyId, qreSummary, study }) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const categories = qreSummary?.by_category || {};
-  const totalQRE = study?.total_qre || qreSummary?.total_qualified || 0;
-
-  return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <p className="text-purple-100 text-sm">Total QRE</p>
-          <p className="text-2xl font-bold">{formatCurrency(totalQRE)}</p>
-        </div>
-        <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <p className="text-green-100 text-sm">Federal Credit</p>
-          <p className="text-2xl font-bold">{formatCurrency(study?.federal_credit_final || 0)}</p>
-        </div>
-        <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <p className="text-blue-100 text-sm">State Credits</p>
-          <p className="text-2xl font-bold">{formatCurrency(study?.total_state_credits || 0)}</p>
-        </div>
-        <div className="card bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
-          <p className="text-emerald-100 text-sm">Total Credits</p>
-          <p className="text-2xl font-bold">{formatCurrency(study?.total_credits || 0)}</p>
-        </div>
-      </div>
-
-      {/* QRE Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card">
-          <h3 className="font-semibold text-gray-900 mb-4">QRE by Category</h3>
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Category</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">IRC Ref</th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Amount</th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">%</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              <tr>
-                <td className="px-4 py-3">Wages</td>
-                <td className="px-4 py-3 text-gray-500">§41(b)(2)(A)</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(categories.wages?.qualified || 0)}</td>
-                <td className="px-4 py-3 text-right text-gray-500">
-                  {totalQRE ? ((categories.wages?.qualified || 0) / totalQRE * 100).toFixed(1) : 0}%
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Supplies</td>
-                <td className="px-4 py-3 text-gray-500">§41(b)(2)(C)</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(categories.supplies?.qualified || 0)}</td>
-                <td className="px-4 py-3 text-right text-gray-500">
-                  {totalQRE ? ((categories.supplies?.qualified || 0) / totalQRE * 100).toFixed(1) : 0}%
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Contract Research</td>
-                <td className="px-4 py-3 text-gray-500">§41(b)(3)</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(categories.contract?.qualified || 0)}</td>
-                <td className="px-4 py-3 text-right text-gray-500">
-                  {totalQRE ? ((categories.contract?.qualified || 0) / totalQRE * 100).toFixed(1) : 0}%
-                </td>
-              </tr>
-            </tbody>
-            <tfoot className="bg-gray-50 font-medium">
-              <tr>
-                <td className="px-4 py-3" colSpan={2}>Total</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(totalQRE)}</td>
-                <td className="px-4 py-3 text-right">100%</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <div className="card">
-          <h3 className="font-semibold text-gray-900 mb-4">Credit Summary</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Total QRE</span>
-              <span className="font-medium">{formatCurrency(totalQRE)}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Calculation Method</span>
-              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded font-medium">
-                {study?.selected_method?.toUpperCase() || 'ASC'}
-              </span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Federal Credit</span>
-              <span className="font-medium">{formatCurrency(study?.federal_credit_final || 0)}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">State Credits ({study?.states?.length || 0} states)</span>
-              <span className="font-medium">{formatCurrency(study?.total_state_credits || 0)}</span>
-            </div>
-            <div className="flex justify-between py-3 bg-green-50 -mx-4 px-4 rounded-lg">
-              <span className="font-semibold text-gray-900">Total Credits</span>
-              <span className="text-xl font-bold text-green-600">{formatCurrency(study?.total_credits || 0)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Calculations Tab
-const CalculationsTab: React.FC<{
-  studyId: string;
-  study: RDStudy | null;
-  onCalculate: () => void;
-  calculating: boolean;
-}> = ({ studyId, study, onCalculate, calculating }) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Credit Calculations</h3>
-        <button
-          onClick={onCalculate}
-          disabled={calculating}
-          className="btn-primary flex items-center gap-2"
-        >
-          {calculating ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Calculator className="w-4 h-4" />
-          )}
-          {calculating ? 'Calculating...' : 'Recalculate'}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Regular Method */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-gray-900">Federal - Regular Method</h4>
-            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">20% Credit Rate</span>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Total QRE</span>
-              <span>{formatCurrency(study?.total_qre || 0)}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Base Amount</span>
-              <span>{formatCurrency(study?.regular_base_amount || 0)}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Excess QRE</span>
-              <span>{formatCurrency(Math.max(0, (study?.total_qre || 0) - (study?.regular_base_amount || 0)))}</span>
-            </div>
-            <div className="flex justify-between py-3 bg-blue-50 -mx-4 px-4 rounded-lg">
-              <span className="font-semibold">Regular Credit</span>
-              <span className="text-xl font-bold text-blue-600">{formatCurrency(study?.federal_credit_regular || 0)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ASC Method */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-gray-900">Federal - ASC Method</h4>
-            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">14% Credit Rate</span>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Total QRE</span>
-              <span>{formatCurrency(study?.total_qre || 0)}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Base Amount (50% avg)</span>
-              <span>{formatCurrency(study?.asc_base_amount || 0)}</span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Excess QRE</span>
-              <span>{formatCurrency(Math.max(0, (study?.total_qre || 0) - (study?.asc_base_amount || 0)))}</span>
-            </div>
-            <div className="flex justify-between py-3 bg-indigo-50 -mx-4 px-4 rounded-lg">
-              <span className="font-semibold">ASC Credit</span>
-              <span className="text-xl font-bold text-indigo-600">{formatCurrency(study?.federal_credit_asc || 0)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recommendation */}
-      {study?.recommended_method && (
-        <div className="card bg-green-50 border-green-200">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-            <div>
-              <p className="font-semibold text-green-800">
-                Recommended: {study.recommended_method === 'asc' ? 'ASC' : 'Regular'} Method
-              </p>
-              {study.method_selection_reason && (
-                <p className="text-sm text-green-700">{study.method_selection_reason}</p>
-              )}
-            </div>
-            <div className="ml-auto text-right">
-              <p className="text-sm text-green-600">Final Federal Credit</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(study.federal_credit_final || 0)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Generate & Export Tab
-const GenerateExportTab: React.FC<{
-  studyId: string;
-  study: RDStudy | null;
-}> = ({ studyId, study }) => {
-  const [generating, setGenerating] = useState<string | null>(null);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const handleGenerate = async (type: 'pdf' | 'excel' | 'form_6765', isFinal: boolean = false) => {
-    setGenerating(type);
-    try {
-      const token = localStorage.getItem('access_token');
-      const endpoint = type === 'pdf'
-        ? `${API_BASE_URL}/rd-study/studies/${studyId}/generate/pdf?is_final=${isFinal}`
-        : type === 'excel'
-        ? `${API_BASE_URL}/rd-study/studies/${studyId}/generate/excel`
-        : `${API_BASE_URL}/rd-study/studies/${studyId}/generate/form-6765`;
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = type === 'pdf'
-          ? `RD_Study_${study?.entity_name}_${study?.tax_year}${isFinal ? '_FINAL' : '_DRAFT'}.pdf`
-          : type === 'excel'
-          ? `RD_Study_Workbook_${study?.entity_name}_${study?.tax_year}.xlsx`
-          : `Form_6765_${study?.entity_name}_${study?.tax_year}.pdf`;
-        a.click();
-        toast.success(`${type.toUpperCase()} generated successfully!`);
-      } else {
-        toast.error('Failed to generate document');
-      }
-    } catch (error) {
-      console.error('Generate failed:', error);
-      toast.error('Failed to generate document');
-    } finally {
-      setGenerating(null);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* PDF Report */}
-        <div className="card">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-              <File className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">PDF Study Report</h3>
-              <p className="text-sm text-gray-500">Comprehensive audit-ready report</p>
-            </div>
-          </div>
-
-          <ul className="space-y-2 mb-6 text-sm text-gray-600">
-            {[
-              'Professional Cover Page',
-              'Executive Summary',
-              'Methodology & Qualification Analysis',
-              'QRE Schedules & Breakdowns',
-              'Federal & State Credit Calculations',
-              'Project Narratives',
-              'IRC Section 41 Citations',
-            ].map(item => (
-              <li key={item} className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                {item}
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleGenerate('pdf', false)}
-              disabled={generating === 'pdf'}
-              className="flex-1 btn-secondary flex items-center justify-center gap-2"
-            >
-              {generating === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Download Draft
-            </button>
-            <button
-              onClick={() => handleGenerate('pdf', true)}
-              disabled={generating === 'pdf'}
-              className="flex-1 btn-primary flex items-center justify-center gap-2"
-            >
-              {generating === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Download Final
-            </button>
-          </div>
-        </div>
-
-        {/* Excel Workbook */}
-        <div className="card">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <FileSpreadsheet className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Excel Workbook</h3>
-              <p className="text-sm text-gray-500">Detailed multi-sheet workbook</p>
-            </div>
-          </div>
-
-          <ul className="space-y-2 mb-6 text-sm text-gray-600">
-            {[
-              'Summary Dashboard',
-              'QRE Summary with Charts',
-              'Employee Schedule',
-              'Project Analysis',
-              'Wage/Supply/Contract QRE Detail',
-              'Federal Regular & ASC Calculations',
-              'State Credit Worksheets',
-              'Reconciliation & Sanity Checks',
-              'Form 6765 Data',
-            ].map(item => (
-              <li key={item} className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                {item}
-              </li>
-            ))}
-          </ul>
-
-          <button
-            onClick={() => handleGenerate('excel')}
-            disabled={generating === 'excel'}
-            className="w-full btn-primary bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2"
-          >
-            {generating === 'excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Download Excel Workbook
-          </button>
-        </div>
-      </div>
-
-      {/* Credit Summary */}
-      <div className="card bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-bold">{study?.entity_name}</h3>
-            <p className="text-purple-200">Tax Year {study?.tax_year}</p>
-            <div className="mt-2 flex items-center gap-4 text-sm text-purple-200">
-              <span>Federal: {formatCurrency(study?.federal_credit_final || 0)}</span>
-              <span>|</span>
-              <span>State: {formatCurrency(study?.total_state_credits || 0)}</span>
-              <span>|</span>
-              <span>Method: {study?.selected_method?.toUpperCase() || 'ASC'}</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-purple-200 text-sm">Total R&D Credit</p>
-            <p className="text-3xl font-bold">{formatCurrency(study?.total_credits || 0)}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Main Component
+// Main component
 const RDStudyWorkspace: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: studyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+
+  // State
   const [study, setStudy] = useState<RDStudy | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>('data-collection');
-  const [projects, setProjects] = useState<RDProject[]>([]);
   const [employees, setEmployees] = useState<RDEmployee[]>([]);
-  const [qreSummary, setQreSummary] = useState<QRESummary | null>(null);
+  const [projects, setProjects] = useState<RDProject[]>([]);
+  const [qres, setQres] = useState<RDQRE[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'data' | 'employees' | 'projects' | 'qre' | 'calculate' | 'export'>('overview');
+
+  // Modal states
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<RDEmployee | null>(null);
+  const [editingProject, setEditingProject] = useState<RDProject | null>(null);
+
+  // Form states
+  const [employeeForm, setEmployeeForm] = useState<EmployeeFormData>({
+    name: '',
+    title: '',
+    department: '',
+    total_wages: '',
+    qualified_time_percentage: '50',
+  });
+  const [projectForm, setProjectForm] = useState<ProjectFormData>({
+    name: '',
+    description: '',
+    department: '',
+    business_component: '',
+    start_date: '',
+    end_date: '',
+    is_ongoing: false,
+  });
+
+  // File upload states
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [fileAnalysis, setFileAnalysis] = useState<FileAnalysisResult | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [columnMappings, setColumnMappings] = useState<Record<string, string>>({});
+
+  // Calculation state
+  const [calculationResult, setCalculationResult] = useState<any>(null);
   const [calculating, setCalculating] = useState(false);
 
+  // Get auth token
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem('access_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
+
+  // Load study data
   const loadStudy = useCallback(async () => {
-    if (!id) return;
+    if (!studyId) return;
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      const data = await rdStudyService.getStudy(id);
-      setStudy(data);
-    } catch (error) {
-      console.error('Failed to load study:', error);
-      toast.error('Failed to load study');
+      const headers = getAuthHeaders();
+      const [studyRes, employeesRes, projectsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/rd-study/studies/${studyId}`, { headers }),
+        axios.get(`${API_BASE_URL}/rd-study/studies/${studyId}/employees`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE_URL}/rd-study/studies/${studyId}/projects`, { headers }).catch(() => ({ data: [] })),
+      ]);
+
+      setStudy(studyRes.data);
+      setEmployees(Array.isArray(employeesRes.data) ? employeesRes.data : []);
+      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+    } catch (err: any) {
+      console.error('Error loading study:', err);
+      setError(err.response?.data?.detail || 'Failed to load study. Please check your connection and try again.');
+      // DO NOT use demo data - show error and let user retry
+      setStudy(null);
     } finally {
       setLoading(false);
     }
-  }, [id]);
-
-  const loadTabData = useCallback(async () => {
-    if (!study) return;
-
-    try {
-      switch (activeTab) {
-        case 'projects':
-          const projectData = await rdStudyService.listProjects(study.id);
-          setProjects(projectData);
-          break;
-        case 'employees':
-          const employeeData = await rdStudyService.listEmployees(study.id);
-          setEmployees(employeeData);
-          break;
-        case 'qres':
-          const qreData = await rdStudyService.getQRESummary(study.id);
-          setQreSummary(qreData);
-          break;
-      }
-    } catch (error) {
-      console.error(`Failed to load ${activeTab} data:`, error);
-    }
-  }, [study, activeTab]);
+  }, [studyId, getAuthHeaders]);
 
   useEffect(() => {
     loadStudy();
   }, [loadStudy]);
 
+  // Auto-hide success message
   useEffect(() => {
-    loadTabData();
-  }, [loadTabData]);
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
-  const handleCalculate = async () => {
-    if (!study) return;
-    setCalculating(true);
+  // Handle employee form submission
+  const handleSaveEmployee = async () => {
+    if (!studyId || !employeeForm.name) return;
+    setSaving(true);
+    setError(null);
+
     try {
-      await rdStudyService.calculateCredits(study.id);
-      toast.success('Credits calculated successfully');
+      const headers = getAuthHeaders();
+      const payload = {
+        name: employeeForm.name,
+        title: employeeForm.title || null,
+        department: employeeForm.department || null,
+        total_wages: parseFloat(employeeForm.total_wages.replace(/[,$]/g, '')) || 0,
+        qualified_time_percentage: parseFloat(employeeForm.qualified_time_percentage) || 50,
+      };
+
+      if (editingEmployee) {
+        // Update existing employee
+        await axios.patch(
+          `${API_BASE_URL}/rd-study/studies/${studyId}/employees/${editingEmployee.id}`,
+          payload,
+          { headers }
+        );
+        setSuccessMessage('Employee updated successfully');
+      } else {
+        // Create new employee
+        await axios.post(
+          `${API_BASE_URL}/rd-study/studies/${studyId}/employees`,
+          payload,
+          { headers }
+        );
+        setSuccessMessage('Employee added successfully');
+      }
+
+      // Reload employees and close modal
+      const res = await axios.get(`${API_BASE_URL}/rd-study/studies/${studyId}/employees`, { headers });
+      setEmployees(Array.isArray(res.data) ? res.data : []);
+      setShowEmployeeModal(false);
+      setEditingEmployee(null);
+      setEmployeeForm({ name: '', title: '', department: '', total_wages: '', qualified_time_percentage: '50' });
+    } catch (err: any) {
+      console.error('Error saving employee:', err);
+      setError(err.response?.data?.detail || 'Failed to save employee');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle project form submission
+  const handleSaveProject = async () => {
+    if (!studyId || !projectForm.name) return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const payload = {
+        name: projectForm.name,
+        description: projectForm.description || null,
+        department: projectForm.department || null,
+        business_component: projectForm.business_component || null,
+        start_date: projectForm.start_date || null,
+        end_date: projectForm.end_date || null,
+        is_ongoing: projectForm.is_ongoing,
+      };
+
+      if (editingProject) {
+        // Update existing project
+        await axios.patch(
+          `${API_BASE_URL}/rd-study/studies/${studyId}/projects/${editingProject.id}`,
+          payload,
+          { headers }
+        );
+        setSuccessMessage('Project updated successfully');
+      } else {
+        // Create new project
+        await axios.post(
+          `${API_BASE_URL}/rd-study/studies/${studyId}/projects`,
+          payload,
+          { headers }
+        );
+        setSuccessMessage('Project added successfully');
+      }
+
+      // Reload projects and close modal
+      const res = await axios.get(`${API_BASE_URL}/rd-study/studies/${studyId}/projects`, { headers });
+      setProjects(Array.isArray(res.data) ? res.data : []);
+      setShowProjectModal(false);
+      setEditingProject(null);
+      setProjectForm({ name: '', description: '', department: '', business_component: '', start_date: '', end_date: '', is_ongoing: false });
+    } catch (err: any) {
+      console.error('Error saving project:', err);
+      setError(err.response?.data?.detail || 'Failed to save project');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle file analysis
+  const handleAnalyzeFile = async () => {
+    if (!uploadFile || !studyId) return;
+    setAnalyzing(true);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+
+      const res = await axios.post(
+        `${API_BASE_URL}/rd-study/studies/${studyId}/upload/analyze`,
+        formData,
+        { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
+      );
+
+      setFileAnalysis(res.data);
+
+      // Set default column mappings
+      const defaultMappings: Record<string, string> = {};
+      res.data.column_mappings?.forEach((m: any) => {
+        if (m.suggested_field && m.confidence > 0.5) {
+          defaultMappings[m.suggested_field] = m.source_column;
+        }
+      });
+      setColumnMappings(defaultMappings);
+    } catch (err: any) {
+      console.error('Error analyzing file:', err);
+      setError(err.response?.data?.detail || 'Failed to analyze file');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  // Handle data import
+  const handleImportData = async () => {
+    if (!fileAnalysis || !studyId) return;
+    setImporting(true);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const res = await axios.post(
+        `${API_BASE_URL}/rd-study/studies/${studyId}/upload/import`,
+        {
+          data_type: fileAnalysis.primary_data_type,
+          mappings: columnMappings,
+          data: fileAnalysis.sample_data,
+        },
+        { headers }
+      );
+
+      setSuccessMessage(`Successfully imported ${res.data.imported_count} records`);
+      setShowImportModal(false);
+      setFileAnalysis(null);
+      setUploadFile(null);
+
+      // Reload data
       loadStudy();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Calculation failed');
+    } catch (err: any) {
+      console.error('Error importing data:', err);
+      setError(err.response?.data?.detail || 'Failed to import data');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Handle credit calculation
+  const handleCalculateCredits = async () => {
+    if (!studyId) return;
+    setCalculating(true);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const res = await axios.post(
+        `${API_BASE_URL}/rd-study/studies/${studyId}/calculate`,
+        { include_states: true },
+        { headers }
+      );
+
+      setCalculationResult(res.data);
+      setSuccessMessage('Credits calculated successfully');
+      loadStudy(); // Reload to get updated totals
+    } catch (err: any) {
+      console.error('Error calculating credits:', err);
+      setError(err.response?.data?.detail || 'Failed to calculate credits');
     } finally {
       setCalculating(false);
     }
   };
 
-  const handleDataImported = () => {
-    loadStudy();
-    loadTabData();
-    toast.success('Data imported successfully!');
+  // Run AI study completion
+  const handleAIComplete = async () => {
+    if (!studyId) return;
+    setCalculating(true);
+    setError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const res = await axios.post(
+        `${API_BASE_URL}/rd-study/studies/${studyId}/ai/complete-study`,
+        {},
+        { headers }
+      );
+
+      setSuccessMessage(`AI Analysis complete! Federal Credit: ${formatCurrency(res.data.results?.final_credit)}`);
+      loadStudy();
+    } catch (err: any) {
+      console.error('Error running AI completion:', err);
+      setError(err.response?.data?.detail || 'Failed to run AI completion');
+    } finally {
+      setCalculating(false);
+    }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
+  // Calculate study progress
+  const studyProgress = useMemo(() => {
+    let progress = 0;
+    if (study) {
+      if (employees.length > 0) progress += 25;
+      if (projects.length > 0) progress += 25;
+      if (study.total_qre && study.total_qre > 0) progress += 25;
+      if (study.federal_credit_final && study.federal_credit_final > 0) progress += 25;
+    }
+    return progress;
+  }, [study, employees, projects]);
+
+  // Format currency
+  const formatCurrency = (value: number | string | null | undefined) => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (num == null || isNaN(num)) return '$0.00';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
-          <p className="text-gray-600">Loading study...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
-
-  if (!study) {
-    return (
-      <div className="text-center py-16">
-        <h2 className="text-xl text-gray-600">Study not found</h2>
-        <button onClick={() => navigate('/firm/rd-studies')} className="btn-primary mt-4">
-          Back to Studies
-        </button>
-      </div>
-    );
-  }
-
-  const status = statusConfig[study.status] || statusConfig.draft;
 
   return (
-    <div className="space-y-6">
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <button
-            onClick={() => navigate('/firm/rd-studies')}
-            className="text-sm text-gray-600 hover:text-gray-900 mb-3 flex items-center gap-1"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to R&D Studies
-          </button>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">
-              <FlaskConical className="w-7 h-7 text-purple-600" />
-            </div>
-            <div>
+      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b sticky top-0 z-10`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => navigate('/firm/rd-studies')}
+                  className={`p-2 rounded-lg ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div>
+                  <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {study?.name || 'R&D Study'}
+                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {study?.entity_name} | Tax Year {study?.tax_year}
+                    </span>
+                    {study?.status && <StatusBadge status={study.status} />}
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900">{study.name}</h1>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color}`}>
-                  {status.label}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Building2 className="w-4 h-4" />
-                  {study.entity_name}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  Tax Year {study.tax_year}
-                </span>
-                {study.ein && <span>EIN: {study.ein}</span>}
+                <div className="w-48">
+                  <ProgressBar progress={studyProgress} label={`${studyProgress}% Complete`} />
+                </div>
+                <button
+                  onClick={loadStudy}
+                  className={`px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'} transition-colors flex items-center gap-2`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="text-right">
-          <p className="text-sm text-gray-500">Total R&D Credit</p>
-          <p className="text-3xl font-bold text-green-600">{formatCurrency(study.total_credits || 0)}</p>
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-green-800 dark:text-green-200">{successMessage}</span>
+          </div>
         </div>
-      </div>
-
-      {/* Credit Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total QRE</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(study.total_qre || 0)}</p>
-            </div>
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-purple-600" />
-            </div>
+      )}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-red-800 dark:text-red-200">{error}</span>
+            <button onClick={() => setError(null)} className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Federal Credit</p>
-              <p className="text-2xl font-bold text-blue-600">{formatCurrency(study.federal_credit_final || 0)}</p>
-              <p className="text-xs text-gray-400">{study.selected_method === 'asc' ? 'ASC Method' : 'Regular Method'}</p>
-            </div>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">State Credits</p>
-              <p className="text-2xl font-bold text-indigo-600">{formatCurrency(study.total_state_credits || 0)}</p>
-              <p className="text-xs text-gray-400">{study.states?.length || 0} state(s)</p>
-            </div>
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-indigo-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Total Credits</p>
-              <p className="text-2xl font-bold">{formatCurrency(study.total_credits || 0)}</p>
-            </div>
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </motion.div>
-      </div>
+        </div>
+      )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-1 overflow-x-auto">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm overflow-hidden`}>
+          <div className={`flex border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} overflow-x-auto`}>
+            {[
+              { id: 'overview', label: 'Overview', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+              { id: 'data', label: 'Data Import', icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' },
+              { id: 'employees', label: 'Employees', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+              { id: 'projects', label: 'Projects', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
+              { id: 'qre', label: 'QRE Summary', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
+              { id: 'calculate', label: 'Calculate', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
+              { id: 'export', label: 'Export', icon: 'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+            ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  isActive
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.id
+                    ? `${theme === 'dark' ? 'text-blue-400 border-blue-400' : 'text-blue-600 border-blue-600'} border-b-2`
+                    : `${theme === 'dark' ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                </svg>
                 {tab.label}
               </button>
-            );
-          })}
-        </nav>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-blue-50'} rounded-xl p-4`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-blue-600'}`}>Employees</div>
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-blue-900'}`}>{employees.length}</div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-green-50'} rounded-xl p-4`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-green-600'}`}>Projects</div>
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-green-900'}`}>{projects.length}</div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-purple-50'} rounded-xl p-4`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-purple-600'}`}>Total QRE</div>
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-purple-900'}`}>{formatCurrency(study?.total_qre)}</div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-emerald-50'} rounded-xl p-4`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-emerald-600'}`}>Total Credits</div>
+                    <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-emerald-900'}`}>{formatCurrency(study?.total_credits)}</div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <button
+                      onClick={() => setShowImportModal(true)}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all"
+                    >
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span className="text-sm font-medium">Import Data</span>
+                    </button>
+                    <button
+                      onClick={() => setShowEmployeeModal(true)}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all"
+                    >
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                      </svg>
+                      <span className="text-sm font-medium">Add Employee</span>
+                    </button>
+                    <button
+                      onClick={() => setShowProjectModal(true)}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 transition-all"
+                    >
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-sm font-medium">Add Project</span>
+                    </button>
+                    <button
+                      onClick={handleAIComplete}
+                      disabled={calculating || employees.length === 0}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span className="text-sm font-medium">{calculating ? 'Running...' : 'AI Complete'}</span>
+                    </button>
+                    <button
+                      onClick={handleCalculateCredits}
+                      disabled={calculating || employees.length === 0}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm font-medium">{calculating ? 'Calculating...' : 'Calculate'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Getting Started Guide */}
+                {employees.length === 0 && projects.length === 0 && (
+                  <div className={`${theme === 'dark' ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'} border rounded-xl p-6`}>
+                    <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-blue-300' : 'text-blue-900'}`}>Getting Started</h3>
+                    <div className="space-y-3">
+                      {[
+                        { step: 1, text: 'Import payroll data or add employees manually', done: employees.length > 0 },
+                        { step: 2, text: 'Add R&D projects with descriptions', done: projects.length > 0 },
+                        { step: 3, text: 'Run AI analysis to qualify projects and allocate time', done: false },
+                        { step: 4, text: 'Calculate and review credits', done: (study?.total_credits || 0) > 0 },
+                      ].map((item) => (
+                        <div key={item.step} className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            item.done
+                              ? 'bg-green-500 text-white'
+                              : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {item.done ? (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : item.step}
+                          </div>
+                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} ${item.done ? 'line-through opacity-50' : ''}`}>
+                            {item.text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Data Import Tab */}
+            {activeTab === 'data' && (
+              <div className="space-y-6">
+                <div className={`border-2 border-dashed rounded-xl p-8 text-center ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
+                  <svg className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Import Data from Excel/CSV</h3>
+                  <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Upload payroll data, project lists, or expense reports. Our AI will automatically detect column mappings.
+                  </p>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setUploadFile(file);
+                        setShowImportModal(true);
+                      }
+                    }}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Select File
+                  </label>
+                </div>
+
+                {/* Supported formats info */}
+                <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-6`}>
+                  <h4 className={`font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Supported Data Types</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      { name: 'Payroll Data', desc: 'Employee names, titles, wages', icon: '💰' },
+                      { name: 'Project Lists', desc: 'R&D projects with descriptions', icon: '📋' },
+                      { name: 'Expense Reports', desc: 'Supplies and contract research', icon: '📊' },
+                    ].map((item) => (
+                      <div key={item.name} className={`${theme === 'dark' ? 'bg-gray-600' : 'bg-white'} rounded-lg p-4`}>
+                        <div className="text-2xl mb-2">{item.icon}</div>
+                        <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.name}</div>
+                        <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{item.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Employees Tab */}
+            {activeTab === 'employees' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Employees ({employees.length})
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setEditingEmployee(null);
+                      setEmployeeForm({ name: '', title: '', department: '', total_wages: '', qualified_time_percentage: '50' });
+                      setShowEmployeeModal(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Employee
+                  </button>
+                </div>
+
+                {employees.length === 0 ? (
+                  <div className={`text-center py-12 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="mb-4">No employees added yet</p>
+                    <button
+                      onClick={() => setShowEmployeeModal(true)}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Add your first employee
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                          <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Name</th>
+                          <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Title</th>
+                          <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Department</th>
+                          <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>W-2 Wages</th>
+                          <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Qualified %</th>
+                          <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Qualified Wages</th>
+                          <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                        {employees.map((emp) => (
+                          <tr key={emp.id} className={`${theme === 'dark' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
+                            <td className={`px-4 py-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{emp.name}</td>
+                            <td className={`px-4 py-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{emp.title || '-'}</td>
+                            <td className={`px-4 py-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{emp.department || '-'}</td>
+                            <td className={`px-4 py-3 text-right ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{formatCurrency(emp.total_wages)}</td>
+                            <td className={`px-4 py-3 text-right ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{emp.qualified_time_percentage}%</td>
+                            <td className={`px-4 py-3 text-right font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>{formatCurrency(emp.qualified_wages)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => {
+                                  setEditingEmployee(emp);
+                                  setEmployeeForm({
+                                    name: emp.name,
+                                    title: emp.title || '',
+                                    department: emp.department || '',
+                                    total_wages: String(emp.total_wages || ''),
+                                    qualified_time_percentage: String(emp.qualified_time_percentage || 50),
+                                  });
+                                  setShowEmployeeModal(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Projects Tab */}
+            {activeTab === 'projects' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    R&D Projects ({projects.length})
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setEditingProject(null);
+                      setProjectForm({ name: '', description: '', department: '', business_component: '', start_date: '', end_date: '', is_ongoing: false });
+                      setShowProjectModal(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Project
+                  </button>
+                </div>
+
+                {projects.length === 0 ? (
+                  <div className={`text-center py-12 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <p className="mb-4">No projects added yet</p>
+                    <button
+                      onClick={() => setShowProjectModal(true)}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Add your first project
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {projects.map((proj) => (
+                      <div key={proj.id} className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-4`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{proj.name}</h4>
+                          <StatusBadge status={proj.qualification_status || 'pending'} />
+                        </div>
+                        {proj.description && (
+                          <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {proj.description.slice(0, 150)}{proj.description.length > 150 ? '...' : ''}
+                          </p>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {proj.department || 'No department'}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingProject(proj);
+                              setProjectForm({
+                                name: proj.name,
+                                description: proj.description || '',
+                                department: proj.department || '',
+                                business_component: proj.business_component || '',
+                                start_date: proj.start_date || '',
+                                end_date: proj.end_date || '',
+                                is_ongoing: proj.is_ongoing || false,
+                              });
+                              setShowProjectModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* QRE Summary Tab */}
+            {activeTab === 'qre' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { label: 'Wage QRE', value: employees.reduce((sum, emp) => sum + (emp.qualified_wages || 0), 0), color: 'blue' },
+                    { label: 'Supply QRE', value: qres.filter(q => q.category === 'supplies').reduce((sum, q) => sum + (q.qualified_amount || 0), 0), color: 'green' },
+                    { label: 'Contract QRE', value: qres.filter(q => q.category === 'contract_research').reduce((sum, q) => sum + (q.qualified_amount || 0), 0), color: 'purple' },
+                  ].map((item) => (
+                    <div key={item.label} className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-4`}>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{item.label}</div>
+                      <div className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(item.value)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-blue-50'} rounded-xl p-6`}>
+                  <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-blue-600'}`}>Total Qualified Research Expenses</div>
+                  <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-blue-900'}`}>{formatCurrency(study?.total_qre)}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Calculate Tab */}
+            {activeTab === 'calculate' && (
+              <div className="space-y-6">
+                <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl p-6`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Calculate R&D Tax Credits</h3>
+                  <p className={`mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Run the calculation engine to compute federal and state R&D tax credits based on your study data.
+                  </p>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={handleAIComplete}
+                      disabled={calculating || employees.length === 0}
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      {calculating ? (
+                        <>
+                          <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Running AI Analysis...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                          AI Complete Study
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCalculateCredits}
+                      disabled={calculating || employees.length === 0}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      Calculate Only
+                    </button>
+                  </div>
+                </div>
+
+                {/* Calculation Results */}
+                {(study?.federal_credit_final || calculationResult) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`${theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-50'} rounded-xl p-6`}>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Federal Credit (Regular)</div>
+                      <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-blue-900'}`}>{formatCurrency(study?.federal_credit_regular)}</div>
+                    </div>
+                    <div className={`${theme === 'dark' ? 'bg-green-900/30' : 'bg-green-50'} rounded-xl p-6`}>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>Federal Credit (ASC)</div>
+                      <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-green-900'}`}>{formatCurrency(study?.federal_credit_asc)}</div>
+                    </div>
+                    <div className={`${theme === 'dark' ? 'bg-purple-900/30' : 'bg-purple-50'} rounded-xl p-6`}>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>State Credits</div>
+                      <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-purple-900'}`}>{formatCurrency(study?.total_state_credits)}</div>
+                    </div>
+                    <div className={`${theme === 'dark' ? 'bg-emerald-900/30' : 'bg-emerald-50'} rounded-xl p-6`}>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>Total Credits</div>
+                      <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-emerald-900'}`}>{formatCurrency(study?.total_credits)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Export Tab */}
+            {activeTab === 'export' && (
+              <div className="space-y-6">
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Generate Reports</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { name: 'Excel Workbook', desc: 'Complete study data in Excel format', icon: '📊', type: 'excel' },
+                    { name: 'PDF Report', desc: 'Professional PDF study report', icon: '📄', type: 'pdf' },
+                    { name: 'Form 6765', desc: 'IRS Form 6765 data', icon: '📋', type: 'form_6765' },
+                  ].map((item) => (
+                    <button
+                      key={item.type}
+                      onClick={async () => {
+                        try {
+                          const headers = getAuthHeaders();
+                          await axios.post(
+                            `${API_BASE_URL}/rd-study/studies/${studyId}/outputs/generate`,
+                            { output_types: [item.type], include_draft_watermark: true },
+                            { headers }
+                          );
+                          setSuccessMessage(`${item.name} generated successfully`);
+                        } catch (err: any) {
+                          setError(err.response?.data?.detail || `Failed to generate ${item.name}`);
+                        }
+                      }}
+                      className={`${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-6 text-left transition-colors`}
+                    >
+                      <div className="text-3xl mb-3">{item.icon}</div>
+                      <div className={`font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.name}</div>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{item.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Tab Content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-        >
-          {activeTab === 'data-collection' && (
-            <DataCollectionTab studyId={study.id} onDataImported={handleDataImported} />
+      {/* Add Employee Modal */}
+      <Modal
+        isOpen={showEmployeeModal}
+        onClose={() => {
+          setShowEmployeeModal(false);
+          setEditingEmployee(null);
+        }}
+        title={editingEmployee ? 'Edit Employee' : 'Add Employee'}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Name *
+            </label>
+            <input
+              type="text"
+              value={employeeForm.name}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="John Doe"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Title
+            </label>
+            <input
+              type="text"
+              value={employeeForm.title}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, title: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Software Engineer"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Department
+            </label>
+            <input
+              type="text"
+              value={employeeForm.department}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Engineering"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              W-2 Wages *
+            </label>
+            <input
+              type="text"
+              value={employeeForm.total_wages}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, total_wages: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="$100,000"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Qualified Time % (0-100)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={employeeForm.qualified_time_percentage}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, qualified_time_percentage: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => {
+                setShowEmployeeModal(false);
+                setEditingEmployee(null);
+              }}
+              className={`px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEmployee}
+              disabled={saving || !employeeForm.name || !employeeForm.total_wages}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : editingEmployee ? 'Update' : 'Add Employee'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Project Modal */}
+      <Modal
+        isOpen={showProjectModal}
+        onClose={() => {
+          setShowProjectModal(false);
+          setEditingProject(null);
+        }}
+        title={editingProject ? 'Edit Project' : 'Add Project'}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Project Name *
+            </label>
+            <input
+              type="text"
+              value={projectForm.name}
+              onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="New Product Development"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Description
+            </label>
+            <textarea
+              rows={4}
+              value={projectForm.description}
+              onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Describe the R&D activities, technical uncertainties, and experimentation process..."
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                Department
+              </label>
+              <input
+                type="text"
+                value={projectForm.department}
+                onChange={(e) => setProjectForm({ ...projectForm, department: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                placeholder="Engineering"
+              />
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                Business Component
+              </label>
+              <input
+                type="text"
+                value={projectForm.business_component}
+                onChange={(e) => setProjectForm({ ...projectForm, business_component: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                placeholder="Software Platform"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="is_ongoing"
+              checked={projectForm.is_ongoing}
+              onChange={(e) => setProjectForm({ ...projectForm, is_ongoing: e.target.checked })}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+            <label htmlFor="is_ongoing" className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Project is ongoing
+            </label>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => {
+                setShowProjectModal(false);
+                setEditingProject(null);
+              }}
+              className={`px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveProject}
+              disabled={saving || !projectForm.name}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : editingProject ? 'Update' : 'Add Project'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Import Data Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => {
+          setShowImportModal(false);
+          setFileAnalysis(null);
+          setUploadFile(null);
+        }}
+        title="Import Data"
+        size="xl"
+      >
+        <div className="space-y-4">
+          {!fileAnalysis ? (
+            <>
+              <div className={`border-2 border-dashed rounded-lg p-6 text-center ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="import-file"
+                />
+                <label htmlFor="import-file" className="cursor-pointer">
+                  <svg className={`w-10 h-10 mx-auto mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                    {uploadFile ? uploadFile.name : 'Click to select file or drag & drop'}
+                  </p>
+                </label>
+              </div>
+              {uploadFile && (
+                <button
+                  onClick={handleAnalyzeFile}
+                  disabled={analyzing}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {analyzing ? 'Analyzing...' : 'Analyze File'}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{fileAnalysis.filename}</div>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {fileAnalysis.total_rows} rows | Detected as: {fileAnalysis.primary_data_type}
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs ${fileAnalysis.overall_confidence > 0.7 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    {Math.round(fileAnalysis.overall_confidence * 100)}% confidence
+                  </span>
+                </div>
+              </div>
+
+              {/* Column Mappings */}
+              <div>
+                <h4 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Column Mappings</h4>
+                <div className="space-y-2">
+                  {fileAnalysis.column_mappings.filter(m => m.confidence > 0.3).map((mapping, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <span className={`text-sm w-32 truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{mapping.source_column}</span>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                      <select
+                        value={columnMappings[mapping.suggested_field || ''] === mapping.source_column ? mapping.suggested_field || '' : ''}
+                        onChange={(e) => setColumnMappings({ ...columnMappings, [e.target.value]: mapping.source_column })}
+                        className={`flex-1 px-2 py-1 text-sm border rounded ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      >
+                        <option value="">Unmapped</option>
+                        <option value="name">Name</option>
+                        <option value="title">Title</option>
+                        <option value="department">Department</option>
+                        <option value="wages">Wages</option>
+                        <option value="qualified_time">Qualified %</option>
+                        <option value="description">Description</option>
+                        <option value="amount">Amount</option>
+                        <option value="vendor">Vendor</option>
+                      </select>
+                      <span className={`text-xs ${mapping.confidence > 0.7 ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {Math.round(mapping.confidence * 100)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sample Data Preview */}
+              {fileAnalysis.sample_data.length > 0 && (
+                <div>
+                  <h4 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Sample Data</h4>
+                  <div className="overflow-x-auto max-h-40">
+                    <table className="text-sm w-full">
+                      <thead>
+                        <tr className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}>
+                          {fileAnalysis.columns.slice(0, 5).map((col, idx) => (
+                            <th key={idx} className="px-2 py-1 text-left">{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fileAnalysis.sample_data.slice(0, 3).map((row, idx) => (
+                          <tr key={idx} className={`${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-t`}>
+                            {fileAnalysis.columns.slice(0, 5).map((col, cidx) => (
+                              <td key={cidx} className="px-2 py-1 truncate max-w-32">{String(row[col] || '')}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setFileAnalysis(null);
+                    setUploadFile(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                >
+                  Start Over
+                </button>
+                <button
+                  onClick={handleImportData}
+                  disabled={importing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {importing ? 'Importing...' : `Import ${fileAnalysis.total_rows} Records`}
+                </button>
+              </div>
+            </>
           )}
-          {activeTab === 'client-invitations' && (
-            <ClientInvitationsTab studyId={study.id} study={study} onRefresh={loadStudy} />
-          )}
-          {activeTab === 'employees' && (
-            <EmployeesTab studyId={study.id} employees={employees} onRefresh={loadTabData} />
-          )}
-          {activeTab === 'projects' && (
-            <ProjectsTab studyId={study.id} projects={projects} onRefresh={loadTabData} />
-          )}
-          {activeTab === 'qres' && (
-            <QRESummaryTab studyId={study.id} qreSummary={qreSummary} study={study} />
-          )}
-          {activeTab === 'calculations' && (
-            <CalculationsTab studyId={study.id} study={study} onCalculate={handleCalculate} calculating={calculating} />
-          )}
-          {activeTab === 'generate' && (
-            <GenerateExportTab studyId={study.id} study={study} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </Modal>
     </div>
   );
 };

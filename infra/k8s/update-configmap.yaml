@@ -19,7 +19,7 @@ data:
   REPORTING_PORT: "8000"
 
   # CORS Configuration
-  CORS_ORIGINS: '["https://auraai.toroniandcompany.com","https://www.auraai.toroniandcompany.com","https://admin.auraai.toroniandcompany.com","https://portal.auraai.toroniandcompany.com","https://cpa.auraai.toroniandcompany.com","http://localhost:3000","http://localhost:5173"]'
+  CORS_ORIGINS: '["https://auraai.toroniandcompany.com","https://www.auraai.toroniandcompany.com","https://admin.auraai.toroniandcompany.com","https://portal.auraai.toroniandcompany.com","https://cpa.auraai.toroniandcompany.com","https://rdclient.auraai.toroniandcompany.com","http://localhost:3000","http://localhost:5173"]'
 
   # Embedding Configuration
   EMBEDDING_DIMENSION: "384"

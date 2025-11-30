@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aura-rdclient-ingress
+  namespace: aura-audit-ai
+  labels:
+    app.kubernetes.io/component: rdclient
+    app.kubernetes.io/name: aura-audit-ai
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - rdclient.auraai.toroniandcompany.com
+    secretName: aura-rdclient-tls-cert
+  rules:
+  - host: rdclient.auraai.toroniandcompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-portal
+            port:
+              number: 80

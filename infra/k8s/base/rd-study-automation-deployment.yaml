@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: rd-study-automation
-        image: auraauditaiprodacr.azurecr.io/aura/rd-study-automation:latest
+        image: auraauditaiprodacr.azurecr.io/aura/rd-study-automation:v1.0.0-stable
         ports:
         - containerPort: 8000
         env:
