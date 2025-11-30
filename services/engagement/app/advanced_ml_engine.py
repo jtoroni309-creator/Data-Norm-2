@@ -1634,3 +1634,4 @@ class AuraMLEngine:
 
 # Singleton instance
 ml_engine = AuraMLEngine()
+aura_ml_engine = ml_engine  # Alias for backward compatibility
