@@ -38,14 +38,14 @@ class RDStudyService {
       return config;
     });
 
-    // Handle 401 responses
+    // Handle errors gracefully - don't force logout on 401 from this service
+    // The main auth service handles session management; this service should
+    // just propagate errors and let the UI fall back to demo mode
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('access_token');
-          window.location.href = '/login';
-        }
+        // Log error for debugging but don't force logout
+        console.warn('RD Study API error:', error.response?.status, error.message);
         return Promise.reject(error);
       }
     );
