@@ -18,6 +18,7 @@ from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, or_
 from sqlalchemy.orm import selectinload
+from openai import AsyncOpenAI
 
 from .config import settings
 from .database import get_db, init_db, close_db, set_rls_context
@@ -63,11 +64,33 @@ async def lifespan(app: FastAPI):
     logger.info("Starting R&D Study Automation Service...")
     await init_db()
 
+    # Initialize OpenAI client
+    openai_client = None
+    if settings.OPENAI_API_KEY:
+        openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        logger.info("OpenAI client initialized successfully")
+    else:
+        logger.warning("OPENAI_API_KEY not configured - AI features will use fallback mode")
+
     # Initialize engines
     app.state.rules_engine = RulesEngine(version=settings.RULES_VERSION)
     app.state.qualification_engine = QualificationEngine(app.state.rules_engine)
     app.state.qre_engine = QREEngine(app.state.rules_engine)
     app.state.calculation_engine = CalculationEngine(app.state.rules_engine)
+
+    # Store OpenAI client in app state
+    app.state.openai_client = openai_client
+
+    # Initialize AI services with OpenAI client
+    from .ai import NarrativeService, DataIngestionService
+    app.state.narrative_service = NarrativeService(
+        openai_client=openai_client,
+        config={"model": settings.OPENAI_CHAT_MODEL}
+    )
+    app.state.data_ingestion_service = DataIngestionService(
+        openai_client=openai_client,
+        config={"model": settings.OPENAI_CHAT_MODEL}
+    )
 
     logger.info("R&D Study Automation Service started successfully")
 

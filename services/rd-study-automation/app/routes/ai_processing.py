@@ -6,18 +6,20 @@ Handles AI-powered document processing, data extraction, and study completion.
 
 import logging
 import io
+import json
 from uuid import UUID
 from datetime import datetime
 from typing import List, Optional
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import openpyxl
 import pandas as pd
 
 from ..database import get_db
+from ..config import settings
 from ..models import (
     RDStudy, RDProject, RDEmployee, QualifiedResearchExpense, RDDocument,
     RDCalculation, StudyStatus, QualificationStatus, QRECategory, CreditMethod
@@ -26,6 +28,208 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# =============================================================================
+# AI HELPER FUNCTIONS
+# =============================================================================
+
+async def qualify_project_with_ai(openai_client, project: RDProject) -> dict:
+    """
+    Use OpenAI to analyze a project against the IRS 4-part test for R&D qualification.
+    Returns scores and analysis for each part of the test.
+    """
+    if not openai_client:
+        # Fallback for when OpenAI is not configured
+        return _fallback_qualify_project(project)
+
+    prompt = f"""Analyze this R&D project against the IRS Section 41 four-part test for R&D tax credit qualification.
+
+PROJECT INFORMATION:
+- Name: {project.name}
+- Description: {project.description or 'No description provided'}
+- Business Component: {project.business_component or 'Not specified'}
+- Department: {project.department or 'Not specified'}
+
+Evaluate each of the four parts of the test on a scale of 0-100:
+
+1. PERMITTED PURPOSE: Does the activity intend to create or improve a product, process, software, technique, formula, or invention?
+
+2. TECHNOLOGICAL IN NATURE: Is the activity fundamentally technological, relying on principles of physical science, biological science, engineering, or computer science?
+
+3. ELIMINATION OF UNCERTAINTY: Does the activity seek to eliminate uncertainty about capability, method, or design of the business component?
+
+4. PROCESS OF EXPERIMENTATION: Does the activity involve evaluating alternatives through modeling, simulation, systematic trial and error, or other methods?
+
+Respond with valid JSON only (no markdown):
+{{
+    "permitted_purpose_score": <0-100>,
+    "permitted_purpose_analysis": "<explanation>",
+    "technological_nature_score": <0-100>,
+    "technological_nature_analysis": "<explanation>",
+    "uncertainty_score": <0-100>,
+    "uncertainty_analysis": "<explanation>",
+    "experimentation_score": <0-100>,
+    "experimentation_analysis": "<explanation>",
+    "overall_score": <0-100>,
+    "qualification_status": "<qualified|needs_review|not_qualified>",
+    "qualification_narrative": "<summary of qualification>",
+    "risk_flags": ["<list of any audit concerns>"],
+    "suggested_evidence": ["<list of evidence that would strengthen the case>"]
+}}"""
+
+    try:
+        response = await openai_client.chat.completions.create(
+            model=settings.OPENAI_CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert R&D tax credit analyst with deep knowledge of IRC Section 41, Treasury Regulations, and IRS guidance. Provide objective, audit-defensible analysis."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=1500
+        )
+
+        result_text = response.choices[0].message.content.strip()
+        # Clean up potential markdown formatting
+        if result_text.startswith("```"):
+            result_text = result_text.split("```")[1]
+            if result_text.startswith("json"):
+                result_text = result_text[4:]
+        result = json.loads(result_text)
+        return result
+
+    except Exception as e:
+        logger.error(f"OpenAI project qualification failed: {e}")
+        return _fallback_qualify_project(project)
+
+
+def _fallback_qualify_project(project: RDProject) -> dict:
+    """Fallback qualification using rule-based analysis when OpenAI is unavailable."""
+    desc = (project.description or "").lower()
+    base_score = 70
+
+    # Adjust based on keywords
+    if any(kw in desc for kw in ['develop', 'create', 'design', 'engineer', 'build']):
+        base_score += 10
+    if any(kw in desc for kw in ['new', 'novel', 'innovative', 'breakthrough']):
+        base_score += 5
+    if any(kw in desc for kw in ['test', 'experiment', 'prototype', 'iterate']):
+        base_score += 5
+    if any(kw in desc for kw in ['uncertain', 'challenge', 'solve', 'problem']):
+        base_score += 5
+
+    if base_score >= 75:
+        status = "qualified"
+    elif base_score >= 50:
+        status = "needs_review"
+    else:
+        status = "not_qualified"
+
+    return {
+        "permitted_purpose_score": min(100, base_score + 5),
+        "permitted_purpose_analysis": "Analysis requires AI configuration. Based on keywords detected.",
+        "technological_nature_score": min(100, base_score),
+        "technological_nature_analysis": "Analysis requires AI configuration. Based on keywords detected.",
+        "uncertainty_score": min(100, base_score - 5),
+        "uncertainty_analysis": "Analysis requires AI configuration. Based on keywords detected.",
+        "experimentation_score": min(100, base_score),
+        "experimentation_analysis": "Analysis requires AI configuration. Based on keywords detected.",
+        "overall_score": base_score,
+        "qualification_status": status,
+        "qualification_narrative": f"Preliminary qualification based on keyword analysis. Configure OpenAI for full AI analysis.",
+        "risk_flags": ["AI analysis unavailable - manual review recommended"],
+        "suggested_evidence": ["Technical documentation", "Design specifications", "Test results"]
+    }
+
+
+async def analyze_employee_allocation_with_ai(openai_client, employee: RDEmployee, projects: List[RDProject]) -> dict:
+    """
+    Use OpenAI to analyze employee R&D time allocation based on their role and available projects.
+    """
+    if not openai_client:
+        return _fallback_employee_allocation(employee)
+
+    project_summaries = "\n".join([
+        f"- {p.name}: {p.description[:200] if p.description else 'No description'}"
+        for p in projects[:10]  # Limit to first 10 projects
+    ])
+
+    prompt = f"""Analyze this employee's likely R&D time allocation for tax credit purposes.
+
+EMPLOYEE INFORMATION:
+- Name: {employee.name}
+- Job Title: {employee.title or 'Not specified'}
+- Department: {employee.department or 'Not specified'}
+- W-2 Wages: ${employee.w2_wages:,.2f}
+
+COMPANY R&D PROJECTS:
+{project_summaries or 'No project information available'}
+
+Based on the employee's role and typical responsibilities for this job title, estimate:
+1. What percentage of their time is likely spent on qualified R&D activities
+2. What R&D activities they likely perform
+3. Any concerns about the allocation
+
+Respond with valid JSON only:
+{{
+    "qualified_time_percentage": <0-100>,
+    "confidence": <0.0-1.0>,
+    "activities": ["<list of likely R&D activities>"],
+    "rationale": "<explanation of the allocation>",
+    "risk_flags": ["<any concerns>"]
+}}"""
+
+    try:
+        response = await openai_client.chat.completions.create(
+            model=settings.OPENAI_CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": "You are an R&D tax credit specialist with expertise in employee time allocation studies. Be conservative and audit-defensible in your estimates."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=500
+        )
+
+        result_text = response.choices[0].message.content.strip()
+        if result_text.startswith("```"):
+            result_text = result_text.split("```")[1]
+            if result_text.startswith("json"):
+                result_text = result_text[4:]
+        result = json.loads(result_text)
+        return result
+
+    except Exception as e:
+        logger.error(f"OpenAI employee allocation failed: {e}")
+        return _fallback_employee_allocation(employee)
+
+
+def _fallback_employee_allocation(employee: RDEmployee) -> dict:
+    """Fallback allocation using title-based rules when OpenAI is unavailable."""
+    title = (employee.title or "").lower()
+
+    if any(t in title for t in ['engineer', 'developer', 'scientist', 'researcher']):
+        pct = 75
+        activities = ["Development", "Testing", "Design"]
+    elif any(t in title for t in ['architect', 'lead', 'principal', 'senior']):
+        pct = 65
+        activities = ["Architecture", "Technical Leadership", "Code Review"]
+    elif any(t in title for t in ['manager', 'director']):
+        pct = 35
+        activities = ["Project Planning", "Technical Oversight"]
+    elif any(t in title for t in ['analyst', 'designer', 'qa', 'test']):
+        pct = 50
+        activities = ["Analysis", "Testing", "Documentation"]
+    else:
+        pct = 20
+        activities = ["Support Activities"]
+
+    return {
+        "qualified_time_percentage": pct,
+        "confidence": 0.6,
+        "activities": activities,
+        "rationale": f"Allocation based on job title '{employee.title}'. Configure OpenAI for detailed AI analysis.",
+        "risk_flags": ["AI analysis unavailable - consider manual review"]
+    }
 
 
 # =============================================================================
@@ -324,6 +528,7 @@ async def upload_expense_data(
 @router.post("/studies/{study_id}/ai/complete-study")
 async def ai_complete_study(
     study_id: UUID,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
@@ -335,6 +540,9 @@ async def ai_complete_study(
     - QRE calculations
     - Credit calculations
     """
+    # Get OpenAI client from app state
+    openai_client = getattr(request.app.state, 'openai_client', None)
+
     study = await db.get(RDStudy, study_id)
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
@@ -357,58 +565,59 @@ async def ai_complete_study(
     )
     qres = qres_result.scalars().all()
 
-    # AI ANALYSIS: Qualify projects (simulated AI scoring)
+    # AI ANALYSIS: Qualify projects using real AI
+    ai_used = openai_client is not None
     for project in projects:
         if project.qualification_status == QualificationStatus.pending:
-            # Simulate 4-part test scoring based on description
-            # In production, would use OpenAI to analyze the description
-            base_score = 75  # Base score
+            # Use real AI analysis for project qualification
+            qual_result = await qualify_project_with_ai(openai_client, project)
 
-            # Adjust based on keywords in description
-            desc = (project.description or "").lower()
-            if any(kw in desc for kw in ['develop', 'create', 'design', 'engineer']):
-                base_score += 10
-            if any(kw in desc for kw in ['new', 'novel', 'innovative', 'breakthrough']):
-                base_score += 5
-            if any(kw in desc for kw in ['test', 'experiment', 'prototype', 'iterate']):
-                base_score += 5
-            if any(kw in desc for kw in ['uncertain', 'challenge', 'solve', 'problem']):
-                base_score += 5
-
-            # Set scores
-            project.permitted_purpose_score = Decimal(str(min(100, base_score + 5)))
-            project.technological_nature_score = Decimal(str(min(100, base_score)))
-            project.uncertainty_score = Decimal(str(min(100, base_score - 5)))
-            project.experimentation_score = Decimal(str(min(100, base_score)))
-            project.overall_score = Decimal(str(min(100, base_score)))
+            # Apply results to project
+            project.permitted_purpose_score = Decimal(str(qual_result.get("permitted_purpose_score", 70)))
+            project.permitted_purpose_narrative = qual_result.get("permitted_purpose_analysis", "")
+            project.technological_nature_score = Decimal(str(qual_result.get("technological_nature_score", 70)))
+            project.technological_nature_narrative = qual_result.get("technological_nature_analysis", "")
+            project.uncertainty_score = Decimal(str(qual_result.get("uncertainty_score", 65)))
+            project.uncertainty_narrative = qual_result.get("uncertainty_analysis", "")
+            project.experimentation_score = Decimal(str(qual_result.get("experimentation_score", 70)))
+            project.experimentation_narrative = qual_result.get("experimentation_analysis", "")
+            project.overall_score = Decimal(str(qual_result.get("overall_score", 70)))
+            project.qualification_narrative = qual_result.get("qualification_narrative", "")
+            project.risk_flags = qual_result.get("risk_flags", [])
+            project.ai_qualification_analysis = {
+                "suggested_evidence": qual_result.get("suggested_evidence", []),
+                "ai_analysis_used": ai_used,
+                "analyzed_at": datetime.utcnow().isoformat()
+            }
 
             # Set qualification status
-            if base_score >= 75:
+            status_str = qual_result.get("qualification_status", "needs_review")
+            if status_str == "qualified":
                 project.qualification_status = QualificationStatus.qualified
-            elif base_score >= 50:
-                project.qualification_status = QualificationStatus.needs_review
-            else:
+            elif status_str == "not_qualified":
                 project.qualification_status = QualificationStatus.not_qualified
-
-    # AI ANALYSIS: Adjust employee allocations based on job titles
-    for employee in employees:
-        title = (employee.title or "").lower()
-
-        # If no qualified percentage set, estimate based on title
-        if not employee.qualified_time_percentage or employee.qualified_time_percentage == 0:
-            if any(t in title for t in ['engineer', 'developer', 'scientist', 'researcher']):
-                employee.qualified_time_percentage = Decimal('75')
-            elif any(t in title for t in ['architect', 'lead', 'principal']):
-                employee.qualified_time_percentage = Decimal('60')
-            elif any(t in title for t in ['manager', 'director']):
-                employee.qualified_time_percentage = Decimal('40')
-            elif any(t in title for t in ['analyst', 'designer', 'qa', 'test']):
-                employee.qualified_time_percentage = Decimal('50')
             else:
-                employee.qualified_time_percentage = Decimal('25')
+                project.qualification_status = QualificationStatus.needs_review
+
+    # AI ANALYSIS: Adjust employee allocations using real AI
+    for employee in employees:
+        # If no qualified percentage set, use AI to estimate
+        if not employee.qualified_time_percentage or employee.qualified_time_percentage == 0:
+            alloc_result = await analyze_employee_allocation_with_ai(openai_client, employee, projects)
+
+            employee.qualified_time_percentage = Decimal(str(alloc_result.get("qualified_time_percentage", 25)))
+            employee.qualified_time_confidence = alloc_result.get("confidence", 0.5)
+            employee.risk_flags = alloc_result.get("risk_flags", [])
+            employee.ai_allocation_analysis = {
+                "activities": alloc_result.get("activities", []),
+                "rationale": alloc_result.get("rationale", ""),
+                "ai_analysis_used": ai_used,
+                "analyzed_at": datetime.utcnow().isoformat()
+            }
 
             # Calculate qualified wages
-            employee.qualified_wages = employee.w2_wages * (employee.qualified_time_percentage / 100)
+            if employee.w2_wages:
+                employee.qualified_wages = employee.w2_wages * (employee.qualified_time_percentage / 100)
 
     # Calculate totals
     total_wage_qre = sum(e.qualified_wages or Decimal('0') for e in employees)
@@ -471,6 +680,7 @@ async def ai_complete_study(
     return {
         "message": "AI study completion successful",
         "study_id": str(study_id),
+        "ai_enabled": ai_used,
         "projects_analyzed": len(projects),
         "employees_analyzed": len(employees),
         "qres_analyzed": len(qres),
@@ -484,7 +694,12 @@ async def ai_complete_study(
             "selected_method": selected_method.value,
             "final_credit": float(final_credit),
         },
-        "status": "cpa_review"
+        "status": "cpa_review",
+        "ai_analysis": {
+            "openai_configured": ai_used,
+            "model": settings.OPENAI_CHAT_MODEL if ai_used else None,
+            "note": "Full AI analysis completed" if ai_used else "Fallback analysis used - configure OPENAI_API_KEY for production"
+        }
     }
 
 

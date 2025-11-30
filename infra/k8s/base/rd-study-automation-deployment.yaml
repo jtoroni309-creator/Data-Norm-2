@@ -41,6 +41,14 @@ spec:
               name: azure-storage
               key: connection-string
               optional: true
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-openai
+              key: api-key
+              optional: false
+        - name: OPENAI_CHAT_MODEL
+          value: "gpt-4-turbo-preview"
         resources:
           requests:
             memory: "256Mi"

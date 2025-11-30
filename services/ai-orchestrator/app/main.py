@@ -38,6 +38,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from loguru import logger
+from openai import AsyncOpenAI
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4-turbo-preview")
+
+# Initialize OpenAI client
+openai_client = None
+if OPENAI_API_KEY:
+    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    logger.info("OpenAI client initialized for AI Orchestrator")
+else:
+    logger.warning("OPENAI_API_KEY not set - AI Orchestrator will use fallback mode")
 
 # ============================================================================
 # Application Setup
@@ -682,45 +698,131 @@ class AuraAIEngine:
         reasoning_depth: str = "deep"  # quick, standard, deep
     ) -> Dict[str, Any]:
         """
-        Core thinking function - generates reasoning chain and decision.
+        Core thinking function - generates reasoning chain and decision using real AI.
 
-        This simulates what a real LLM integration would do.
-        In production, this calls GPT-4/Claude with sophisticated prompting.
+        Uses OpenAI GPT-4 for production-quality reasoning and decision making.
+        Falls back to rule-based analysis if OpenAI is not configured.
         """
 
-        # Build reasoning chain (Chain of Thought)
-        reasoning_steps = []
+        # Try to use real AI if OpenAI is configured
+        if openai_client:
+            return await self._think_with_openai(task, context, agent_knowledge, reasoning_depth)
 
-        # Step 1: Understand the task
-        reasoning_steps.append(f"Task Analysis: {task}")
+        # Fallback to rule-based analysis
+        return self._think_fallback(task, context, agent_knowledge)
 
-        # Step 2: Review context
-        reasoning_steps.append(f"Context Review: Found {len(context)} relevant data points")
+    async def _think_with_openai(
+        self,
+        task: str,
+        context: Dict[str, Any],
+        agent_knowledge: List[AgentKnowledge],
+        reasoning_depth: str
+    ) -> Dict[str, Any]:
+        """Use OpenAI for real AI-powered thinking."""
 
-        # Step 3: Apply knowledge
+        # Build context summary
+        context_summary = json.dumps(context, default=str, indent=2)[:2000]  # Limit context size
+        knowledge_summary = "\n".join([f"- {k.pattern}: {k.description}" for k in agent_knowledge[:5]])
+
+        prompt = f"""You are an AI agent for financial auditing and accounting automation.
+
+TASK: {task}
+
+CONTEXT:
+{context_summary}
+
+PRIOR KNOWLEDGE:
+{knowledge_summary if knowledge_summary else "No prior knowledge available"}
+
+Analyze this task and provide:
+1. A clear decision/recommendation
+2. Step-by-step reasoning chain
+3. Alternative options to consider
+4. Risk assessment
+
+Respond with valid JSON only:
+{{
+    "decision": "<your recommended action>",
+    "confidence": <0.0-1.0>,
+    "reasoning_chain": ["<step 1>", "<step 2>", ...],
+    "alternative_options": [
+        {{"option": "<description>", "confidence": <0.0-1.0>}},
+        ...
+    ],
+    "risk_assessment": {{
+        "overall_risk": "<low|medium|high>",
+        "risk_factors": ["<factor 1>", ...]
+    }}
+}}"""
+
+        try:
+            response = await openai_client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a senior financial auditor and automation expert. Provide precise, audit-defensible recommendations."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                max_tokens=1000
+            )
+
+            result_text = response.choices[0].message.content.strip()
+            # Clean markdown if present
+            if result_text.startswith("```"):
+                result_text = result_text.split("```")[1]
+                if result_text.startswith("json"):
+                    result_text = result_text[4:]
+            result = json.loads(result_text)
+
+            # Ensure all required fields are present
+            result.setdefault("decision", f"Recommended action for: {task}")
+            result.setdefault("confidence", 0.8)
+            result.setdefault("reasoning_chain", [])
+            result.setdefault("alternative_options", [])
+            result.setdefault("risk_assessment", {"overall_risk": "medium", "risk_factors": []})
+
+            return result
+
+        except Exception as e:
+            logger.error(f"OpenAI thinking failed: {e}")
+            return self._think_fallback(task, context, agent_knowledge)
+
+    def _think_fallback(
+        self,
+        task: str,
+        context: Dict[str, Any],
+        agent_knowledge: List[AgentKnowledge]
+    ) -> Dict[str, Any]:
+        """Fallback rule-based thinking when OpenAI is unavailable."""
+
+        reasoning_steps = [
+            f"Task Analysis: {task}",
+            f"Context Review: Found {len(context)} relevant data points",
+        ]
+
         if agent_knowledge:
             reasoning_steps.append(f"Applying {len(agent_knowledge)} learned patterns")
 
-        # Step 4: Generate hypothesis
-        reasoning_steps.append("Generating decision hypothesis...")
+        reasoning_steps.extend([
+            "Generating decision hypothesis based on rules...",
+            "Validating against constraints and policies...",
+            "Note: Full AI analysis requires OPENAI_API_KEY configuration"
+        ])
 
-        # Step 5: Validate decision
-        reasoning_steps.append("Validating against constraints and policies...")
-
-        # Simulate confidence scoring
-        confidence = random.uniform(0.75, 0.98)
+        # Calculate confidence based on available context
+        confidence = 0.7 + min(0.2, len(context) * 0.02)
 
         return {
             "decision": f"Recommended action for: {task}",
             "confidence": confidence,
             "reasoning_chain": reasoning_steps,
             "alternative_options": [
-                {"option": "Alternative A", "confidence": confidence - 0.1},
-                {"option": "Alternative B", "confidence": confidence - 0.2}
+                {"option": "Alternative A - conservative approach", "confidence": confidence - 0.1},
+                {"option": "Alternative B - aggressive approach", "confidence": confidence - 0.2}
             ],
             "risk_assessment": {
-                "overall_risk": "low" if confidence > 0.9 else "medium",
-                "risk_factors": []
+                "overall_risk": "low" if confidence > 0.85 else "medium",
+                "risk_factors": ["AI analysis limited - configure OPENAI_API_KEY for full capabilities"]
             }
         }
 
