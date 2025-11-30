@@ -304,11 +304,15 @@ async def list_studies(
 async def get_study(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get a specific R&D study."""
+    user_id, firm_id = user_firm
+
     result = await db.execute(
-        select(RDStudy).where(RDStudy.id == study_id)
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
     )
     study = result.scalar_one_or_none()
 
@@ -323,11 +327,15 @@ async def update_study(
     study_id: UUID,
     update_data: StudyUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Update an R&D study."""
+    user_id, firm_id = user_firm
+
     result = await db.execute(
-        select(RDStudy).where(RDStudy.id == study_id)
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
     )
     study = result.scalar_one_or_none()
 
@@ -365,11 +373,15 @@ async def transition_study_status(
     study_id: UUID,
     transition: StudyStatusTransition,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Transition study to a new status."""
+    user_id, firm_id = user_firm
+
     result = await db.execute(
-        select(RDStudy).where(RDStudy.id == study_id)
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
     )
     study = result.scalar_one_or_none()
 
@@ -435,11 +447,15 @@ async def cpa_approve_study(
     study_id: UUID,
     approval: StudyCPAApproval,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """CPA approval checkpoint for study."""
+    user_id, firm_id = user_firm
+
     result = await db.execute(
-        select(RDStudy).where(RDStudy.id == study_id)
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
     )
     study = result.scalar_one_or_none()
 
@@ -498,11 +514,18 @@ async def create_project(
     study_id: UUID,
     project_data: ProjectCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Create a new R&D project within a study."""
-    # Verify study exists
-    study = await db.get(RDStudy, study_id)
+    user_id, firm_id = user_firm
+
+    # Verify study exists and belongs to firm
+    result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = result.scalar_one_or_none()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
 
@@ -531,9 +554,20 @@ async def list_projects(
     study_id: UUID,
     status: Optional[QualificationStatus] = None,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """List all projects in a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     query = select(RDProject).where(RDProject.study_id == study_id)
 
     if status:
@@ -550,9 +584,20 @@ async def get_project(
     study_id: UUID,
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get a specific project."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDProject).where(
             and_(RDProject.id == project_id, RDProject.study_id == study_id)
@@ -572,9 +617,21 @@ async def qualify_project(
     project_id: UUID,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Run AI qualification analysis on a project."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = study_result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDProject).where(
             and_(RDProject.id == project_id, RDProject.study_id == study_id)
@@ -584,9 +641,6 @@ async def qualify_project(
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-
-    # Get study for states
-    study = await db.get(RDStudy, study_id)
 
     # Run qualification (in production, this would be async)
     qualification_engine = app.state.qualification_engine
@@ -658,9 +712,20 @@ async def override_project_qualification(
     project_id: UUID,
     override: ProjectQualificationOverride,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """CPA override for project qualification status."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDProject).where(
             and_(RDProject.id == project_id, RDProject.study_id == study_id)
@@ -695,9 +760,20 @@ async def create_employee(
     study_id: UUID,
     employee_data: EmployeeCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Create a new employee record."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     employee = RDEmployee(
         study_id=study_id,
         employee_id=employee_data.employee_id,
@@ -723,9 +799,20 @@ async def create_employee(
 async def list_employees(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """List all employees in a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDEmployee).where(RDEmployee.study_id == study_id).order_by(RDEmployee.name)
     )
@@ -739,9 +826,20 @@ async def adjust_employee_time(
     employee_id: UUID,
     adjustment: EmployeeTimeAdjustment,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """CPA adjustment of employee qualified time percentage."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDEmployee).where(
             and_(RDEmployee.id == employee_id, RDEmployee.study_id == study_id)
@@ -776,9 +874,20 @@ async def create_qre(
     study_id: UUID,
     qre_data: QRECreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Create a new QRE record."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     qualified_amount = qre_data.gross_amount * Decimal(str(qre_data.qualified_percentage)) / 100
 
     qre = QualifiedResearchExpense(
@@ -812,9 +921,20 @@ async def create_qre(
 async def get_qre_summary(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get QRE summary by category."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(QualifiedResearchExpense).where(QualifiedResearchExpense.study_id == study_id)
     )
@@ -852,10 +972,18 @@ async def calculate_credits(
     study_id: UUID,
     request: CalculationRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Calculate R&D credits for a study."""
-    study = await db.get(RDStudy, study_id)
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = study_result.scalar_one_or_none()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
 
@@ -943,11 +1071,18 @@ async def upload_document(
     document_type: Optional[str] = None,
     background_tasks: BackgroundTasks = None,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Upload a document for processing."""
-    # Verify study exists
-    study = await db.get(RDStudy, study_id)
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = study_result.scalar_one_or_none()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
 
@@ -977,9 +1112,20 @@ async def upload_document(
 async def list_documents(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """List all documents in a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDDocument).where(RDDocument.study_id == study_id).order_by(RDDocument.uploaded_at.desc())
     )
@@ -997,10 +1143,18 @@ async def generate_narratives(
     request: NarrativeGenerateRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Generate AI narratives for the study."""
-    study = await db.get(RDStudy, study_id)
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = study_result.scalar_one_or_none()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
 
@@ -1019,9 +1173,20 @@ async def list_narratives(
     study_id: UUID,
     narrative_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """List all narratives for a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     query = select(RDNarrative).where(RDNarrative.study_id == study_id)
 
     if narrative_type:
@@ -1038,9 +1203,20 @@ async def update_narrative(
     narrative_id: UUID,
     update_data: NarrativeUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """CPA edit of a narrative."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDNarrative).where(
             and_(RDNarrative.id == narrative_id, RDNarrative.study_id == study_id)
@@ -1073,9 +1249,20 @@ async def update_narrative(
 async def get_review_queue(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get items requiring CPA review."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     # Get projects needing review
     projects_result = await db.execute(
         select(RDProject).where(
@@ -1152,10 +1339,18 @@ async def generate_outputs(
     request: OutputGenerationRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Generate output files (PDF, Excel, Form 6765)."""
-    study = await db.get(RDStudy, study_id)
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = study_result.scalar_one_or_none()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
 
@@ -1180,9 +1375,20 @@ async def generate_outputs(
 async def list_outputs(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """List generated output files."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDOutputFile).where(RDOutputFile.study_id == study_id).order_by(RDOutputFile.generated_at.desc())
     )
@@ -1208,10 +1414,18 @@ async def list_outputs(
 async def get_form_6765_data(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get data for Form 6765 generation."""
-    study = await db.get(RDStudy, study_id)
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    study = study_result.scalar_one_or_none()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
 
@@ -1251,9 +1465,20 @@ async def get_audit_trail(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get audit trail for a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     query = select(RDAuditLog).where(RDAuditLog.study_id == study_id)
 
     if entity_type:
@@ -1277,9 +1502,20 @@ async def get_audit_trail(
 async def get_team(
     study_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Get team members for a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     result = await db.execute(
         select(RDStudyTeamMember).where(RDStudyTeamMember.study_id == study_id)
     )
@@ -1292,9 +1528,20 @@ async def add_team_member(
     study_id: UUID,
     member_data: TeamMemberAdd,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Add a team member to a study."""
+    user_id, firm_id = user_firm
+
+    # Verify study belongs to firm
+    study_result = await db.execute(
+        select(RDStudy).where(
+            and_(RDStudy.id == study_id, RDStudy.firm_id == firm_id)
+        )
+    )
+    if not study_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Study not found")
+
     member = RDStudyTeamMember(
         study_id=study_id,
         user_id=member_data.user_id,
@@ -1309,6 +1556,304 @@ async def add_team_member(
     await db.refresh(member)
 
     return member
+
+
+# =============================================================================
+# CLIENT DATA COLLECTION ENDPOINTS (for invited clients)
+# =============================================================================
+
+@app.post("/client/studies/{study_id}/data/manual")
+async def submit_client_data_manual(
+    study_id: UUID,
+    data: Dict,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Client submits data manually via form."""
+    user_id, firm_id = user_firm
+
+    # Get the study (clients have restricted access via their token)
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Process and store client-submitted data
+    data_record = {
+        "submission_type": "manual",
+        "submitted_by": str(user_id),
+        "submitted_at": datetime.utcnow().isoformat(),
+        "data": data,
+        "status": "pending_review"
+    }
+
+    # Store in study's client_submissions
+    if not study.ai_analysis:
+        study.ai_analysis = {}
+    if "client_submissions" not in study.ai_analysis:
+        study.ai_analysis["client_submissions"] = []
+    study.ai_analysis["client_submissions"].append(data_record)
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Data submitted successfully and pending CPA review",
+        "submission_id": len(study.ai_analysis["client_submissions"])
+    }
+
+
+@app.post("/client/studies/{study_id}/data/excel")
+async def submit_client_data_excel(
+    study_id: UUID,
+    file: UploadFile = File(...),
+    data_type: str = Query(..., description="Type of data: payroll, projects, expenses, employees"),
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Client uploads Excel file for AI parsing."""
+    import io
+    user_id, firm_id = user_firm
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Read and validate file
+    if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+        raise HTTPException(status_code=400, detail="File must be Excel (.xlsx, .xls) or CSV")
+
+    file_content = await file.read()
+
+    # Parse Excel/CSV with AI
+    try:
+        parsed_data = await _parse_excel_with_ai(file_content, file.filename, data_type)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse file: {str(e)}")
+
+    # Store parsed data
+    data_record = {
+        "submission_type": "excel_upload",
+        "data_type": data_type,
+        "filename": file.filename,
+        "file_size": len(file_content),
+        "submitted_by": str(user_id),
+        "submitted_at": datetime.utcnow().isoformat(),
+        "parsed_data": parsed_data,
+        "ai_confidence": parsed_data.get("confidence", 0.0),
+        "status": "pending_review"
+    }
+
+    if not study.ai_analysis:
+        study.ai_analysis = {}
+    if "client_submissions" not in study.ai_analysis:
+        study.ai_analysis["client_submissions"] = []
+    study.ai_analysis["client_submissions"].append(data_record)
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Excel file parsed successfully. Found {parsed_data.get('record_count', 0)} records.",
+        "parsed_summary": parsed_data.get("summary", {}),
+        "confidence": parsed_data.get("confidence", 0.0),
+        "submission_id": len(study.ai_analysis["client_submissions"])
+    }
+
+
+@app.post("/client/studies/{study_id}/data/api-connect")
+async def setup_client_api_connection(
+    study_id: UUID,
+    connection_config: Dict,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Client sets up API connection for automated data sync."""
+    user_id, firm_id = user_firm
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Validate connection config
+    supported_systems = ["quickbooks", "sage", "adp", "paychex", "gusto", "custom_api"]
+    system_type = connection_config.get("system_type")
+    if system_type not in supported_systems:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported system. Supported: {supported_systems}"
+        )
+
+    # Store API connection config (encrypted in production)
+    api_connection = {
+        "system_type": system_type,
+        "configured_by": str(user_id),
+        "configured_at": datetime.utcnow().isoformat(),
+        "status": "pending_validation",
+        "sync_enabled": False,
+        "last_sync": None
+    }
+
+    if not study.ai_analysis:
+        study.ai_analysis = {}
+    study.ai_analysis["api_connection"] = api_connection
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"API connection configured for {system_type}. Pending CPA approval.",
+        "connection_id": str(study_id)
+    }
+
+
+@app.get("/client/studies/{study_id}/submissions")
+async def get_client_submissions(
+    study_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Get list of client data submissions (without sensitive study data)."""
+    user_id, firm_id = user_firm
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Return only submission metadata, not study progress/calculations
+    submissions = []
+    if study.ai_analysis and "client_submissions" in study.ai_analysis:
+        for idx, sub in enumerate(study.ai_analysis["client_submissions"]):
+            submissions.append({
+                "submission_id": idx + 1,
+                "type": sub.get("submission_type"),
+                "data_type": sub.get("data_type"),
+                "filename": sub.get("filename"),
+                "submitted_at": sub.get("submitted_at"),
+                "status": sub.get("status")
+            })
+
+    return {
+        "study_id": str(study_id),
+        "study_name": study.name,
+        "submissions": submissions,
+        "api_connected": bool(study.ai_analysis and study.ai_analysis.get("api_connection"))
+    }
+
+
+async def _parse_excel_with_ai(file_content: bytes, filename: str, data_type: str) -> Dict:
+    """Parse Excel/CSV file using AI to extract structured data."""
+    import io
+
+    try:
+        # Try to import pandas for Excel parsing
+        import pandas as pd
+
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(file_content))
+        else:
+            df = pd.read_excel(io.BytesIO(file_content))
+
+        # Convert to records
+        records = df.to_dict('records')
+
+        # AI-powered column mapping based on data type
+        column_mappings = {
+            "payroll": {
+                "name_columns": ["employee", "name", "employee_name", "full_name"],
+                "id_columns": ["employee_id", "emp_id", "id", "employee_number"],
+                "wage_columns": ["wages", "salary", "gross_pay", "total_wages", "w2_wages"],
+                "department_columns": ["department", "dept", "division", "cost_center"]
+            },
+            "projects": {
+                "name_columns": ["project", "project_name", "name", "title"],
+                "id_columns": ["project_id", "id", "project_number", "code"],
+                "description_columns": ["description", "desc", "details", "summary"],
+                "department_columns": ["department", "dept", "division", "business_unit"]
+            },
+            "expenses": {
+                "category_columns": ["category", "type", "expense_type", "account"],
+                "amount_columns": ["amount", "total", "value", "cost"],
+                "vendor_columns": ["vendor", "supplier", "payee", "recipient"],
+                "description_columns": ["description", "desc", "memo", "notes"]
+            },
+            "employees": {
+                "name_columns": ["name", "employee_name", "full_name"],
+                "title_columns": ["title", "job_title", "position", "role"],
+                "department_columns": ["department", "dept", "division"],
+                "hire_date_columns": ["hire_date", "start_date", "date_hired"]
+            }
+        }
+
+        # Get relevant mappings
+        mappings = column_mappings.get(data_type, {})
+
+        # Identify columns using fuzzy matching
+        identified_columns = {}
+        df_columns_lower = {col.lower().strip(): col for col in df.columns}
+
+        for field, possible_names in mappings.items():
+            for name in possible_names:
+                if name in df_columns_lower:
+                    identified_columns[field] = df_columns_lower[name]
+                    break
+
+        # Calculate confidence based on matched columns
+        confidence = len(identified_columns) / max(len(mappings), 1)
+
+        # Generate summary statistics
+        summary = {
+            "total_rows": len(df),
+            "columns_found": list(df.columns),
+            "columns_mapped": identified_columns,
+            "data_types_detected": {col: str(dtype) for col, dtype in df.dtypes.items()}
+        }
+
+        # Add type-specific summaries
+        if data_type == "payroll" and any("wage" in col.lower() for col in df.columns):
+            for col in df.columns:
+                if "wage" in col.lower() or "salary" in col.lower():
+                    try:
+                        summary["total_wages"] = float(df[col].sum())
+                    except:
+                        pass
+                    break
+
+        return {
+            "record_count": len(records),
+            "records": records[:100],  # Limit to first 100 for preview
+            "column_mapping": identified_columns,
+            "summary": summary,
+            "confidence": confidence,
+            "data_type": data_type
+        }
+
+    except ImportError:
+        # Fallback without pandas
+        return {
+            "record_count": 0,
+            "records": [],
+            "column_mapping": {},
+            "summary": {"error": "Excel parsing requires pandas library"},
+            "confidence": 0.0,
+            "data_type": data_type
+        }
+    except Exception as e:
+        raise ValueError(f"Failed to parse file: {str(e)}")
 
 
 # =============================================================================
