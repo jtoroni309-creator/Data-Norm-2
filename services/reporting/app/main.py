@@ -1,6 +1,7 @@
 """Main FastAPI application for Reporting Service"""
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 import time
@@ -40,11 +41,29 @@ from .schemas import (
     ReportScheduleResponse,
     ReportingStats,
     HTMLToPDFRequest,
-    PDFGenerationOptions
+    PDFGenerationOptions,
+    # Compliance Report Schemas
+    CompilationReportRequest,
+    ReviewReportRequest,
+    AuditReportRequest,
+    ManagementRepLetterRequest,
+    CoverLetterRequest,
+    NotesRequest,
+    CompletePackageRequest,
+    ComplianceReportResponse,
+    CompletePackageResponse
 )
 from .pdf_service import pdf_service
 from .docusign_service import docusign_service
 from .storage_service import storage_service
+from .compliance_report_generator import (
+    compliance_report_generator,
+    complete_package_generator,
+    EngagementType,
+    OpinionType,
+    EntityType,
+    FinancialFramework
+)
 
 # Configure logging
 logging.basicConfig(
@@ -669,6 +688,324 @@ async def get_reporting_stats(db: AsyncSession = Depends(get_db)):
         avg_generation_time_ms=avg_generation_time_ms,
         total_storage_bytes=total_storage_bytes
     )
+
+
+# ========================================
+# Compliance Report Generation (AICPA/PCAOB/GAAP)
+# ========================================
+
+@app.post("/compliance/compilation", response_model=ComplianceReportResponse)
+async def generate_compilation_report(request: CompilationReportRequest):
+    """
+    Generate Compilation Report per SSARS AR-C 80.
+
+    Standards Compliance:
+    - SSARS AR-C 80: Compilation Engagements
+    - AICPA Professional Standards
+    """
+    try:
+        context_dict = request.context.model_dump()
+        if request.context.additional_data:
+            context_dict.update(request.context.additional_data)
+
+        html_content = compliance_report_generator.generate_compilation_report(
+            context=context_dict,
+            opinion_type=OpinionType(request.opinion_type.value),
+            framework=FinancialFramework(request.framework.value)
+        )
+
+        return ComplianceReportResponse(
+            html_content=html_content,
+            report_type="compilation",
+            generated_at=datetime.now(),
+            standards_compliance=["AICPA SSARS AR-C 80", "GAAP"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Compilation report generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate compilation report")
+
+
+@app.post("/compliance/review", response_model=ComplianceReportResponse)
+async def generate_review_report(request: ReviewReportRequest):
+    """
+    Generate Review Report per SSARS AR-C 90.
+
+    Standards Compliance:
+    - SSARS AR-C 90: Review of Financial Statements
+    - AICPA Professional Standards
+    """
+    try:
+        context_dict = request.context.model_dump()
+        if request.context.additional_data:
+            context_dict.update(request.context.additional_data)
+
+        html_content = compliance_report_generator.generate_review_report(
+            context=context_dict,
+            opinion_type=OpinionType(request.opinion_type.value),
+            framework=FinancialFramework(request.framework.value),
+            emphasis_paragraphs=request.emphasis_paragraphs
+        )
+
+        return ComplianceReportResponse(
+            html_content=html_content,
+            report_type="review",
+            generated_at=datetime.now(),
+            standards_compliance=["AICPA SSARS AR-C 90", "GAAP"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Review report generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate review report")
+
+
+@app.post("/compliance/audit", response_model=ComplianceReportResponse)
+async def generate_audit_report(request: AuditReportRequest):
+    """
+    Generate Audit Report per AU-C 700 / PCAOB AS 3101.
+
+    Standards Compliance:
+    - GAAS AU-C 700: Forming an Opinion and Reporting
+    - PCAOB AS 3101: The Auditor's Report (public companies)
+    - AU-C 570: Going Concern
+    - AU-C 260: Communications with Those Charged with Governance
+    """
+    try:
+        context_dict = request.context.model_dump()
+        if request.context.additional_data:
+            context_dict.update(request.context.additional_data)
+
+        # Convert key audit matters to dict format
+        key_audit_matters = None
+        if request.key_audit_matters:
+            key_audit_matters = [kam.model_dump() for kam in request.key_audit_matters]
+
+        html_content = compliance_report_generator.generate_audit_report(
+            context=context_dict,
+            opinion_type=OpinionType(request.opinion_type.value),
+            entity_type=EntityType(request.entity_type.value),
+            framework=FinancialFramework(request.framework.value),
+            going_concern=request.going_concern,
+            key_audit_matters=key_audit_matters,
+            emphasis_paragraphs=request.emphasis_paragraphs,
+            other_matter_paragraphs=request.other_matter_paragraphs
+        )
+
+        standards = ["GAAS AU-C 700", "AICPA", "GAAP"]
+        if request.entity_type.value == "public_company":
+            standards.append("PCAOB AS 3101")
+            standards.append("SEC")
+
+        return ComplianceReportResponse(
+            html_content=html_content,
+            report_type="audit",
+            generated_at=datetime.now(),
+            standards_compliance=standards
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Audit report generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate audit report")
+
+
+@app.post("/compliance/management-rep-letter", response_model=ComplianceReportResponse)
+async def generate_management_rep_letter(request: ManagementRepLetterRequest):
+    """
+    Generate Management Representation Letter per AU-C 580 / AS 2805.
+
+    Standards Compliance:
+    - AU-C 580: Written Representations
+    - PCAOB AS 2805: Management Representations
+    """
+    try:
+        context_dict = request.context.model_dump()
+        if request.context.additional_data:
+            context_dict.update(request.context.additional_data)
+
+        html_content = compliance_report_generator.generate_management_rep_letter(
+            context=context_dict,
+            engagement_type=EngagementType(request.engagement_type.value),
+            include_fraud_representations=request.include_fraud_representations,
+            include_going_concern=request.include_going_concern,
+            additional_representations=request.additional_representations
+        )
+
+        return ComplianceReportResponse(
+            html_content=html_content,
+            report_type="management_rep_letter",
+            generated_at=datetime.now(),
+            standards_compliance=["AU-C 580", "AS 2805", "AICPA"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Management rep letter generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate management representation letter")
+
+
+@app.post("/compliance/cover-letter", response_model=ComplianceReportResponse)
+async def generate_cover_letter(request: CoverLetterRequest):
+    """
+    Generate Cover Letter for financial statement package.
+    """
+    try:
+        context_dict = request.context.model_dump()
+        if request.context.additional_data:
+            context_dict.update(request.context.additional_data)
+
+        html_content = compliance_report_generator.generate_cover_letter(
+            context=context_dict,
+            engagement_type=EngagementType(request.engagement_type.value),
+            include_deliverables_list=request.include_deliverables_list
+        )
+
+        return ComplianceReportResponse(
+            html_content=html_content,
+            report_type="cover_letter",
+            generated_at=datetime.now(),
+            standards_compliance=["Professional Standards"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Cover letter generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate cover letter")
+
+
+@app.post("/compliance/notes", response_model=ComplianceReportResponse)
+async def generate_notes_to_financial_statements(request: NotesRequest):
+    """
+    Generate Notes to Financial Statements per FASB ASC.
+
+    Standards Compliance:
+    - FASB ASC 205-10: Presentation of Financial Statements
+    - FASB ASC 235: Notes to Financial Statements
+    - FASB ASC 275: Risks and Uncertainties
+    - FASB ASC 450: Contingencies
+    - FASB ASC 606: Revenue from Contracts with Customers
+    - FASB ASC 842: Leases
+    """
+    try:
+        context_dict = request.context.model_dump()
+        if request.context.additional_data:
+            context_dict.update(request.context.additional_data)
+
+        html_content = compliance_report_generator.generate_notes_to_financial_statements(
+            context=context_dict,
+            framework=FinancialFramework(request.framework.value),
+            disclosure_selections=request.disclosure_selections
+        )
+
+        return ComplianceReportResponse(
+            html_content=html_content,
+            report_type="notes_to_financial_statements",
+            generated_at=datetime.now(),
+            standards_compliance=["FASB ASC", "GAAP", "SEC Regulation S-X"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Notes generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate notes to financial statements")
+
+
+@app.post("/compliance/complete-package", response_model=CompletePackageResponse)
+async def generate_complete_package(request: CompletePackageRequest):
+    """
+    Generate Complete Financial Statement Package.
+
+    Includes:
+    - Cover Letter
+    - Accountant's Report (Compilation/Review/Audit)
+    - Notes to Financial Statements
+    - Management Representation Letter
+
+    Standards Compliance:
+    - AICPA Professional Standards
+    - PCAOB Auditing Standards (public companies)
+    - FASB ASC / GAAP
+    - SEC Regulations (public companies)
+    """
+    try:
+        sections = complete_package_generator.generate_complete_package(
+            context=request.context,
+            engagement_type=EngagementType(request.engagement_type.value),
+            opinion_type=OpinionType(request.opinion_type.value),
+            entity_type=EntityType(request.entity_type.value),
+            framework=FinancialFramework(request.framework.value),
+            include_sections=request.include_sections
+        )
+
+        standards = ["AICPA", "GAAP", "FASB ASC"]
+        if request.entity_type.value == "public_company":
+            standards.extend(["PCAOB", "SEC"])
+
+        return CompletePackageResponse(
+            sections=sections,
+            engagement_type=request.engagement_type.value,
+            generated_at=datetime.now(),
+            standards_compliance=standards
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Complete package generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate complete package")
+
+
+@app.get("/compliance/standards")
+async def get_supported_standards():
+    """
+    Get list of supported professional standards for report generation.
+    """
+    return {
+        "compilation_standards": [
+            "SSARS AR-C 80 - Compilation Engagements"
+        ],
+        "review_standards": [
+            "SSARS AR-C 90 - Review of Financial Statements"
+        ],
+        "audit_standards": [
+            "GAAS AU-C 700 - Forming an Opinion and Reporting",
+            "GAAS AU-C 570 - Going Concern",
+            "GAAS AU-C 580 - Written Representations",
+            "GAAS AU-C 260 - Communications with Those Charged with Governance",
+            "PCAOB AS 3101 - The Auditor's Report on an Audit of Financial Statements",
+            "PCAOB AS 2401 - Consideration of Fraud",
+            "PCAOB AS 2415 - Consideration of an Entity's Ability to Continue as a Going Concern",
+            "PCAOB AS 2805 - Management Representations",
+            "PCAOB AS 1301 - Communications with Audit Committees"
+        ],
+        "financial_reporting_standards": [
+            "FASB ASC 205-10 - Presentation of Financial Statements",
+            "FASB ASC 235 - Notes to Financial Statements",
+            "FASB ASC 275 - Risks and Uncertainties",
+            "FASB ASC 450 - Contingencies",
+            "FASB ASC 606 - Revenue from Contracts with Customers",
+            "FASB ASC 842 - Leases",
+            "FASB ASC 820 - Fair Value Measurement",
+            "FASB ASC 740 - Income Taxes"
+        ],
+        "sec_standards": [
+            "Regulation S-X - Form and Content of Financial Statements",
+            "Regulation S-K - Disclosure Requirements"
+        ],
+        "supported_frameworks": [
+            "U.S. GAAP",
+            "IFRS",
+            "Tax Basis",
+            "Cash Basis",
+            "Regulatory Basis"
+        ],
+        "opinion_types": {
+            "audit": ["Unmodified", "Qualified (Scope)", "Qualified (GAAP)", "Adverse", "Disclaimer"],
+            "review": ["Unmodified", "Modified"],
+            "compilation": ["Standard", "No Independence", "Omit Disclosures"]
+        }
+    }
 
 
 if __name__ == "__main__":

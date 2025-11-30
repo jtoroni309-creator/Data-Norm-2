@@ -329,3 +329,270 @@ class ReportAuditLog(BaseModel):
     performed_by: UUID
     performed_at: datetime
     details: Optional[Dict[str, Any]] = None
+
+
+# ========================================
+# Compliance Report Schemas (AICPA/PCAOB/GAAP)
+# ========================================
+
+class ComplianceEngagementType(str, Enum):
+    """Engagement types per professional standards"""
+    COMPILATION = "compilation"  # SSARS AR-C 80
+    REVIEW = "review"           # SSARS AR-C 90
+    AUDIT = "audit"             # GAAS AU-C / PCAOB AS
+
+from enum import Enum
+
+class ComplianceOpinionType(str, Enum):
+    """Opinion/Report types per professional standards"""
+    # Audit Opinions (AU-C 700, AS 3101)
+    UNMODIFIED = "unmodified"
+    QUALIFIED_SCOPE = "qualified_scope"
+    QUALIFIED_GAAP = "qualified_gaap"
+    ADVERSE = "adverse"
+    DISCLAIMER = "disclaimer"
+    # Review Conclusions (AR-C 90)
+    REVIEW_UNMODIFIED = "review_unmodified"
+    REVIEW_MODIFIED = "review_modified"
+    # Compilation Reports (AR-C 80)
+    COMPILATION_STANDARD = "compilation_standard"
+    COMPILATION_NO_INDEPENDENCE = "compilation_no_independence"
+    COMPILATION_OMIT_DISCLOSURES = "compilation_omit_disclosures"
+
+
+class ComplianceEntityType(str, Enum):
+    """Entity types for report customization"""
+    PUBLIC_COMPANY = "public_company"
+    PRIVATE_COMPANY = "private_company"
+    NONPROFIT = "nonprofit"
+    GOVERNMENT = "government"
+    ERISA_PLAN = "erisa_plan"
+
+
+class ComplianceFinancialFramework(str, Enum):
+    """Financial reporting frameworks"""
+    GAAP_US = "gaap_us"
+    IFRS = "ifrs"
+    TAX_BASIS = "tax_basis"
+    CASH_BASIS = "cash_basis"
+    REGULATORY_BASIS = "regulatory_basis"
+
+
+class KeyAuditMatter(BaseModel):
+    """Critical audit matter for public company audits (AS 3101)"""
+    title: str
+    description: str
+    audit_response: str
+
+
+class ComplianceReportContext(BaseModel):
+    """Context data for compliance report generation"""
+    # Required fields
+    addressee: str = Field(..., description="Report addressee")
+    entity_name: str = Field(..., description="Name of the entity")
+    financial_statements: List[str] = Field(
+        default=["income", "changes in stockholders' equity", "cash flows"],
+        description="List of statements"
+    )
+    period_end_date: datetime = Field(..., description="Balance sheet date")
+    period_description: str = Field(..., description="E.g., 'year ended December 31, 2024'")
+    firm_name: str = Field(..., description="CPA firm name")
+    report_date: datetime = Field(..., description="Date of report")
+
+    # Optional fields
+    entity_type: Optional[str] = "Company"
+    firm_city: Optional[str] = None
+    firm_state: Optional[str] = None
+    partner_name: Optional[str] = None
+    auditor_tenure_year: Optional[int] = None
+
+    # Going concern
+    going_concern_conditions: Optional[str] = None
+    going_concern_note_number: Optional[str] = None
+
+    # Modification bases
+    qualification_basis: Optional[str] = None
+    scope_limitation_basis: Optional[str] = None
+    adverse_basis: Optional[str] = None
+    disclaimer_basis: Optional[str] = None
+    modification_basis: Optional[str] = None
+
+    # Additional data
+    additional_data: Optional[Dict[str, Any]] = None
+
+
+class CompilationReportRequest(BaseModel):
+    """Request for compilation report generation (SSARS AR-C 80)"""
+    context: ComplianceReportContext
+    opinion_type: ComplianceOpinionType = ComplianceOpinionType.COMPILATION_STANDARD
+    framework: ComplianceFinancialFramework = ComplianceFinancialFramework.GAAP_US
+
+
+class ReviewReportRequest(BaseModel):
+    """Request for review report generation (SSARS AR-C 90)"""
+    context: ComplianceReportContext
+    opinion_type: ComplianceOpinionType = ComplianceOpinionType.REVIEW_UNMODIFIED
+    framework: ComplianceFinancialFramework = ComplianceFinancialFramework.GAAP_US
+    emphasis_paragraphs: Optional[List[str]] = None
+
+
+class AuditReportRequest(BaseModel):
+    """Request for audit report generation (AU-C 700 / AS 3101)"""
+    context: ComplianceReportContext
+    opinion_type: ComplianceOpinionType = ComplianceOpinionType.UNMODIFIED
+    entity_type: ComplianceEntityType = ComplianceEntityType.PRIVATE_COMPANY
+    framework: ComplianceFinancialFramework = ComplianceFinancialFramework.GAAP_US
+    going_concern: bool = False
+    key_audit_matters: Optional[List[KeyAuditMatter]] = None
+    emphasis_paragraphs: Optional[List[str]] = None
+    other_matter_paragraphs: Optional[List[str]] = None
+
+
+class ManagementRepLetterContext(BaseModel):
+    """Context for management representation letter"""
+    firm_name: str
+    firm_address: Optional[str] = None
+    entity_name: str
+    entity_address: Optional[str] = None
+    period_end_date: datetime
+    period_description: str
+    ceo_name: str
+    ceo_title: Optional[str] = "Chief Executive Officer"
+    cfo_name: str
+    cfo_title: Optional[str] = "Chief Financial Officer"
+    letter_date: datetime
+    additional_data: Optional[Dict[str, Any]] = None
+
+
+class ManagementRepLetterRequest(BaseModel):
+    """Request for management representation letter (AU-C 580 / AS 2805)"""
+    context: ManagementRepLetterContext
+    engagement_type: ComplianceEngagementType = ComplianceEngagementType.AUDIT
+    include_fraud_representations: bool = True
+    include_going_concern: bool = False
+    additional_representations: Optional[List[str]] = None
+
+
+class CoverLetterContext(BaseModel):
+    """Context for cover letter"""
+    recipient_name: str
+    recipient_title: Optional[str] = None
+    recipient_company: Optional[str] = None
+    recipient_address: Optional[str] = None
+    recipient_salutation: Optional[str] = None
+    entity_name: str
+    period_description: str
+    firm_name: str
+    firm_address: Optional[str] = None
+    firm_phone: Optional[str] = None
+    firm_email: Optional[str] = None
+    partner_name: str
+    partner_title: Optional[str] = "Partner"
+    letter_date: datetime
+    deliverables: Optional[List[str]] = None
+    management_letter_included: bool = False
+    additional_data: Optional[Dict[str, Any]] = None
+
+
+class CoverLetterRequest(BaseModel):
+    """Request for cover letter generation"""
+    context: CoverLetterContext
+    engagement_type: ComplianceEngagementType = ComplianceEngagementType.AUDIT
+    include_deliverables_list: bool = True
+
+
+class NotesContext(BaseModel):
+    """Context for notes to financial statements"""
+    entity_name: str
+    entity_type: Optional[str] = "Company"
+    period_end_date: datetime
+    period_description: Optional[str] = None
+    nature_of_business: str
+    fiscal_year_end: Optional[str] = None
+
+    # Formation details
+    formation_date: Optional[datetime] = None
+    formation_type: Optional[str] = "incorporated"
+    formation_state: Optional[str] = None
+
+    # Going concern
+    going_concern_conditions: Optional[str] = None
+    going_concern_plans: Optional[str] = None
+
+    # Accounting policies
+    significant_estimates: Optional[str] = None
+    inventory_method: Optional[str] = "first-in, first-out (FIFO)"
+    inventory_components: Optional[str] = None
+    depreciation_method: Optional[str] = "straight-line"
+    useful_lives: Optional[str] = "3 to 39 years"
+    intangible_types: Optional[str] = None
+
+    # Revenue
+    revenue_streams: Optional[List[Dict[str, str]]] = None
+
+    # Debt
+    debt_details: Optional[List[Dict[str, Any]]] = None
+    total_debt: Optional[float] = None
+    current_debt: Optional[float] = None
+    long_term_debt: Optional[float] = None
+    debt_maturities: Optional[List[Dict[str, Any]]] = None
+
+    # Commitments
+    lease_commitments: Optional[str] = None
+    legal_contingencies: Optional[str] = None
+    other_commitments: Optional[str] = None
+
+    # Related parties
+    related_parties: Optional[List[Dict[str, str]]] = None
+
+    # Equity
+    authorized_shares: Optional[str] = "10,000,000"
+    par_value: Optional[str] = "0.001"
+    stock_transactions: Optional[List[str]] = None
+    dividends: Optional[str] = None
+
+    # Concentrations
+    major_customers: Optional[List[Dict[str, Any]]] = None
+
+    # Subsequent events
+    report_date: Optional[datetime] = None
+    subsequent_events_date: Optional[datetime] = None
+    subsequent_events_items: Optional[List[str]] = None
+
+    additional_data: Optional[Dict[str, Any]] = None
+
+
+class NotesRequest(BaseModel):
+    """Request for notes to financial statements (FASB ASC)"""
+    context: NotesContext
+    framework: ComplianceFinancialFramework = ComplianceFinancialFramework.GAAP_US
+    disclosure_selections: Optional[Dict[str, bool]] = None
+
+
+class CompletePackageRequest(BaseModel):
+    """Request for complete financial statement package"""
+    context: Dict[str, Any] = Field(..., description="Full context data for all components")
+    engagement_type: ComplianceEngagementType
+    opinion_type: ComplianceOpinionType
+    entity_type: ComplianceEntityType = ComplianceEntityType.PRIVATE_COMPANY
+    framework: ComplianceFinancialFramework = ComplianceFinancialFramework.GAAP_US
+    include_sections: Optional[Dict[str, bool]] = None
+
+
+class ComplianceReportResponse(BaseModel):
+    """Response for compliance report generation"""
+    html_content: str
+    report_type: str
+    generated_at: datetime
+    standards_compliance: List[str] = Field(
+        default=["AICPA", "GAAP"],
+        description="Standards this report complies with"
+    )
+
+
+class CompletePackageResponse(BaseModel):
+    """Response for complete package generation"""
+    sections: Dict[str, str]
+    engagement_type: str
+    generated_at: datetime
+    standards_compliance: List[str]
