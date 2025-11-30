@@ -385,12 +385,15 @@ const RDStudyWorkspace: React.FC = () => {
 
     try {
       const headers = getAuthHeaders();
+      // Use all_data if available (from AI analysis), otherwise use sample_data
+      const dataToImport = (fileAnalysis as any).all_data || fileAnalysis.sample_data;
+
       const res = await axios.post(
         `${API_BASE_URL}/rd-study/studies/${studyId}/upload/import`,
         {
           data_type: fileAnalysis.primary_data_type,
           mappings: columnMappings,
-          data: fileAnalysis.sample_data,
+          data: dataToImport,
         },
         { headers }
       );
@@ -705,36 +708,109 @@ const RDStudyWorkspace: React.FC = () => {
             {/* Data Import Tab */}
             {activeTab === 'data' && (
               <div className="space-y-6">
-                <div className={`border-2 border-dashed rounded-xl p-8 text-center ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
-                  <svg className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Import Data from Excel/CSV</h3>
-                  <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Upload payroll data, project lists, or expense reports. Our AI will automatically detect column mappings.
-                  </p>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setUploadFile(file);
-                        setShowImportModal(true);
-                      }
-                    }}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                {/* Excel/CSV Import Section */}
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Import from Excel/CSV
+                  </h3>
+                  <div className={`border-2 border-dashed rounded-xl p-8 text-center ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
+                    <svg className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    Select File
-                  </label>
+                    <h4 className={`text-base font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI-Powered Excel Parser</h4>
+                    <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Upload payroll data, project lists, or expense reports. Our AI will intelligently detect and extract all relevant information.
+                    </p>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setUploadFile(file);
+                          setShowImportModal(true);
+                        }
+                      }}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Select Excel/CSV File
+                    </label>
+                  </div>
+                </div>
+
+                {/* Payroll API Connections Section */}
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Connect Payroll Provider
+                  </h3>
+                  <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Connect directly to your payroll system for automatic data import. We'll securely pull employee and wage information.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      {
+                        id: 'adp_run',
+                        name: 'ADP Run',
+                        desc: 'RUN Powered by ADP for small businesses',
+                        logo: '🅰️',
+                        color: 'from-red-500 to-red-600'
+                      },
+                      {
+                        id: 'justworks',
+                        name: 'Justworks',
+                        desc: 'PEO & payroll for growing companies',
+                        logo: '🟦',
+                        color: 'from-blue-500 to-blue-600'
+                      },
+                      {
+                        id: 'paychex',
+                        name: 'Paychex Flex',
+                        desc: 'Comprehensive payroll & HR solutions',
+                        logo: '🟩',
+                        color: 'from-green-500 to-green-600'
+                      },
+                    ].map((provider) => (
+                      <button
+                        key={provider.id}
+                        onClick={async () => {
+                          try {
+                            setError(null);
+                            const headers = getAuthHeaders();
+                            const res = await axios.post(
+                              `${API_BASE_URL}/rd-study/studies/${studyId}/payroll/connect`,
+                              { provider: provider.id },
+                              { headers }
+                            );
+                            if (res.data.oauth_url) {
+                              setSuccessMessage(`Connecting to ${provider.name}. OAuth flow would redirect to: ${res.data.oauth_url}`);
+                            } else {
+                              setSuccessMessage(`${provider.name} connection initiated`);
+                            }
+                          } catch (err: any) {
+                            setError(err.response?.data?.detail || `Failed to connect to ${provider.name}`);
+                          }
+                        }}
+                        className={`${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-50'} rounded-xl p-5 text-left transition-all border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} hover:shadow-lg`}
+                      >
+                        <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${provider.color} flex items-center justify-center text-white text-xl mb-3`}>
+                          {provider.logo}
+                        </div>
+                        <div className={`font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{provider.name}</div>
+                        <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{provider.desc}</div>
+                        <div className={`mt-3 text-sm font-medium ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                          Connect →
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Supported formats info */}
@@ -742,9 +818,9 @@ const RDStudyWorkspace: React.FC = () => {
                   <h4 className={`font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Supported Data Types</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
-                      { name: 'Payroll Data', desc: 'Employee names, titles, wages', icon: '💰' },
-                      { name: 'Project Lists', desc: 'R&D projects with descriptions', icon: '📋' },
-                      { name: 'Expense Reports', desc: 'Supplies and contract research', icon: '📊' },
+                      { name: 'Payroll Data', desc: 'Employee names, titles, wages, departments', icon: '💰' },
+                      { name: 'Project Lists', desc: 'R&D projects with descriptions & timelines', icon: '📋' },
+                      { name: 'Expense Reports', desc: 'Supplies, contractors, and research costs', icon: '📊' },
                     ].map((item) => (
                       <div key={item.name} className={`${theme === 'dark' ? 'bg-gray-600' : 'bg-white'} rounded-lg p-4`}>
                         <div className="text-2xl mb-2">{item.icon}</div>
@@ -752,6 +828,21 @@ const RDStudyWorkspace: React.FC = () => {
                         <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{item.desc}</div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Manual Entry Tip */}
+                <div className={`${theme === 'dark' ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'} border rounded-xl p-4`}>
+                  <div className="flex items-start gap-3">
+                    <svg className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <div className={`font-medium ${theme === 'dark' ? 'text-blue-300' : 'text-blue-900'}`}>Prefer Manual Entry?</div>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                        You can also add employees and projects manually using the tabs above. Our AI will help estimate qualified R&D percentages.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

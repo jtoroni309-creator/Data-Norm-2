@@ -2,11 +2,13 @@
 AI Data Processing Routes
 
 Handles AI-powered document processing, data extraction, and study completion.
+Uses OpenAI for intelligent Excel parsing and data extraction.
 """
 
 import logging
 import io
 import json
+import os
 from uuid import UUID
 from datetime import datetime
 from typing import List, Optional
@@ -25,6 +27,15 @@ from ..models import (
     RDCalculation, StudyStatus, QualificationStatus, QRECategory, CreditMethod
 )
 
+# OpenAI client for AI-powered parsing
+try:
+    from openai import OpenAI
+    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY if hasattr(settings, 'OPENAI_API_KEY') else ""))
+    HAS_OPENAI = bool(os.getenv("OPENAI_API_KEY") or (hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY))
+except Exception:
+    openai_client = None
+    HAS_OPENAI = False
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -34,6 +45,156 @@ router = APIRouter()
 # UNIFIED FILE UPLOAD & ANALYSIS (Expected by Frontend)
 # =============================================================================
 
+async def ai_analyze_columns(columns: list, sample_data: list) -> dict:
+    """Use OpenAI to intelligently analyze columns and detect data types."""
+    if not HAS_OPENAI or not openai_client:
+        return None
+
+    try:
+        # Prepare data summary for AI
+        data_summary = f"Columns: {columns}\n\nSample data (first 3 rows):\n"
+        for i, row in enumerate(sample_data[:3]):
+            data_summary += f"Row {i+1}: {json.dumps(row, default=str)}\n"
+
+        prompt = f"""Analyze this Excel/CSV data for R&D tax credit study purposes.
+
+{data_summary}
+
+Determine:
+1. What type of data this is: "payroll" (employee wages), "projects" (R&D projects), or "expenses" (supplies/contracts)
+2. Map each column to one of these fields:
+   - For payroll: name, title, department, wages, qualified_time
+   - For projects: name, description, department, business_component, start_date, end_date
+   - For expenses: description, amount, vendor, category
+
+Return JSON in this exact format:
+{{
+    "data_type": "payroll|projects|expenses",
+    "confidence": 0.0-1.0,
+    "column_mappings": [
+        {{"source_column": "column_name", "suggested_field": "field_name", "confidence": 0.0-1.0}},
+        ...
+    ],
+    "analysis": "Brief explanation of what you found",
+    "recommendations": ["recommendation 1", "recommendation 2"]
+}}"""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=1000,
+            response_format={"type": "json_object"}
+        )
+
+        result = json.loads(response.choices[0].message.content)
+        return result
+    except Exception as e:
+        logger.warning(f"OpenAI analysis failed: {str(e)}")
+        return None
+
+
+def fallback_column_analysis(columns: list, sample_data: list) -> dict:
+    """Fallback pattern-based column analysis when AI is unavailable."""
+    column_mappings = []
+    detected_types = []
+
+    # Pattern indicators
+    payroll_indicators = {
+        'name': ['name', 'employee', 'full_name', 'employee_name', 'emp_name', 'worker', 'staff'],
+        'title': ['title', 'job_title', 'position', 'role', 'job', 'designation'],
+        'department': ['department', 'dept', 'division', 'cost_center', 'team', 'group', 'unit'],
+        'wages': ['wages', 'salary', 'w2', 'gross_pay', 'total_wages', 'compensation', 'earnings', 'pay', 'income', 'annual', 'ytd'],
+        'qualified_time': ['qualified', 'rd_time', 'r&d', 'research_pct', 'percent', 'qre', '%']
+    }
+
+    project_indicators = {
+        'name': ['project', 'project_name', 'initiative', 'program'],
+        'description': ['description', 'desc', 'details', 'summary', 'overview', 'notes', 'activities'],
+        'business_component': ['business_component', 'component', 'product', 'service', 'business']
+    }
+
+    expense_indicators = {
+        'description': ['description', 'desc', 'item', 'expense', 'memo', 'purpose'],
+        'amount': ['amount', 'total', 'cost', 'value', 'price', 'sum', 'spend'],
+        'vendor': ['vendor', 'supplier', 'payee', 'company', 'contractor']
+    }
+
+    for col in columns:
+        col_lower = str(col).lower().strip().replace('_', ' ')
+        mapping = {"source_column": str(col), "confidence": 0.0, "suggested_field": None, "data_type": None}
+
+        # Check payroll indicators
+        for field, indicators in payroll_indicators.items():
+            for ind in indicators:
+                if ind in col_lower or col_lower in ind:
+                    mapping["suggested_field"] = field
+                    mapping["confidence"] = 0.9 if ind == col_lower or col_lower == ind else 0.75
+                    mapping["data_type"] = "payroll"
+                    if "payroll" not in detected_types:
+                        detected_types.append("payroll")
+                    break
+            if mapping["suggested_field"]:
+                break
+
+        # Check project indicators
+        if not mapping["suggested_field"]:
+            for field, indicators in project_indicators.items():
+                for ind in indicators:
+                    if ind in col_lower or col_lower in ind:
+                        mapping["suggested_field"] = field
+                        mapping["confidence"] = 0.85 if ind == col_lower else 0.7
+                        mapping["data_type"] = "projects"
+                        if "projects" not in detected_types:
+                            detected_types.append("projects")
+                        break
+                if mapping["suggested_field"]:
+                    break
+
+        # Check expense indicators
+        if not mapping["suggested_field"]:
+            for field, indicators in expense_indicators.items():
+                for ind in indicators:
+                    if ind in col_lower or col_lower in ind:
+                        mapping["suggested_field"] = field
+                        mapping["confidence"] = 0.80 if ind == col_lower else 0.65
+                        mapping["data_type"] = "expenses"
+                        if "supplies" not in detected_types:
+                            detected_types.append("supplies")
+                        break
+                if mapping["suggested_field"]:
+                    break
+
+        column_mappings.append(mapping)
+
+    # Infer from sample data if column names don't match
+    for i, col in enumerate(columns):
+        if column_mappings[i]["suggested_field"] is None and sample_data:
+            sample_values = [str(row.get(col, '')) for row in sample_data[:5] if row.get(col)]
+            # Check if values look like currency/wages
+            currency_count = sum(1 for v in sample_values if '$' in v or any(c.isdigit() for c in v.replace(',', '').replace('.', '')))
+            if currency_count >= len(sample_values) * 0.7 and sample_values:
+                # Check if large numbers (likely wages)
+                try:
+                    numeric_vals = [float(v.replace('$', '').replace(',', '')) for v in sample_values if v]
+                    if any(n > 1000 for n in numeric_vals):
+                        column_mappings[i]["suggested_field"] = "wages"
+                        column_mappings[i]["confidence"] = 0.6
+                        column_mappings[i]["data_type"] = "payroll"
+                        if "payroll" not in detected_types:
+                            detected_types.append("payroll")
+                except:
+                    pass
+
+    primary_type = "payroll" if "payroll" in detected_types else ("projects" if "projects" in detected_types else ("expenses" if detected_types else "unknown"))
+
+    return {
+        "data_type": primary_type,
+        "column_mappings": column_mappings,
+        "detected_types": detected_types
+    }
+
+
 @router.post("/studies/{study_id}/upload/analyze")
 async def analyze_uploaded_file(
     study_id: UUID,
@@ -42,7 +203,8 @@ async def analyze_uploaded_file(
 ):
     """
     AI-powered analysis of uploaded Excel/CSV file.
-    Detects data types, column mappings, and provides import recommendations.
+    Uses OpenAI GPT-4 to intelligently detect data types, column mappings, and extract information.
+    Falls back to pattern matching if AI is unavailable.
     """
     study = await db.get(RDStudy, study_id)
     if not study:
@@ -51,117 +213,62 @@ async def analyze_uploaded_file(
     # Read file content
     content = await file.read()
     filename = file.filename or "unknown"
+    sheets_info = []
 
     try:
         # Detect file type and parse
         if filename.endswith('.csv'):
             df = pd.read_csv(io.BytesIO(content))
+            sheets_info = [{"name": "Sheet1", "row_count": len(df), "columns": list(df.columns)}]
         else:
             wb = openpyxl.load_workbook(io.BytesIO(content))
-            sheets_info = []
             for sheet_name in wb.sheetnames:
                 sheet = wb[sheet_name]
                 row_count = sum(1 for _ in sheet.iter_rows(min_row=2, values_only=True) if any(cell for cell in _))
+                cols = [cell.value for cell in sheet[1] if cell.value]
                 sheets_info.append({
                     "name": sheet_name,
                     "row_count": row_count,
-                    "columns": [cell.value for cell in sheet[1] if cell.value]
+                    "columns": cols
                 })
             # Use first sheet for analysis
             df = pd.read_excel(io.BytesIO(content), sheet_name=wb.sheetnames[0])
 
+        # Clean column names
+        df.columns = [str(c).strip() for c in df.columns]
         columns = list(df.columns)
-        sample_data = df.head(5).to_dict('records')
 
-        # AI-powered column mapping detection
-        column_mappings = []
-        detected_types = []
+        # Get all data (not just sample) for import
+        all_data = df.replace({pd.NaT: None, float('nan'): None}).to_dict('records')
+        sample_data = all_data[:5]
 
-        # Detect payroll/employee data
-        payroll_indicators = {
-            'name': ['name', 'employee', 'full_name', 'employee_name'],
-            'title': ['title', 'job_title', 'position', 'role'],
-            'department': ['department', 'dept', 'division', 'cost_center'],
-            'wages': ['wages', 'salary', 'w2', 'gross_pay', 'total_wages', 'compensation'],
-            'qualified_time': ['qualified', 'rd_time', 'r&d', 'research_pct', 'percent']
-        }
+        # Try AI-powered analysis first
+        ai_result = await ai_analyze_columns(columns, sample_data)
 
-        # Detect project data
-        project_indicators = {
-            'name': ['project', 'project_name', 'name', 'title'],
-            'description': ['description', 'desc', 'details', 'summary', 'overview'],
-            'business_component': ['business_component', 'component', 'product', 'service']
-        }
+        if ai_result:
+            # Use AI analysis
+            logger.info("Using AI-powered column analysis")
+            column_mappings = ai_result.get("column_mappings", [])
+            primary_type = ai_result.get("data_type", "unknown")
+            detected_types = [primary_type] if primary_type != "unknown" else []
+            ai_analysis = ai_result.get("analysis", "")
+            ai_recommendations = ai_result.get("recommendations", [])
+            overall_confidence = ai_result.get("confidence", 0.8)
+            used_ai = True
+        else:
+            # Fallback to pattern matching
+            logger.info("Using fallback pattern-based column analysis")
+            fallback_result = fallback_column_analysis(columns, sample_data)
+            column_mappings = fallback_result["column_mappings"]
+            primary_type = fallback_result["data_type"]
+            detected_types = fallback_result["detected_types"]
+            ai_analysis = ""
+            ai_recommendations = []
+            mapped_count = sum(1 for m in column_mappings if m["confidence"] > 0.5)
+            overall_confidence = mapped_count / len(columns) if columns else 0
+            used_ai = False
 
-        # Detect expense data
-        expense_indicators = {
-            'description': ['description', 'desc', 'item', 'expense'],
-            'amount': ['amount', 'total', 'cost', 'value', 'price'],
-            'vendor': ['vendor', 'supplier', 'payee', 'company']
-        }
-
-        for col in columns:
-            col_lower = str(col).lower().strip()
-            mapping = {
-                "source_column": col,
-                "confidence": 0.0,
-                "suggested_field": None,
-                "data_type": None
-            }
-
-            # Check payroll indicators
-            for field, indicators in payroll_indicators.items():
-                for ind in indicators:
-                    if ind in col_lower:
-                        mapping["suggested_field"] = field
-                        mapping["confidence"] = 0.85 if ind == col_lower else 0.7
-                        mapping["data_type"] = "payroll"
-                        if "payroll" not in detected_types:
-                            detected_types.append("payroll")
-                        break
-                if mapping["suggested_field"]:
-                    break
-
-            # Check project indicators if no payroll match
-            if not mapping["suggested_field"]:
-                for field, indicators in project_indicators.items():
-                    for ind in indicators:
-                        if ind in col_lower:
-                            mapping["suggested_field"] = field
-                            mapping["confidence"] = 0.85 if ind == col_lower else 0.7
-                            mapping["data_type"] = "projects"
-                            if "projects" not in detected_types:
-                                detected_types.append("projects")
-                            break
-                    if mapping["suggested_field"]:
-                        break
-
-            # Check expense indicators if no match yet
-            if not mapping["suggested_field"]:
-                for field, indicators in expense_indicators.items():
-                    for ind in indicators:
-                        if ind in col_lower:
-                            mapping["suggested_field"] = field
-                            mapping["confidence"] = 0.80 if ind == col_lower else 0.65
-                            mapping["data_type"] = "expenses"
-                            if "supplies" not in detected_types:
-                                detected_types.append("supplies")
-                            break
-                    if mapping["suggested_field"]:
-                        break
-
-            column_mappings.append(mapping)
-
-        # Determine primary data type
-        primary_type = "unknown"
-        if detected_types:
-            primary_type = max(set(detected_types), key=detected_types.count)
-
-        # Calculate overall confidence
-        mapped_count = sum(1 for m in column_mappings if m["confidence"] > 0.5)
-        overall_confidence = mapped_count / len(columns) if columns else 0
-
-        # Generate issues and recommendations
+        # Generate issues
         issues = []
         if overall_confidence < 0.5:
             issues.append({
@@ -172,9 +279,8 @@ async def analyze_uploaded_file(
 
         # Check for missing critical fields
         if primary_type == "payroll":
-            required = ["name", "wages"]
-            found = [m["suggested_field"] for m in column_mappings if m["confidence"] > 0.5]
-            missing = [r for r in required if r not in found]
+            found = [m.get("suggested_field") for m in column_mappings if m.get("confidence", 0) > 0.5]
+            missing = [r for r in ["name", "wages"] if r not in found]
             if missing:
                 issues.append({
                     "type": "missing_fields",
@@ -182,24 +288,30 @@ async def analyze_uploaded_file(
                     "severity": "warning"
                 })
 
+        # Build recommendations
+        recommendations = ai_recommendations if ai_recommendations else [
+            f"Detected as {primary_type} data with {overall_confidence:.0%} confidence",
+            "Review column mappings before importing",
+            "Ensure all required fields are mapped correctly"
+        ]
+
         return {
             "success": True,
             "filename": filename,
             "file_size": len(content),
-            "sheets": sheets_info if 'sheets_info' in dir() else [{"name": "Sheet1", "row_count": len(df)}],
+            "sheets": sheets_info,
             "detected_data_types": detected_types,
             "primary_data_type": primary_type,
             "columns": columns,
             "column_mappings": column_mappings,
             "sample_data": sample_data,
+            "all_data": all_data,  # Include all data for import
             "total_rows": len(df),
             "overall_confidence": overall_confidence,
             "issues": issues,
-            "recommendations": [
-                f"Detected as {primary_type} data with {overall_confidence:.0%} confidence",
-                "Review column mappings before importing",
-                "Ensure all required fields are mapped correctly"
-            ]
+            "recommendations": recommendations,
+            "ai_analysis": ai_analysis,
+            "used_ai": used_ai
         }
 
     except Exception as e:
@@ -336,13 +448,26 @@ async def connect_payroll_provider(
         raise HTTPException(status_code=404, detail="Study not found")
 
     provider = connection.get("provider", "").lower()
-    supported_providers = ["adp", "gusto", "paychex", "quickbooks", "sage", "intuit"]
+    # Map frontend provider IDs to canonical names
+    provider_mapping = {
+        "adp_run": "adp",
+        "adp": "adp",
+        "justworks": "justworks",
+        "paychex": "paychex",
+        "paychex_flex": "paychex",
+        "gusto": "gusto",
+        "quickbooks": "quickbooks",
+        "sage": "sage",
+        "intuit": "intuit"
+    }
 
-    if provider not in supported_providers:
+    canonical_provider = provider_mapping.get(provider)
+    if not canonical_provider:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported provider. Supported: {', '.join(supported_providers)}"
+            detail=f"Unsupported provider '{provider}'. Supported: adp_run, justworks, paychex"
         )
+    provider = canonical_provider
 
     # Store connection config (would be encrypted in production)
     if not study.ai_analysis:
