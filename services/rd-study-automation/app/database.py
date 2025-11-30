@@ -80,21 +80,23 @@ async def init_db():
     Initialize database tables and extensions.
     Should be called on startup.
     """
+    # First, ensure schema and required extensions
     async with engine.begin() as conn:
         # Ensure schema exists
         await conn.execute(text("CREATE SCHEMA IF NOT EXISTS atlas"))
-
         # Ensure required extensions
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""))
 
-        # pgvector is optional - only available on certain PostgreSQL configurations
-        try:
+    # Try pgvector in a separate transaction (optional extension)
+    try:
+        async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"pgvector\""))
             logger.info("pgvector extension enabled")
-        except Exception as e:
-            logger.warning(f"pgvector extension not available (vector search disabled): {e}")
+    except Exception as e:
+        logger.warning(f"pgvector extension not available (vector search disabled): {e}")
 
-        # Create all tables
+    # Create tables in a separate transaction
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     logger.info("Database initialized successfully")
