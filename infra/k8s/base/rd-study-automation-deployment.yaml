@@ -49,6 +49,21 @@ spec:
               optional: true
         - name: OPENAI_CHAT_MODEL
           value: "gpt-4-turbo-preview"
+        # Azure OpenAI Configuration (preferred when configured)
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: aura-azure-openai
+              key: endpoint
+              optional: true
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-azure-openai
+              key: api-key
+              optional: true
+        - name: AZURE_OPENAI_DEPLOYMENT
+          value: "gpt-4"
         resources:
           requests:
             memory: "256Mi"

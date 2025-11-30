@@ -38,22 +38,42 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from loguru import logger
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, AsyncAzureOpenAI
 
 # ============================================================================
 # Configuration
 # ============================================================================
 
+# Standard OpenAI settings
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4-turbo-preview")
 
-# Initialize OpenAI client
+# Azure OpenAI settings (preferred when configured)
+AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
+AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY", "")
+AZURE_OPENAI_DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
+AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+
+# Initialize OpenAI client - prefer Azure OpenAI if configured
 openai_client = None
-if OPENAI_API_KEY:
+ACTIVE_MODEL = OPENAI_MODEL
+
+if AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY:
+    # Use Azure OpenAI
+    openai_client = AsyncAzureOpenAI(
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version=AZURE_OPENAI_API_VERSION
+    )
+    ACTIVE_MODEL = AZURE_OPENAI_DEPLOYMENT
+    logger.info(f"Azure OpenAI client initialized - endpoint: {AZURE_OPENAI_ENDPOINT}, deployment: {AZURE_OPENAI_DEPLOYMENT}")
+elif OPENAI_API_KEY:
+    # Fall back to regular OpenAI
     openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    ACTIVE_MODEL = OPENAI_MODEL
     logger.info("OpenAI client initialized for AI Orchestrator")
 else:
-    logger.warning("OPENAI_API_KEY not set - AI Orchestrator will use fallback mode")
+    logger.warning("No OpenAI credentials configured - AI Orchestrator will use fallback mode")
 
 # ============================================================================
 # Application Setup
@@ -757,7 +777,7 @@ Respond with valid JSON only:
 
         try:
             response = await openai_client.chat.completions.create(
-                model=OPENAI_MODEL,
+                model=ACTIVE_MODEL,
                 messages=[
                     {"role": "system", "content": "You are a senior financial auditor and automation expert. Provide precise, audit-defensible recommendations."},
                     {"role": "user", "content": prompt}
@@ -765,6 +785,7 @@ Respond with valid JSON only:
                 temperature=0.2,
                 max_tokens=1000
             )
+            logger.info(f"AI thinking completed using model: {ACTIVE_MODEL}")
 
             result_text = response.choices[0].message.content.strip()
             # Clean markdown if present

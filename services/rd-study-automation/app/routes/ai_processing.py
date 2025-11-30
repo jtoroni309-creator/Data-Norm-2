@@ -43,6 +43,12 @@ async def qualify_project_with_ai(openai_client, project: RDProject) -> dict:
         # Fallback for when OpenAI is not configured
         return _fallback_qualify_project(project)
 
+    # Determine model/deployment name based on client type
+    if settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
+        model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4"
+    else:
+        model_name = settings.OPENAI_CHAT_MODEL
+
     prompt = f"""Analyze this R&D project against the IRS Section 41 four-part test for R&D tax credit qualification.
 
 PROJECT INFORMATION:
@@ -80,7 +86,7 @@ Respond with valid JSON only (no markdown):
 
     try:
         response = await openai_client.chat.completions.create(
-            model=settings.OPENAI_CHAT_MODEL,
+            model=model_name,
             messages=[
                 {"role": "system", "content": "You are an expert R&D tax credit analyst with deep knowledge of IRC Section 41, Treasury Regulations, and IRS guidance. Provide objective, audit-defensible analysis."},
                 {"role": "user", "content": prompt}
@@ -96,6 +102,7 @@ Respond with valid JSON only (no markdown):
             if result_text.startswith("json"):
                 result_text = result_text[4:]
         result = json.loads(result_text)
+        logger.info(f"AI project qualification successful using {model_name}")
         return result
 
     except Exception as e:
@@ -149,6 +156,12 @@ async def analyze_employee_allocation_with_ai(openai_client, employee: RDEmploye
     if not openai_client:
         return _fallback_employee_allocation(employee)
 
+    # Determine model/deployment name based on client type
+    if settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
+        model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4"
+    else:
+        model_name = settings.OPENAI_CHAT_MODEL
+
     project_summaries = "\n".join([
         f"- {p.name}: {p.description[:200] if p.description else 'No description'}"
         for p in projects[:10]  # Limit to first 10 projects
@@ -181,7 +194,7 @@ Respond with valid JSON only:
 
     try:
         response = await openai_client.chat.completions.create(
-            model=settings.OPENAI_CHAT_MODEL,
+            model=model_name,
             messages=[
                 {"role": "system", "content": "You are an R&D tax credit specialist with expertise in employee time allocation studies. Be conservative and audit-defensible in your estimates."},
                 {"role": "user", "content": prompt}
@@ -196,6 +209,7 @@ Respond with valid JSON only:
             if result_text.startswith("json"):
                 result_text = result_text[4:]
         result = json.loads(result_text)
+        logger.info(f"AI employee allocation successful using {model_name}")
         return result
 
     except Exception as e:

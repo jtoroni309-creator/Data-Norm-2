@@ -53,7 +53,8 @@ class Settings(BaseSettings):
     # Azure OpenAI (alternative)
     AZURE_OPENAI_ENDPOINT: Optional[str] = None
     AZURE_OPENAI_API_KEY: Optional[str] = None
-    AZURE_OPENAI_DEPLOYMENT: Optional[str] = None
+    AZURE_OPENAI_DEPLOYMENT: Optional[str] = "gpt-4"  # Chat model deployment name
+    AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
 
     # S3/MinIO for document storage
     S3_ENDPOINT: str = "http://minio:9000"

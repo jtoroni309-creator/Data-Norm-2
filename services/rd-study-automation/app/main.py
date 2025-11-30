@@ -18,7 +18,7 @@ from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, or_
 from sqlalchemy.orm import selectinload
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, AsyncAzureOpenAI
 
 from .config import settings
 from .database import get_db, init_db, close_db, set_rls_context
@@ -64,13 +64,22 @@ async def lifespan(app: FastAPI):
     logger.info("Starting R&D Study Automation Service...")
     await init_db()
 
-    # Initialize OpenAI client
+    # Initialize OpenAI client - prefer Azure OpenAI if configured
     openai_client = None
-    if settings.OPENAI_API_KEY:
+    if settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
+        # Use Azure OpenAI
+        openai_client = AsyncAzureOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            api_key=settings.AZURE_OPENAI_API_KEY,
+            api_version="2024-02-15-preview"
+        )
+        logger.info(f"Azure OpenAI client initialized - endpoint: {settings.AZURE_OPENAI_ENDPOINT}")
+    elif settings.OPENAI_API_KEY:
+        # Fall back to regular OpenAI
         openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         logger.info("OpenAI client initialized successfully")
     else:
-        logger.warning("OPENAI_API_KEY not configured - AI features will use fallback mode")
+        logger.warning("No OpenAI credentials configured - AI features will use fallback mode")
 
     # Initialize engines
     app.state.rules_engine = RulesEngine(version=settings.RULES_VERSION)
