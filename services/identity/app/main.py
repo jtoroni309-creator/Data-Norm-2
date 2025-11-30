@@ -39,6 +39,7 @@ from app.schemas import (
     UserInvitationCreate,
     UserInvitationResponse,
     UserInvitationAccept,
+    UserInvitationValidateResponse,
     UserPermissionUpdate,
     UserPermissionResponse,
     UserUpdate,
@@ -47,7 +48,10 @@ from app.schemas import (
     ClientResponse,
     PasswordResetRequest,
     PasswordResetResponse,
-    PasswordResetConfirm
+    PasswordResetConfirm,
+    RDStudyClientInvitationCreate,
+    RDStudyClientInvitationResponse,
+    RDStudyClientInvitationValidate
 )
 
 # Configure logging
@@ -1404,6 +1408,136 @@ async def list_invitations(
     return [UserInvitationResponse.model_validate(inv) for inv in invitations]
 
 
+@app.get("/invitations/validate", response_model=UserInvitationValidateResponse)
+async def validate_invitation(
+    token: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Validate an invitation token and return invitation details.
+
+    This endpoint is used by the AcceptInvitation page to display
+    invitation details before the user creates their account.
+
+    Returns 404 if token is invalid, 410 if expired.
+    """
+    result = await db.execute(
+        select(UserInvitation).where(UserInvitation.token == token)
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+
+    # Check if already accepted
+    if invitation.accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Invitation has already been used"
+        )
+
+    # Check if expired
+    if invitation.is_expired or invitation.expires_at < datetime.utcnow():
+        if not invitation.is_expired:
+            invitation.is_expired = True
+            await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Invitation has expired"
+        )
+
+    # Get organization name
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == invitation.organization_id)
+    )
+    organization = org_result.scalar_one_or_none()
+    org_name = organization.firm_name if organization else "Unknown Organization"
+
+    # Get inviter name
+    inviter_result = await db.execute(
+        select(User).where(User.id == invitation.invited_by_user_id)
+    )
+    inviter = inviter_result.scalar_one_or_none()
+    inviter_name = inviter.full_name if inviter else "A team member"
+
+    return UserInvitationValidateResponse(
+        email=invitation.email,
+        organization_name=org_name,
+        role=invitation.role,
+        invited_by=inviter_name,
+        expires_at=invitation.expires_at
+    )
+
+
+@app.post("/invitations/{invitation_id}/resend", response_model=UserInvitationResponse)
+async def resend_invitation(
+    invitation_id: UUID,
+    current_user: User = Depends(require_role([RoleEnum.PARTNER, RoleEnum.MANAGER])),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Resend an invitation email and extend the expiration date.
+
+    Requires: Partner or Manager role
+    """
+    result = await db.execute(
+        select(UserInvitation).where(
+            and_(
+                UserInvitation.id == invitation_id,
+                UserInvitation.organization_id == current_user.organization_id
+            )
+        )
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+
+    if invitation.accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has already been accepted"
+        )
+
+    # Extend expiration and reset expired flag
+    invitation.expires_at = datetime.utcnow() + timedelta(days=7)
+    invitation.is_expired = False
+
+    await db.commit()
+    await db.refresh(invitation)
+
+    # Get organization name for email
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == invitation.organization_id)
+    )
+    organization = org_result.scalar_one_or_none()
+    org_name = organization.firm_name if organization else "Your Organization"
+
+    # Send invitation email
+    try:
+        from app.email_service import get_email_service
+        email_service = get_email_service()
+        await email_service.send_invitation_email(
+            to_email=invitation.email,
+            to_name=invitation.email.split('@')[0],
+            invitation_token=invitation.token,
+            invited_by=current_user.full_name,
+            organization_name=org_name,
+            role=invitation.role.value
+        )
+        logger.info(f"Invitation email resent to {invitation.email}")
+    except Exception as e:
+        logger.error(f"Error resending invitation email to {invitation.email}: {e}")
+
+    return UserInvitationResponse.model_validate(invitation)
+
+
 @app.post("/invitations/accept", response_model=TokenResponse)
 async def accept_invitation(
     acceptance_data: UserInvitationAccept,
@@ -2054,5 +2188,388 @@ async def azure_ad_logout():
         f"{settings.AZURE_AD_AUTHORITY}/oauth2/v2.0/logout?"
         f"post_logout_redirect_uri=https://admin.auraai.toroniandcompany.com"
     )
-    
+
     return {"logout_url": logout_url}
+
+
+# ========================================
+# R&D Study Client Invitations
+# ========================================
+
+@app.post("/rd-study/client-invitations", response_model=RDStudyClientInvitationResponse, status_code=status.HTTP_201_CREATED)
+async def create_rd_study_client_invitation(
+    invitation_data: RDStudyClientInvitationCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Invite a client to provide data for an R&D Tax Credit Study.
+
+    The client will receive an email with a secure link to access
+    the data collection portal. Clients can only upload data and
+    describe projects - they cannot see calculations or final reports.
+
+    Requires: Authenticated CPA firm user
+    """
+    import secrets
+    from sqlalchemy import text
+    from uuid import uuid4
+
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    # Get firm details
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == current_user.cpa_firm_id)
+    )
+    organization = org_result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="CPA firm not found"
+        )
+
+    # Generate secure token
+    token = secrets.token_urlsafe(48)
+
+    # Create invitation record using raw SQL
+    new_id = uuid4()
+    expires_at = datetime.utcnow() + timedelta(days=30)  # 30 days for R&D invitations
+
+    insert_query = text("""
+        INSERT INTO atlas.rd_study_client_invitations (
+            id, client_email, client_name, study_id, study_name, tax_year,
+            firm_id, invited_by_user_id, token, deadline, status, expires_at
+        ) VALUES (
+            :id, :client_email, :client_name, :study_id, :study_name, :tax_year,
+            :firm_id, :invited_by_user_id, :token, :deadline, 'pending', :expires_at
+        )
+        ON CONFLICT (client_email, study_id) DO UPDATE SET
+            token = :token,
+            expires_at = :expires_at,
+            status = 'pending',
+            updated_at = NOW()
+        RETURNING id, client_email, client_name, study_id, study_name, tax_year,
+                  firm_id, invited_by_user_id, token, deadline, status, expires_at, created_at
+    """)
+
+    try:
+        result = await db.execute(insert_query, {
+            "id": new_id,
+            "client_email": invitation_data.client_email,
+            "client_name": invitation_data.client_name,
+            "study_id": invitation_data.study_id,
+            "study_name": invitation_data.study_name,
+            "tax_year": invitation_data.tax_year,
+            "firm_id": current_user.cpa_firm_id,
+            "invited_by_user_id": current_user.id,
+            "token": token,
+            "deadline": invitation_data.deadline,
+            "expires_at": expires_at
+        })
+        await db.commit()
+        row = result.fetchone()
+    except Exception as e:
+        # Table might not exist yet, create it
+        logger.warning(f"R&D invitation table may not exist: {e}")
+        await db.rollback()
+
+        # Create table if needed
+        create_table = text("""
+            CREATE TABLE IF NOT EXISTS atlas.rd_study_client_invitations (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                client_email VARCHAR(255) NOT NULL,
+                client_name VARCHAR(255) NOT NULL,
+                study_id UUID NOT NULL,
+                study_name VARCHAR(255) NOT NULL,
+                tax_year INTEGER NOT NULL,
+                firm_id UUID NOT NULL REFERENCES atlas.cpa_firms(id),
+                invited_by_user_id UUID NOT NULL REFERENCES atlas.users(id),
+                token VARCHAR(255) NOT NULL UNIQUE,
+                deadline VARCHAR(50),
+                status VARCHAR(20) DEFAULT 'pending',
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                accepted_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                UNIQUE(client_email, study_id)
+            )
+        """)
+        await db.execute(create_table)
+        await db.commit()
+
+        # Try insert again
+        result = await db.execute(insert_query, {
+            "id": new_id,
+            "client_email": invitation_data.client_email,
+            "client_name": invitation_data.client_name,
+            "study_id": invitation_data.study_id,
+            "study_name": invitation_data.study_name,
+            "tax_year": invitation_data.tax_year,
+            "firm_id": current_user.cpa_firm_id,
+            "invited_by_user_id": current_user.id,
+            "token": token,
+            "deadline": invitation_data.deadline,
+            "expires_at": expires_at
+        })
+        await db.commit()
+        row = result.fetchone()
+
+    logger.info(f"R&D study client invitation created for {invitation_data.client_email} by {current_user.email}")
+
+    # Send invitation email
+    try:
+        from app.email_service import get_email_service
+        email_service = get_email_service()
+        email_sent = await email_service.send_rd_study_invitation_email(
+            to_email=invitation_data.client_email,
+            to_name=invitation_data.client_name,
+            invitation_token=token,
+            firm_name=organization.firm_name,
+            study_name=invitation_data.study_name,
+            tax_year=invitation_data.tax_year,
+            invited_by=current_user.full_name or current_user.email,
+            deadline=invitation_data.deadline
+        )
+
+        if email_sent:
+            logger.info(f"R&D study invitation email sent successfully to {invitation_data.client_email}")
+        else:
+            logger.warning(f"Failed to send R&D study invitation email to {invitation_data.client_email}")
+
+    except Exception as e:
+        logger.error(f"Error sending R&D study invitation email: {e}")
+
+    return RDStudyClientInvitationResponse(
+        id=row.id,
+        client_email=row.client_email,
+        client_name=row.client_name,
+        study_id=row.study_id,
+        study_name=row.study_name,
+        tax_year=row.tax_year,
+        firm_id=row.firm_id,
+        firm_name=organization.firm_name,
+        invited_by_user_id=row.invited_by_user_id,
+        invited_by_name=current_user.full_name or current_user.email,
+        token=row.token,
+        deadline=row.deadline,
+        status=row.status,
+        expires_at=row.expires_at,
+        accepted_at=None,
+        created_at=row.created_at
+    )
+
+
+@app.get("/rd-study/client-invitations/validate", response_model=RDStudyClientInvitationValidate)
+async def validate_rd_study_client_invitation(
+    token: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Validate an R&D study client invitation token.
+
+    This endpoint is called when a client clicks the invitation link
+    to verify the token is valid before showing the data collection form.
+    """
+    from sqlalchemy import text
+
+    query = text("""
+        SELECT i.*, f.firm_name, u.full_name as inviter_name
+        FROM atlas.rd_study_client_invitations i
+        JOIN atlas.cpa_firms f ON i.firm_id = f.id
+        JOIN atlas.users u ON i.invited_by_user_id = u.id
+        WHERE i.token = :token
+    """)
+
+    try:
+        result = await db.execute(query, {"token": token})
+        row = result.fetchone()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid invitation token"
+        )
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid invitation token"
+        )
+
+    # Check if already accepted
+    if row.accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This invitation has already been used"
+        )
+
+    # Check if expired
+    if row.expires_at < datetime.utcnow() or row.status == 'expired':
+        # Update status to expired
+        update_query = text("""
+            UPDATE atlas.rd_study_client_invitations
+            SET status = 'expired', updated_at = NOW()
+            WHERE token = :token
+        """)
+        await db.execute(update_query, {"token": token})
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This invitation has expired"
+        )
+
+    return RDStudyClientInvitationValidate(
+        client_email=row.client_email,
+        client_name=row.client_name,
+        study_name=row.study_name,
+        tax_year=row.tax_year,
+        firm_name=row.firm_name,
+        invited_by=row.inviter_name or "Your CPA",
+        deadline=row.deadline,
+        expires_at=row.expires_at
+    )
+
+
+@app.get("/rd-study/client-invitations", response_model=List[RDStudyClientInvitationResponse])
+async def list_rd_study_client_invitations(
+    study_id: Optional[UUID] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List R&D study client invitations for the CPA firm.
+
+    Optionally filter by study_id.
+    """
+    from sqlalchemy import text
+
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    if study_id:
+        query = text("""
+            SELECT i.*, f.firm_name, u.full_name as inviter_name
+            FROM atlas.rd_study_client_invitations i
+            JOIN atlas.cpa_firms f ON i.firm_id = f.id
+            JOIN atlas.users u ON i.invited_by_user_id = u.id
+            WHERE i.firm_id = :firm_id AND i.study_id = :study_id
+            ORDER BY i.created_at DESC
+        """)
+        params = {"firm_id": current_user.cpa_firm_id, "study_id": study_id}
+    else:
+        query = text("""
+            SELECT i.*, f.firm_name, u.full_name as inviter_name
+            FROM atlas.rd_study_client_invitations i
+            JOIN atlas.cpa_firms f ON i.firm_id = f.id
+            JOIN atlas.users u ON i.invited_by_user_id = u.id
+            WHERE i.firm_id = :firm_id
+            ORDER BY i.created_at DESC
+        """)
+        params = {"firm_id": current_user.cpa_firm_id}
+
+    try:
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+    except Exception:
+        return []
+
+    return [
+        RDStudyClientInvitationResponse(
+            id=row.id,
+            client_email=row.client_email,
+            client_name=row.client_name,
+            study_id=row.study_id,
+            study_name=row.study_name,
+            tax_year=row.tax_year,
+            firm_id=row.firm_id,
+            firm_name=row.firm_name,
+            invited_by_user_id=row.invited_by_user_id,
+            invited_by_name=row.inviter_name or "",
+            token=row.token,
+            deadline=row.deadline,
+            status=row.status,
+            expires_at=row.expires_at,
+            accepted_at=row.accepted_at,
+            created_at=row.created_at
+        )
+        for row in rows
+    ]
+
+
+@app.post("/rd-study/client-invitations/{invitation_id}/resend")
+async def resend_rd_study_client_invitation(
+    invitation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Resend an R&D study client invitation email.
+    """
+    from sqlalchemy import text
+    import secrets
+
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    # Get invitation
+    query = text("""
+        SELECT i.*, f.firm_name
+        FROM atlas.rd_study_client_invitations i
+        JOIN atlas.cpa_firms f ON i.firm_id = f.id
+        WHERE i.id = :id AND i.firm_id = :firm_id
+    """)
+
+    try:
+        result = await db.execute(query, {"id": invitation_id, "firm_id": current_user.cpa_firm_id})
+        row = result.fetchone()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+
+    if row.accepted_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation already accepted")
+
+    # Generate new token and extend expiration
+    new_token = secrets.token_urlsafe(48)
+    new_expires = datetime.utcnow() + timedelta(days=30)
+
+    update_query = text("""
+        UPDATE atlas.rd_study_client_invitations
+        SET token = :token, expires_at = :expires_at, status = 'pending', updated_at = NOW()
+        WHERE id = :id
+    """)
+    await db.execute(update_query, {"id": invitation_id, "token": new_token, "expires_at": new_expires})
+    await db.commit()
+
+    # Send email
+    try:
+        from app.email_service import get_email_service
+        email_service = get_email_service()
+        await email_service.send_rd_study_invitation_email(
+            to_email=row.client_email,
+            to_name=row.client_name,
+            invitation_token=new_token,
+            firm_name=row.firm_name,
+            study_name=row.study_name,
+            tax_year=row.tax_year,
+            invited_by=current_user.full_name or current_user.email,
+            deadline=row.deadline
+        )
+        logger.info(f"R&D study invitation resent to {row.client_email}")
+    except Exception as e:
+        logger.error(f"Error resending invitation: {e}")
+
+    return {"message": "Invitation resent successfully", "new_expires_at": new_expires.isoformat()}

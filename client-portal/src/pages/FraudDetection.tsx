@@ -584,7 +584,7 @@ const OverviewTab: React.FC<{
 const AlertsTab: React.FC<{
   alerts: FraudAlert[];
   getSeverityConfig: (severity: FraudSeverity) => { color: string; bgColor: string; icon: React.ElementType };
-  getStatusConfig: (status: string) => { color: string; bgColor: string; label: string };
+  getStatusConfig: (status: FraudCaseStatus | AlertStatus) => { color: string; bgColor: string; label: string };
   formatTimeAgo: (date: string) => string;
 }> = ({ alerts, getSeverityConfig, getStatusConfig, formatTimeAgo }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -658,7 +658,7 @@ const AlertsTab: React.FC<{
 const CasesTab: React.FC<{
   cases: FraudCase[];
   getSeverityConfig: (severity: FraudSeverity) => { color: string; bgColor: string; icon: React.ElementType };
-  getStatusConfig: (status: string) => { color: string; bgColor: string; label: string };
+  getStatusConfig: (status: FraudCaseStatus | AlertStatus) => { color: string; bgColor: string; label: string };
   formatCurrency: (amount: number | undefined) => string;
   formatTimeAgo: (date: string) => string;
   onViewCase: (id: string) => void;

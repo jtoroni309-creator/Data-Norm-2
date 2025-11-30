@@ -94,7 +94,7 @@ class EmailService:
         """
         # Generate invitation URL
         app_url = os.getenv("APP_URL", "http://localhost:3000")
-        invitation_url = f"{app_url}/register?token={invitation_token}"
+        invitation_url = f"{app_url}/accept-invitation?token={invitation_token}"
 
         # Email subject
         subject = f"You've been invited to join {organization_name} on Aura Audit AI"
@@ -365,6 +365,275 @@ Aura Audit AI Team
         <p>This email was sent to {to_name} ({to_email}).</p>
         <p>If you didn't expect this invitation, you can safely ignore this email.</p>
         <p>&copy; 2025 Aura Audit AI. All rights reserved.</p>
+    </div>
+</body>
+</html>
+"""
+
+
+    async def send_rd_study_invitation_email(
+        self,
+        to_email: str,
+        to_name: str,
+        invitation_token: str,
+        firm_name: str,
+        study_name: str,
+        tax_year: int,
+        invited_by: str,
+        deadline: Optional[str] = None
+    ) -> bool:
+        """
+        Send R&D study client invitation email
+
+        This invitation is for clients to provide data for their R&D tax credit study.
+        Clients can upload documents, enter employee data, and describe projects.
+        They do NOT have access to calculations or final reports.
+        """
+        app_url = os.getenv("APP_URL", "http://localhost:3000")
+        invitation_url = f"{app_url}/rd-study-data-collection?token={invitation_token}"
+
+        subject = f"Action Required: Provide R&D Tax Credit Information - {study_name}"
+
+        html_body = self._generate_rd_study_invitation_html(
+            to_name=to_name,
+            invitation_url=invitation_url,
+            firm_name=firm_name,
+            study_name=study_name,
+            tax_year=tax_year,
+            invited_by=invited_by,
+            deadline=deadline
+        )
+
+        text_body = f"""
+Hello {to_name},
+
+{invited_by} from {firm_name} has invited you to provide information for your R&D Tax Credit Study.
+
+Study: {study_name}
+Tax Year: {tax_year}
+{f"Deadline: {deadline}" if deadline else ""}
+
+To get started, please click the link below:
+
+{invitation_url}
+
+You'll be able to:
+- Upload payroll and employee data (Excel, CSV)
+- Describe your R&D projects and activities
+- Provide supporting documentation
+- Track your submission progress
+
+This secure portal uses AI to help you describe your projects accurately.
+
+If you have any questions, please contact {invited_by} at {firm_name}.
+
+Best regards,
+{firm_name}
+"""
+
+        return await self.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body
+        )
+
+    def _generate_rd_study_invitation_html(
+        self,
+        to_name: str,
+        invitation_url: str,
+        firm_name: str,
+        study_name: str,
+        tax_year: int,
+        invited_by: str,
+        deadline: Optional[str] = None
+    ) -> str:
+        """Generate HTML email template for R&D study client invitation"""
+        deadline_html = f"""
+        <div style="background: #FFF3E0; border-left: 4px solid #FF9800; padding: 15px; margin: 20px 0;">
+            <strong>⏰ Deadline: {deadline}</strong><br>
+            Please complete your submission by this date.
+        </div>
+        """ if deadline else ""
+
+        return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R&D Tax Credit Study - Data Request</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }}
+        .container {{
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            background: linear-gradient(135deg, #1F4E79 0%, #2E7D32 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }}
+        .header p {{
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }}
+        .content {{
+            padding: 30px;
+        }}
+        .study-info {{
+            background: #F5F5F5;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        .study-info h3 {{
+            margin: 0 0 15px 0;
+            color: #1F4E79;
+        }}
+        .study-info-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #E0E0E0;
+        }}
+        .study-info-row:last-child {{
+            border-bottom: none;
+        }}
+        .study-info-label {{
+            color: #666;
+        }}
+        .study-info-value {{
+            font-weight: 600;
+            color: #333;
+        }}
+        .button {{
+            display: inline-block;
+            padding: 16px 40px;
+            background: linear-gradient(135deg, #2E7D32 0%, #1F4E79 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+        }}
+        .checklist {{
+            background: #E8F5E9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        .checklist h4 {{
+            margin: 0 0 15px 0;
+            color: #2E7D32;
+        }}
+        .checklist ul {{
+            margin: 0;
+            padding-left: 20px;
+        }}
+        .checklist li {{
+            margin: 8px 0;
+        }}
+        .footer {{
+            background: #F5F5F5;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }}
+        .security-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #E3F2FD;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #1565C0;
+            margin: 15px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>R&D Tax Credit Study</h1>
+            <p>Data Collection Request from {firm_name}</p>
+        </div>
+
+        <div class="content">
+            <h2>Hello {to_name},</h2>
+
+            <p><strong>{invited_by}</strong> from <strong>{firm_name}</strong> has invited you to provide information for your R&D Tax Credit Study.</p>
+
+            <div class="study-info">
+                <h3>📋 Study Details</h3>
+                <div class="study-info-row">
+                    <span class="study-info-label">Study Name</span>
+                    <span class="study-info-value">{study_name}</span>
+                </div>
+                <div class="study-info-row">
+                    <span class="study-info-label">Tax Year</span>
+                    <span class="study-info-value">{tax_year}</span>
+                </div>
+                <div class="study-info-row">
+                    <span class="study-info-label">CPA Firm</span>
+                    <span class="study-info-value">{firm_name}</span>
+                </div>
+            </div>
+
+            {deadline_html}
+
+            <div style="text-align: center;">
+                <a href="{invitation_url}" class="button">Start Data Collection →</a>
+            </div>
+
+            <div class="checklist">
+                <h4>✅ What You'll Need to Provide</h4>
+                <ul>
+                    <li><strong>Employee Data:</strong> Names, titles, departments, and wages</li>
+                    <li><strong>Project Descriptions:</strong> R&D activities your company performed</li>
+                    <li><strong>Time Allocation:</strong> Percentage of time spent on R&D activities</li>
+                    <li><strong>Supporting Documents:</strong> Payroll reports, org charts, project documentation</li>
+                </ul>
+            </div>
+
+            <p>Our AI-powered system will help you:</p>
+            <ul>
+                <li>📊 Automatically analyze your uploaded data</li>
+                <li>✍️ Generate professional project descriptions</li>
+                <li>🎯 Ensure data accuracy with smart validation</li>
+            </ul>
+
+            <div class="security-badge">
+                🔒 Your data is encrypted and protected with enterprise-grade security
+            </div>
+
+            <p>If you have any questions, please contact <strong>{invited_by}</strong> at {firm_name}.</p>
+        </div>
+
+        <div class="footer">
+            <p>This is a secure data collection portal for your R&D Tax Credit Study.</p>
+            <p>If you didn't expect this email, please contact {firm_name} directly.</p>
+            <p>Powered by Aura Audit AI</p>
+        </div>
     </div>
 </body>
 </html>

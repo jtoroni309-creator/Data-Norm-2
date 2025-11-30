@@ -215,6 +215,7 @@ class UserInvitationResponse(BaseModel):
     email: str
     role: RoleEnum
     invited_by_user_id: UUID
+    token: str
     expires_at: datetime
     accepted_at: Optional[datetime] = None
     is_expired: bool
@@ -226,6 +227,15 @@ class UserInvitationAccept(BaseModel):
     token: str
     full_name: str = Field(..., min_length=1, max_length=200)
     password: str = Field(..., min_length=8, max_length=100)
+
+
+class UserInvitationValidateResponse(BaseModel):
+    """Invitation validation response with details for the accept page"""
+    email: str
+    organization_name: str
+    role: RoleEnum
+    invited_by: str
+    expires_at: datetime
 
 
 # ========================================
@@ -398,3 +408,61 @@ class PasswordResetConfirm(BaseModel):
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
         return v
+
+
+# ========================================
+# R&D Study Client Invitation Schemas
+# ========================================
+
+class RDStudyClientInvitationCreate(BaseModel):
+    """Create R&D study client invitation request"""
+    client_email: EmailStr
+    client_name: str = Field(..., min_length=1, max_length=200)
+    study_id: UUID
+    study_name: str = Field(..., min_length=1, max_length=200)
+    tax_year: int = Field(..., ge=2000, le=2100)
+    deadline: Optional[str] = None
+    message: Optional[str] = Field(None, max_length=1000)
+
+
+class RDStudyClientInvitationResponse(BaseModel):
+    """R&D study client invitation response"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    client_email: str
+    client_name: str
+    study_id: UUID
+    study_name: str
+    tax_year: int
+    firm_id: UUID
+    firm_name: str
+    invited_by_user_id: UUID
+    invited_by_name: str
+    token: str
+    deadline: Optional[str] = None
+    status: str  # pending, accepted, expired
+    expires_at: datetime
+    accepted_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class RDStudyClientInvitationValidate(BaseModel):
+    """Validate R&D study client invitation response"""
+    client_email: str
+    client_name: str
+    study_name: str
+    tax_year: int
+    firm_name: str
+    invited_by: str
+    deadline: Optional[str] = None
+    expires_at: datetime
+
+
+class RDStudyClientDataSubmission(BaseModel):
+    """Client data submission for R&D study"""
+    token: str
+    employees: Optional[list] = None
+    projects: Optional[list] = None
+    documents: Optional[list] = None
+    submission_notes: Optional[str] = None
