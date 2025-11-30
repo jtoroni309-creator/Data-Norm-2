@@ -159,7 +159,7 @@ class RDStudy(Base):
     study_type = Column(String(50), default="standard")  # standard, amended, multi_year
 
     # Entity information
-    entity_type = Column(SQLEnum(EntityType), nullable=False)
+    entity_type = Column(SQLEnum(EntityType, create_type=False), nullable=False)
     entity_name = Column(String(500), nullable=False)
     ein = Column(String(20), nullable=True)  # Encrypted
     fiscal_year_start = Column(Date, nullable=False)
@@ -174,12 +174,12 @@ class RDStudy(Base):
     aggregation_method = Column(String(50), nullable=True)  # standalone, aggregated, allocated
 
     # Status and workflow
-    status = Column(SQLEnum(StudyStatus), default=StudyStatus.DRAFT, nullable=False)
+    status = Column(SQLEnum(StudyStatus, create_type=False), default=StudyStatus.DRAFT, nullable=False)
     status_history = Column(JSONB, default=list)
 
     # Credit method selection
-    recommended_method = Column(SQLEnum(CreditMethod), nullable=True)
-    selected_method = Column(SQLEnum(CreditMethod), nullable=True)
+    recommended_method = Column(SQLEnum(CreditMethod, create_type=False), nullable=True)
+    selected_method = Column(SQLEnum(CreditMethod, create_type=False), nullable=True)
     method_selection_reason = Column(Text, nullable=True)
 
     # State nexus
@@ -274,7 +274,7 @@ class RDProject(Base):
     is_ongoing = Column(Boolean, default=True)
 
     # Qualification status
-    qualification_status = Column(SQLEnum(QualificationStatus), default=QualificationStatus.PENDING)
+    qualification_status = Column(SQLEnum(QualificationStatus, create_type=False), default=QualificationStatus.PENDING)
 
     # Federal 4-part test evaluation
     permitted_purpose_score = Column(Float, nullable=True)  # 0-100
@@ -295,7 +295,7 @@ class RDProject(Base):
 
     # Overall qualification
     overall_score = Column(Float, nullable=True)
-    overall_confidence = Column(SQLEnum(ConfidenceLevel), nullable=True)
+    overall_confidence = Column(SQLEnum(ConfidenceLevel, create_type=False), nullable=True)
     qualification_narrative = Column(Text, nullable=True)
 
     # AI analysis
@@ -310,7 +310,7 @@ class RDProject(Base):
     cpa_reviewed = Column(Boolean, default=False)
     cpa_reviewed_by = Column(PGUUID(as_uuid=True), nullable=True)
     cpa_reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    cpa_override_status = Column(SQLEnum(QualificationStatus), nullable=True)
+    cpa_override_status = Column(SQLEnum(QualificationStatus, create_type=False), nullable=True)
     cpa_override_reason = Column(Text, nullable=True)
 
     # Risk flags
@@ -359,7 +359,7 @@ class RDEmployee(Base):
     # Qualified time analysis
     qualified_time_percentage = Column(Float, default=0)  # 0-100
     qualified_time_source = Column(String(100), nullable=True)  # timesheet, estimate, interview
-    qualified_time_confidence = Column(SQLEnum(ConfidenceLevel), nullable=True)
+    qualified_time_confidence = Column(SQLEnum(ConfidenceLevel, create_type=False), nullable=True)
 
     # Qualified wages
     qualified_wages = Column(Numeric(15, 2), default=0)
@@ -447,7 +447,7 @@ class QualifiedResearchExpense(Base):
     employee_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.rd_employees.id", ondelete="SET NULL"), nullable=True)
 
     # QRE category
-    category = Column(SQLEnum(QRECategory), nullable=False)
+    category = Column(SQLEnum(QRECategory, create_type=False), nullable=False)
     subcategory = Column(String(100), nullable=True)
 
     # For wages
@@ -516,7 +516,7 @@ class RDCalculation(Base):
 
     # Calculation type
     calculation_type = Column(String(50), nullable=False)  # federal_regular, federal_asc, state_{code}
-    method = Column(SQLEnum(CreditMethod), nullable=True)
+    method = Column(SQLEnum(CreditMethod, create_type=False), nullable=True)
     is_final = Column(Boolean, default=False)
 
     # Input values
@@ -552,7 +552,7 @@ class RDCalculation(Base):
     # Comparison data
     alternative_credit = Column(Numeric(15, 2), nullable=True)  # Credit under alternative method
     credit_difference = Column(Numeric(15, 2), nullable=True)
-    recommended_method = Column(SQLEnum(CreditMethod), nullable=True)
+    recommended_method = Column(SQLEnum(CreditMethod, create_type=False), nullable=True)
 
     # Metadata
     rules_version = Column(String(20), nullable=True)
@@ -641,7 +641,7 @@ class RDDocument(Base):
     original_filename = Column(String(500), nullable=False)
     file_size = Column(Integer, nullable=True)
     mime_type = Column(String(100), nullable=True)
-    document_type = Column(SQLEnum(DocumentType), nullable=True)
+    document_type = Column(SQLEnum(DocumentType, create_type=False), nullable=True)
 
     # Storage
     storage_path = Column(String(1000), nullable=False)
@@ -657,7 +657,7 @@ class RDDocument(Base):
     ocr_confidence = Column(Float, nullable=True)
 
     # AI classification
-    ai_document_type = Column(SQLEnum(DocumentType), nullable=True)
+    ai_document_type = Column(SQLEnum(DocumentType, create_type=False), nullable=True)
     ai_classification_confidence = Column(Float, nullable=True)
     ai_extracted_data = Column(JSONB, default=dict)
 
@@ -833,7 +833,7 @@ class RDEvidence(Base):
     relevant_to_experimentation = Column(Boolean, default=False)
 
     # Strength
-    evidence_strength = Column(SQLEnum(ConfidenceLevel), nullable=True)
+    evidence_strength = Column(SQLEnum(ConfidenceLevel, create_type=False), nullable=True)
     ai_relevance_score = Column(Float, nullable=True)
 
     # Metadata
@@ -900,7 +900,7 @@ class RDStudyTeamMember(Base):
     user_id = Column(PGUUID(as_uuid=True), nullable=False)
 
     # Role
-    role = Column(SQLEnum(UserRole), nullable=False)
+    role = Column(SQLEnum(UserRole, create_type=False), nullable=False)
     can_approve = Column(Boolean, default=False)
     can_edit = Column(Boolean, default=True)
     can_view = Column(Boolean, default=True)
