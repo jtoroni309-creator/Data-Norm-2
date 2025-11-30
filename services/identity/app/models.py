@@ -95,7 +95,7 @@ class Organization(Base):
     subscription_tier = Column(String, default="professional")
     subscription_status = Column(String, default="active")
     max_users = Column(Integer, default=10)
-    # enabled_services = Column(JSONB, default={}, nullable=True)  # JSON object with service_id: true/false - Column doesn't exist in DB yet
+    enabled_services = Column(JSONB, default={}, nullable=True)  # JSON object with service_id: true/false
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

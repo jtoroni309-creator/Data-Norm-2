@@ -32,6 +32,11 @@ interface FirmWithServices extends Tenant {
 
 type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
 
+interface InviteUserData {
+  email: string;
+  role: string;
+}
+
 const FirmManagement: React.FC = () => {
   const [firms, setFirms] = useState<FirmWithServices[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,11 +45,14 @@ const FirmManagement: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [showUsersModal, setShowUsersModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [firmUsers, setFirmUsers] = useState<UserListItem[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedFirm, setSelectedFirm] = useState<FirmWithServices | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [inviteData, setInviteData] = useState<InviteUserData>({ email: '', role: 'staff' });
+  const [inviteResult, setInviteResult] = useState<{ message: string; invitation_link?: string } | null>(null);
   const [newFirm, setNewFirm] = useState<CreateTenantRequest>({
     firm_name: '',
     legal_name: '',
@@ -231,6 +239,42 @@ const FirmManagement: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update services';
       setError(errorMessage);
       console.error('Error updating services:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInviteUser = async () => {
+    if (!selectedFirm || !inviteData.email) return;
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      setInviteResult(null);
+
+      const result = await tenantAPI.inviteUser(selectedFirm.id, {
+        email: inviteData.email,
+        role: inviteData.role,
+        sendEmail: true,
+      });
+
+      setInviteResult(result);
+      setSuccessMessage(result.message);
+      setInviteData({ email: '', role: 'staff' });
+
+      // Refresh users list
+      await loadFirmUsers(selectedFirm);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send invitation';
+      setError(errorMessage);
+      console.error('Error inviting user:', err);
     } finally {
       setSaving(false);
     }
@@ -661,15 +705,24 @@ const FirmManagement: React.FC = () => {
                 <h2 className="text-2xl font-bold">Firm Users</h2>
                 <p className="text-gray-600 mt-1">{selectedFirm.firm_name}</p>
               </div>
-              <button
-                onClick={() => {
-                  setShowUsersModal(false);
-                  setFirmUsers([]);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  Invite User
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUsersModal(false);
+                    setFirmUsers([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {loadingUsers ? (
@@ -768,6 +821,150 @@ const FirmManagement: React.FC = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite User Modal */}
+      {showInviteModal && selectedFirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Invite User</h2>
+                <p className="text-gray-600 mt-1">{selectedFirm.firm_name}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteData({ email: '', role: 'staff' });
+                  setInviteResult(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {inviteResult ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-800 mb-2">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">{inviteResult.message}</span>
+                  </div>
+                  {inviteResult.invitation_link && (
+                    <div className="mt-3">
+                      <p className="text-sm text-gray-600 mb-1">Invitation Link:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={inviteResult.invitation_link}
+                          readOnly
+                          className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm font-mono"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(inviteResult.invitation_link || '');
+                            setSuccessMessage('Link copied to clipboard!');
+                          }}
+                          className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setInviteResult(null);
+                      setInviteData({ email: '', role: 'staff' });
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Invite Another
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowInviteModal(false);
+                      setInviteResult(null);
+                      setInviteData({ email: '', role: 'staff' });
+                    }}
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={inviteData.email}
+                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="user@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Role
+                  </label>
+                  <select
+                    value={inviteData.role}
+                    onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="partner">Partner</option>
+                    <option value="manager">Manager</option>
+                    <option value="senior">Senior</option>
+                    <option value="staff">Staff</option>
+                    <option value="qc_reviewer">QC Reviewer</option>
+                  </select>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
+                  <p>An invitation email will be sent to this address with a link to create their account and access the platform.</p>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowInviteModal(false);
+                      setInviteData({ email: '', role: 'staff' });
+                    }}
+                    disabled={saving}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleInviteUser}
+                    disabled={saving || !inviteData.email}
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        Send Invitation
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

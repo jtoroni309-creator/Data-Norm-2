@@ -303,6 +303,31 @@ export const tenantAPI = {
       return [];
     }
   },
+
+  /**
+   * Invite a user to a CPA firm
+   */
+  async inviteUser(firmId: string, data: {
+    email: string;
+    role: string;
+    sendEmail?: boolean;
+  }): Promise<{
+    message: string;
+    invitation_id?: string;
+    user_id?: string;
+    invitation_link?: string;
+    email_sent?: boolean;
+    action?: string;
+  }> {
+    return fetchAPI(`/admin/organizations/${firmId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({
+        email: data.email,
+        role: data.role,
+        send_email: data.sendEmail ?? true,
+      }),
+    });
+  },
 };
 
 // ============================================================================

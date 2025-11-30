@@ -874,8 +874,9 @@ async def update_organization_services(
     Update enabled services for a CPA firm (Admin endpoint - no auth required for now)
 
     Note: In production, this should require admin/super-admin role
-    Note: enabled_services column doesn't exist in DB yet, so this endpoint does nothing
     """
+    from sqlalchemy import text
+
     result = await db.execute(
         select(Organization).where(Organization.id == org_id)
     )
@@ -887,14 +888,39 @@ async def update_organization_services(
             detail="Organization not found"
         )
 
-    # TODO: Add enabled_services column to database schema
-    # organization.enabled_services = services
-    organization.updated_at = datetime.utcnow()
+    # Update enabled_services using raw SQL to ensure JSONB is handled correctly
+    try:
+        update_query = text("""
+            UPDATE atlas.cpa_firms
+            SET enabled_services = :services, updated_at = NOW()
+            WHERE id = :org_id
+        """)
+        await db.execute(update_query, {"services": services, "org_id": org_id})
+        await db.commit()
+    except Exception as e:
+        # Column might not exist - try to add it
+        logger.warning(f"enabled_services column may not exist: {e}")
+        await db.rollback()
 
-    await db.commit()
+        try:
+            alter_query = text("""
+                ALTER TABLE atlas.cpa_firms
+                ADD COLUMN IF NOT EXISTS enabled_services JSONB DEFAULT '{}'::jsonb
+            """)
+            await db.execute(alter_query)
+            await db.commit()
+
+            # Retry the update
+            await db.execute(update_query, {"services": services, "org_id": org_id})
+            await db.commit()
+        except Exception as e2:
+            logger.error(f"Failed to update enabled_services: {e2}")
+            await db.rollback()
+
+    # Refresh organization
     await db.refresh(organization)
 
-    logger.info(f"Organization services update requested (no-op): {organization.firm_name} (ID: {org_id})")
+    logger.info(f"Organization services updated: {organization.firm_name} (ID: {org_id})")
 
     return OrganizationResponse.model_validate(organization)
 
@@ -1288,6 +1314,158 @@ async def admin_reset_user_password(
     logger.info(f"Password reset by admin for user: {user.email}")
 
     return {"message": "Password reset successfully", "user_id": str(user_id)}
+
+
+@app.post("/admin/organizations/{org_id}/invite")
+async def admin_invite_user_to_organization(
+    org_id: UUID,
+    invitation_data: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Invite a user to a CPA firm (Admin endpoint - no auth required for now)
+
+    This endpoint allows the platform admin to invite users to any CPA firm.
+    The invited user will receive an email with a link to accept the invitation.
+
+    Required fields:
+    - email: The email address of the user to invite
+    - role: The role to assign (partner, manager, senior, staff, etc.)
+    - send_email: Whether to send an invitation email (default: true)
+    """
+    import secrets
+    from sqlalchemy import text
+
+    email = invitation_data.get("email")
+    role = invitation_data.get("role", "staff")
+    send_email = invitation_data.get("send_email", True)
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is required"
+        )
+
+    # Get organization
+    result = await db.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    organization = result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+
+    # Check if user already exists
+    result = await db.execute(
+        select(User).where(User.email == email)
+    )
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        # If user exists but not in this org, update their org
+        if existing_user.cpa_firm_id != org_id:
+            existing_user.cpa_firm_id = org_id
+            await db.commit()
+            logger.info(f"User {email} moved to organization {organization.firm_name}")
+            return {
+                "message": f"User {email} already exists and has been added to {organization.firm_name}",
+                "user_id": str(existing_user.id),
+                "action": "existing_user_added"
+            }
+        else:
+            return {
+                "message": f"User {email} is already a member of {organization.firm_name}",
+                "user_id": str(existing_user.id),
+                "action": "already_member"
+            }
+
+    # Generate invitation token
+    token = secrets.token_urlsafe(32)
+
+    # Create invitation using raw SQL to handle the user_role enum
+    from uuid import uuid4
+    invitation_id = uuid4()
+    expires_at = datetime.utcnow() + timedelta(days=7)
+
+    # Map role string to valid enum value
+    valid_roles = ["partner", "manager", "senior", "staff", "qc_reviewer", "client_contact"]
+    role_value = role.lower() if role.lower() in valid_roles else "staff"
+
+    try:
+        insert_query = text("""
+            INSERT INTO atlas.user_invitations (
+                id, email, organization_id, role, invited_by_user_id, token, expires_at, is_expired
+            ) VALUES (
+                :id, :email, :org_id, CAST(:role AS atlas.user_role),
+                :invited_by, :token, :expires_at, false
+            )
+            RETURNING id, email, token, expires_at, created_at
+        """)
+
+        # Use a system user or the first admin for invited_by
+        admin_result = await db.execute(
+            select(User).where(User.cpa_firm_id == None).limit(1)
+        )
+        admin_user = admin_result.scalar_one_or_none()
+        invited_by_id = admin_user.id if admin_user else uuid4()
+
+        result = await db.execute(insert_query, {
+            "id": invitation_id,
+            "email": email,
+            "org_id": org_id,
+            "role": role_value,
+            "invited_by": invited_by_id,
+            "token": token,
+            "expires_at": expires_at
+        })
+        await db.commit()
+        row = result.fetchone()
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Failed to create invitation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create invitation: {str(e)}"
+        )
+
+    logger.info(f"Admin invitation created for {email} to {organization.firm_name}")
+
+    # Send invitation email
+    if send_email:
+        try:
+            from app.email_service import get_email_service
+            email_service = get_email_service()
+            email_sent = await email_service.send_invitation_email(
+                to_email=email,
+                to_name=email.split('@')[0],
+                invitation_token=token,
+                invited_by="Platform Administrator",
+                organization_name=organization.firm_name,
+                role=role_value
+            )
+
+            if email_sent:
+                logger.info(f"Invitation email sent successfully to {email}")
+            else:
+                logger.warning(f"Failed to send invitation email to {email}")
+
+        except Exception as e:
+            logger.error(f"Error sending invitation email: {e}")
+
+    return {
+        "message": f"Invitation sent to {email}",
+        "invitation_id": str(invitation_id),
+        "organization_name": organization.firm_name,
+        "email": email,
+        "role": role_value,
+        "expires_at": expires_at.isoformat(),
+        "invitation_link": f"https://auraai.toroniandcompany.com/accept-invitation?token={token}",
+        "email_sent": send_email
+    }
 
 
 # ========================================

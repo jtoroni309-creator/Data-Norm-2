@@ -71,6 +71,21 @@ spec:
             secretKeyRef:
               name: aura-secrets
               key: appinsights-key
+        # Email configuration
+        - name: EMAIL_PROVIDER
+          value: "sendgrid"
+        - name: SENDGRID_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: sendgrid-api-key
+              optional: true
+        - name: EMAIL_FROM
+          value: "noreply@auraai.toroniandcompany.com"
+        - name: EMAIL_FROM_NAME
+          value: "Aura Audit AI"
+        - name: APP_URL
+          value: "https://auraai.toroniandcompany.com"
         resources:
           requests:
             cpu: 250m
