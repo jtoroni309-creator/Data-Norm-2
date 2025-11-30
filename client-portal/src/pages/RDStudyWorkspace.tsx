@@ -1,9 +1,10 @@
 /**
- * R&D Study Workspace
- * Comprehensive workspace for managing an R&D tax credit study
+ * R&D Study Workspace - Fully Functional
+ * Comprehensive workspace for managing R&D tax credit studies
+ * with AI-powered data import, payroll integrations, and complete study generation
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,13 +18,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock,
-  Settings,
   Upload,
   Calculator,
-  MessageSquare,
-  History,
   Download,
-  Play,
   Check,
   X,
   ChevronRight,
@@ -31,13 +28,32 @@ import {
   Target,
   TrendingUp,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  File,
+  Wand2,
+  UploadCloud,
+  Link,
+  Edit,
+  Trash2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Database,
+  Zap,
+  Mail,
+  Send,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { rdStudyService } from '../services/rd-study.service';
 import { RDStudy, RDProject, RDEmployee, RDStudyStatus } from '../types';
 import toast from 'react-hot-toast';
 
-type TabId = 'overview' | 'projects' | 'employees' | 'qres' | 'calculations' | 'narratives' | 'documents' | 'review';
+type TabId = 'data-collection' | 'client-invitations' | 'employees' | 'projects' | 'qres' | 'calculations' | 'generate';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const statusConfig: Record<RDStudyStatus, { label: string; color: string; bgColor: string }> = {
   draft: { label: 'Draft', color: 'text-gray-600', bgColor: 'bg-gray-100' },
@@ -54,170 +70,1473 @@ const statusConfig: Record<RDStudyStatus, { label: string; color: string; bgColo
 };
 
 const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: 'overview', label: 'Overview', icon: Target },
-  { id: 'projects', label: 'Projects', icon: FlaskConical },
+  { id: 'data-collection', label: 'Data Collection', icon: Database },
+  { id: 'client-invitations', label: 'Client Invitations', icon: Mail },
   { id: 'employees', label: 'Employees', icon: Users },
-  { id: 'qres', label: 'QREs', icon: DollarSign },
+  { id: 'projects', label: 'Projects', icon: FlaskConical },
+  { id: 'qres', label: 'QRE Summary', icon: DollarSign },
   { id: 'calculations', label: 'Calculations', icon: Calculator },
-  { id: 'narratives', label: 'Narratives', icon: MessageSquare },
-  { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'review', label: 'Review Queue', icon: CheckCircle },
+  { id: 'generate', label: 'Generate & Export', icon: Download },
 ];
 
-// Demo data generator for when backend is unavailable
-const generateDemoStudy = (studyId: string): RDStudy => {
-  const isNew = studyId.startsWith('demo-new-');
-  return {
-    id: studyId,
-    name: isNew ? 'New R&D Study' : 'TechCorp Solutions - 2024 R&D Study',
-    entity_name: 'TechCorp Solutions Inc.',
-    client_id: 'demo-client-1',
-    client_name: 'TechCorp Solutions',
-    tax_year: 2024,
-    status: 'draft' as RDStudyStatus,
-    ein: '12-3456789',
-    naics_code: '541512',
-    fiscal_year_end: '12/31',
-    total_credits: 0,
-    federal_credit_final: 0,
-    total_state_credits: 0,
-    qre_wages: 0,
-    qre_supplies: 0,
-    qre_contract: 0,
-    has_open_flags: false,
-    risk_flags: [],
-    base_period_gross_receipts: [],
-    current_year_gross_receipts: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+// Interfaces
+interface UploadAnalysis {
+  filename: string;
+  sheets: {
+    sheet_name: string;
+    category: string;
+    category_confidence: number;
+    row_count: number;
+    column_mappings: {
+      source_column: string;
+      target_field: string;
+      confidence: number;
+      sample_values: any[];
+    }[];
+    issues: string[];
+    preview_data: any[];
+  }[];
+  missing_data_types: string[];
+  recommendations: string[];
+}
+
+interface QRECategory {
+  count: number;
+  gross: number;
+  qualified: number;
+}
+
+interface QRESummary {
+  by_category: Record<string, QRECategory>;
+  total_gross: number;
+  total_qualified: number;
+}
+
+interface ClientInvitation {
+  id: string;
+  client_email: string;
+  client_name: string;
+  study_id: string;
+  study_name: string;
+  tax_year: number;
+  firm_id: string;
+  firm_name: string;
+  invited_by_user_id: string;
+  invited_by_name: string;
+  token: string;
+  deadline?: string;
+  status: 'pending' | 'accepted' | 'expired';
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+}
+
+// Client Invitations Tab - CPA firms can invite clients to submit R&D data
+const ClientInvitationsTab: React.FC<{
+  studyId: string;
+  study: RDStudy | null;
+  onRefresh: () => void;
+}> = ({ studyId, study, onRefresh }) => {
+  const [invitations, setInvitations] = useState<ClientInvitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [resending, setResending] = useState<string | null>(null);
+
+  const [newInvite, setNewInvite] = useState({
+    client_name: '',
+    client_email: '',
+    deadline: '',
+    message: '',
+  });
+
+  const loadInvitations = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/identity/rd-study/client-invitations?study_id=${studyId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setInvitations(data);
+      }
+    } catch (error) {
+      console.error('Failed to load invitations:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [studyId]);
+
+  useEffect(() => {
+    loadInvitations();
+  }, [loadInvitations]);
+
+  const handleSendInvitation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!study) return;
+
+    setSending(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/identity/rd-study/client-invitations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_email: newInvite.client_email,
+          client_name: newInvite.client_name,
+          study_id: studyId,
+          study_name: study.name,
+          tax_year: study.tax_year,
+          deadline: newInvite.deadline || null,
+          message: newInvite.message || null,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success(`Invitation sent to ${newInvite.client_email}`);
+        setShowInviteModal(false);
+        setNewInvite({ client_name: '', client_email: '', deadline: '', message: '' });
+        loadInvitations();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to send invitation');
+      }
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
+      toast.error('Failed to send invitation');
+    } finally {
+      setSending(false);
+    }
   };
+
+  const handleResendInvitation = async (invitationId: string) => {
+    setResending(invitationId);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/identity/rd-study/client-invitations/${invitationId}/resend`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        toast.success('Invitation resent successfully');
+        loadInvitations();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to resend invitation');
+      }
+    } catch (error) {
+      console.error('Failed to resend invitation:', error);
+      toast.error('Failed to resend invitation');
+    } finally {
+      setResending(null);
+    }
+  };
+
+  const copyInviteLink = (token: string) => {
+    const url = `${window.location.origin}/rd-study-data-collection?token=${token}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Link copied to clipboard');
+  };
+
+  const getStatusBadge = (status: string, expiresAt: string) => {
+    const isExpired = new Date(expiresAt) < new Date();
+    if (status === 'accepted') {
+      return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Completed</span>;
+    }
+    if (isExpired || status === 'expired') {
+      return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">Expired</span>;
+    }
+    return <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">Pending</span>;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Client Data Collection</h3>
+          <p className="text-sm text-gray-500">
+            Invite clients to submit their R&D data. Clients can upload or manually enter employees, projects, and documents.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Send className="w-4 h-4" />
+          Invite Client
+        </button>
+      </div>
+
+      {/* Info Card */}
+      <div className="card bg-blue-50 border-blue-200">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Info className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-900">How Client Invitations Work</h4>
+            <ul className="mt-2 space-y-1 text-sm text-blue-700">
+              <li>• Clients receive a secure link to submit their R&D data</li>
+              <li>• They can upload Excel files or manually enter employees and projects</li>
+              <li>• AI assists clients in writing project descriptions</li>
+              <li>• Clients <strong>cannot</strong> see calculations, credits, or final reports</li>
+              <li>• All data is automatically imported into this study when submitted</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Invitations List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+        </div>
+      ) : invitations.length === 0 ? (
+        <div className="card text-center py-12">
+          <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h4 className="text-gray-900 font-medium mb-2">No invitations sent yet</h4>
+          <p className="text-gray-500 text-sm mb-4">
+            Invite your client to submit their R&D data for this study
+          </p>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            Send First Invitation
+          </button>
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Client</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Email</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Sent</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Expires</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {invitations.map(inv => (
+                <tr key={inv.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{inv.client_name}</td>
+                  <td className="px-4 py-3 text-gray-600">{inv.client_email}</td>
+                  <td className="px-4 py-3 text-center">{getStatusBadge(inv.status, inv.expires_at)}</td>
+                  <td className="px-4 py-3 text-gray-500 text-sm">{formatDate(inv.created_at)}</td>
+                  <td className="px-4 py-3 text-gray-500 text-sm">{formatDate(inv.expires_at)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => copyInviteLink(inv.token)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                        title="Copy link"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      {inv.status === 'pending' && (
+                        <button
+                          onClick={() => handleResendInvitation(inv.id)}
+                          disabled={resending === inv.id}
+                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded"
+                          title="Resend invitation"
+                        >
+                          {resending === inv.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                      <a
+                        href={`/rd-study-data-collection?token=${inv.token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                        title="Preview client view"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Send Invitation Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl w-full max-w-lg"
+          >
+            <div className="p-6 border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Send className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Invite Client</h2>
+                  <p className="text-sm text-gray-500">Request R&D data for {study?.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowInviteModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendInvitation} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
+                <input
+                  type="text"
+                  value={newInvite.client_name}
+                  onChange={(e) => setNewInvite(prev => ({ ...prev, client_name: e.target.value }))}
+                  required
+                  placeholder="John Smith"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Email *</label>
+                <input
+                  type="email"
+                  value={newInvite.client_email}
+                  onChange={(e) => setNewInvite(prev => ({ ...prev, client_email: e.target.value }))}
+                  required
+                  placeholder="john@company.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deadline (optional)</label>
+                <input
+                  type="date"
+                  value={newInvite.deadline}
+                  onChange={(e) => setNewInvite(prev => ({ ...prev, deadline: e.target.value }))}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Personal Message (optional)</label>
+                <textarea
+                  value={newInvite.message}
+                  onChange={(e) => setNewInvite(prev => ({ ...prev, message: e.target.value }))}
+                  rows={3}
+                  placeholder="Add a personal note to include in the invitation email..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  <strong>What the client will receive:</strong>
+                </p>
+                <ul className="mt-1 text-xs text-gray-500 space-y-1">
+                  <li>• Professional email from your firm</li>
+                  <li>• Secure link to submit R&D data (valid for 30 days)</li>
+                  <li>• Instructions for what data to provide</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  Send Invitation
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
 };
 
-const generateDemoProjects = (): RDProject[] => [
-  {
-    id: 'demo-proj-1',
-    study_id: 'demo-1',
-    project_name: 'AI-Powered Customer Analytics Platform',
-    project_description: 'Development of machine learning algorithms for predictive customer behavior analysis',
-    start_date: '2024-01-15',
-    end_date: '2024-12-31',
-    department: 'Engineering',
-    technical_uncertainty: 'Novel approach to real-time pattern recognition in unstructured customer data',
-    process_of_experimentation: 'Systematic evaluation of transformer architectures vs traditional ML approaches',
-    technological_nature: 'Software development requiring computer science expertise',
-    qualification_status: 'qualified',
-    four_part_test_scores: { permitted_purpose: 0.95, technological_nature: 0.92, elimination_of_uncertainty: 0.88, process_of_experimentation: 0.90 },
-    total_qres: 185000,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-proj-2',
-    study_id: 'demo-1',
-    project_name: 'Next-Gen API Gateway',
-    project_description: 'Development of high-performance API gateway with advanced rate limiting and caching',
-    start_date: '2024-03-01',
-    end_date: '2024-11-30',
-    department: 'Platform',
-    technical_uncertainty: 'Achieving sub-millisecond latency at scale with complex routing rules',
-    process_of_experimentation: 'Benchmarking different in-memory data structures and algorithms',
-    technological_nature: 'Computer architecture and distributed systems',
-    qualification_status: 'needs_review',
-    four_part_test_scores: { permitted_purpose: 0.90, technological_nature: 0.85, elimination_of_uncertainty: 0.75, process_of_experimentation: 0.80 },
-    total_qres: 120000,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
+// Data Collection Tab
+const DataCollectionTab: React.FC<{
+  studyId: string;
+  onDataImported: () => void;
+}> = ({ studyId, onDataImported }) => {
+  const [uploading, setUploading] = useState(false);
+  const [analysis, setAnalysis] = useState<UploadAnalysis | null>(null);
+  const [showMappingModal, setShowMappingModal] = useState(false);
+  const [payrollProvider, setPayrollProvider] = useState('');
+  const [connectingPayroll, setConnectingPayroll] = useState(false);
+  const [expandedSheet, setExpandedSheet] = useState<number>(0);
+  const [dataStatus, setDataStatus] = useState({
+    employees: 'missing',
+    payroll: 'missing',
+    projects: 'missing',
+    time_tracking: 'missing',
+    supplies: 'missing',
+  });
 
-const generateDemoEmployees = (): RDEmployee[] => [
-  { id: 'demo-emp-1', study_id: 'demo-1', employee_name: 'Sarah Chen', job_title: 'Senior Software Engineer', department: 'Engineering', annual_wages: 185000, rd_percentage: 75, adjusted_percentage: 75, qre_amount: 138750, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'demo-emp-2', study_id: 'demo-1', employee_name: 'Michael Rodriguez', job_title: 'ML Engineer', department: 'AI Team', annual_wages: 175000, rd_percentage: 85, adjusted_percentage: 85, qre_amount: 148750, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: 'demo-emp-3', study_id: 'demo-1', employee_name: 'Emily Watson', job_title: 'Platform Architect', department: 'Platform', annual_wages: 200000, rd_percentage: 60, adjusted_percentage: 60, qre_amount: 120000, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-];
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/rd-study/studies/${studyId}/upload/analyze`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAnalysis(result);
+        setShowMappingModal(true);
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to analyze file');
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('Failed to upload file');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImportData = async () => {
+    if (!analysis) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/rd-study/studies/${studyId}/upload/import`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: analysis.filename,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Data imported successfully!');
+        setShowMappingModal(false);
+        setAnalysis(null);
+        onDataImported();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to import data');
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      toast.error('Failed to import data');
+    }
+  };
+
+  const handleConnectPayroll = async () => {
+    if (!payrollProvider) return;
+
+    setConnectingPayroll(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/rd-study/studies/${studyId}/payroll/connect`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ provider: payrollProvider }),
+      });
+
+      if (response.ok) {
+        const { auth_url } = await response.json();
+        window.location.href = auth_url;
+      } else {
+        toast.error('Failed to connect payroll provider');
+      }
+    } catch (error) {
+      console.error('Payroll connection failed:', error);
+      toast.error('Failed to connect payroll provider');
+    } finally {
+      setConnectingPayroll(false);
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'complete': return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'partial': return <AlertTriangle className="w-5 h-5 text-amber-500" />;
+      default: return <X className="w-5 h-5 text-red-400" />;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Upload Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Excel Upload */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <UploadCloud className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Import Excel Data</h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
+                <Wand2 className="w-3 h-3" /> AI-Powered
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-500 mb-4">
+            Upload Excel files with payroll, employee, project, or time tracking data.
+            Our AI will automatically detect data types and map columns.
+          </p>
+
+          <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-purple-300 rounded-xl bg-purple-50/50 hover:bg-purple-100/50 cursor-pointer transition-colors">
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={uploading}
+            />
+            {uploading ? (
+              <div className="flex flex-col items-center">
+                <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+                <p className="mt-2 text-sm text-purple-600">Analyzing file...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-10 h-10 text-purple-400" />
+                <p className="mt-2 text-sm text-gray-600">Click or drag Excel/CSV files</p>
+                <p className="text-xs text-gray-400">Supports .xlsx, .xls, .csv</p>
+              </>
+            )}
+          </label>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {['Payroll/W-2', 'Employees', 'Time Tracking', 'Projects', 'GL/Expenses', 'Contracts'].map(type => (
+              <span key={type} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                {type}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Payroll Integration */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Link className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Connect Payroll Provider</h3>
+              <p className="text-xs text-gray-500">Automatic data sync</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-500 mb-4">
+            Connect directly to your payroll provider to automatically import employee and wage data.
+          </p>
+
+          <div className="space-y-3">
+            {[
+              { id: 'adp', name: 'ADP Workforce Now', icon: '🅰️' },
+              { id: 'justworks', name: 'Justworks', icon: '💼' },
+              { id: 'paychex', name: 'Paychex Flex', icon: '📊' },
+            ].map(provider => (
+              <button
+                key={provider.id}
+                onClick={() => setPayrollProvider(provider.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                  payrollProvider === provider.id
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-xl">{provider.icon}</span>
+                <span className="font-medium text-gray-700">{provider.name}</span>
+                {payrollProvider === provider.id && (
+                  <CheckCircle className="w-5 h-5 text-blue-500 ml-auto" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={handleConnectPayroll}
+            disabled={!payrollProvider || connectingPayroll}
+            className="mt-4 w-full btn-primary flex items-center justify-center gap-2"
+          >
+            {connectingPayroll ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            Connect & Import
+          </button>
+
+          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+            <p className="text-xs text-blue-700 flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              Secure OAuth connection. We never store your credentials.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Status */}
+      <div className="card">
+        <h3 className="font-semibold text-gray-900 mb-4">Data Collection Status</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {Object.entries(dataStatus).map(([key, status]) => (
+            <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              {getStatusIcon(status)}
+              <div>
+                <p className="text-sm font-medium text-gray-700 capitalize">
+                  {key.replace('_', ' ')}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">{status}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Column Mapping Modal */}
+      {showMappingModal && analysis && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+          >
+            <div className="p-6 border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">AI Data Analysis</h2>
+                  <p className="text-sm text-gray-500">{analysis.filename}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowMappingModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {analysis.sheets.map((sheet, idx) => (
+                <div key={idx} className="mb-4 border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedSheet(expandedSheet === idx ? -1 : idx)}
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="w-5 h-5 text-gray-400" />
+                      <span className="font-medium text-gray-900">{sheet.sheet_name}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        sheet.category_confidence > 0.7
+                          ? 'bg-green-100 text-green-700'
+                          : sheet.category_confidence > 0.4
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {sheet.category} ({(sheet.category_confidence * 100).toFixed(0)}%)
+                      </span>
+                      <span className="text-sm text-gray-500">{sheet.row_count} rows</span>
+                    </div>
+                    {expandedSheet === idx ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </button>
+
+                  {expandedSheet === idx && (
+                    <div className="p-4 border-t">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Column Mappings</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-gray-600">Source Column</th>
+                              <th className="px-3 py-2 text-left text-gray-600">Maps To</th>
+                              <th className="px-3 py-2 text-center text-gray-600">Confidence</th>
+                              <th className="px-3 py-2 text-left text-gray-600">Sample Values</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {sheet.column_mappings.map((mapping, midx) => (
+                              <tr key={midx} className="hover:bg-gray-50">
+                                <td className="px-3 py-2 font-medium">{mapping.source_column}</td>
+                                <td className="px-3 py-2">
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                    {mapping.target_field}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    mapping.confidence > 0.7
+                                      ? 'bg-green-100 text-green-700'
+                                      : mapping.confidence > 0.4
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-red-100 text-red-700'
+                                  }`}>
+                                    {(mapping.confidence * 100).toFixed(0)}%
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-gray-500 text-xs">
+                                  {mapping.sample_values.slice(0, 2).join(', ')}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {sheet.issues.length > 0 && (
+                        <div className="mt-3 p-3 bg-amber-50 rounded-lg">
+                          <p className="text-sm text-amber-700 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4" />
+                            {sheet.issues.join('. ')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {analysis.recommendations.length > 0 && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">Recommendations</h4>
+                  <ul className="space-y-1">
+                    {analysis.recommendations.map((rec, idx) => (
+                      <li key={idx} className="text-sm text-blue-700 flex items-center gap-2">
+                        <Info className="w-4 h-4 flex-shrink-0" />
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowMappingModal(false)} className="btn-secondary">
+                Cancel
+              </button>
+              <button onClick={handleImportData} className="btn-primary flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                Import Data
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Employees Tab
+const EmployeesTab: React.FC<{
+  studyId: string;
+  employees: RDEmployee[];
+  onRefresh: () => void;
+}> = ({ studyId, employees, onRefresh }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const totalWages = employees.reduce((sum, e) => sum + (e.total_wages || 0), 0);
+  const totalQualified = employees.reduce((sum, e) => sum + (e.qualified_wages || 0), 0);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const handleUpdateEmployee = async (employeeId: string, updates: Partial<RDEmployee>) => {
+    setSaving(true);
+    try {
+      await rdStudyService.updateEmployee(studyId, employeeId, updates);
+      toast.success('Employee updated');
+      setEditingId(null);
+      onRefresh();
+    } catch (error) {
+      toast.error('Failed to update employee');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{employees.length} Employees</h3>
+          <p className="text-sm text-gray-500">
+            Total W-2: {formatCurrency(totalWages)} | Qualified: {formatCurrency(totalQualified)}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onRefresh} className="btn-secondary flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+          <button className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Employee
+          </button>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Title</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Department</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">W-2 Wages</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qualified %</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qualified Wages</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Source</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Reviewed</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {employees.map(emp => (
+                <tr key={emp.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.title || '-'}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.department || '-'}</td>
+                  <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(emp.total_wages || 0)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      (emp.qualified_time_percentage || 0) >= 50
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {emp.qualified_time_percentage || 0}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-green-600">
+                    {formatCurrency(emp.qualified_wages || 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                      {emp.qualified_time_source || 'Manual'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {emp.cpa_reviewed ? (
+                      <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
+                    ) : (
+                      <Clock className="w-5 h-5 text-gray-400 mx-auto" />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => setEditingId(emp.id)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-gray-50 font-medium">
+              <tr>
+                <td className="px-4 py-3" colSpan={3}>Total</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(totalWages)}</td>
+                <td className="px-4 py-3"></td>
+                <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalQualified)}</td>
+                <td className="px-4 py-3" colSpan={3}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Projects Tab
+const ProjectsTab: React.FC<{
+  studyId: string;
+  projects: RDProject[];
+  onRefresh: () => void;
+}> = ({ studyId, projects, onRefresh }) => {
+  const qualified = projects.filter(p => p.qualification_status === 'qualified').length;
+  const partial = projects.filter(p => p.qualification_status === 'partially_qualified').length;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'qualified': return 'bg-green-100 text-green-700';
+      case 'partially_qualified': return 'bg-amber-100 text-amber-700';
+      case 'not_qualified': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{projects.length} Projects</h3>
+          <p className="text-sm text-gray-500">
+            {qualified} Qualified | {partial} Partially Qualified
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onRefresh} className="btn-secondary flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+          <button className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Project
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {projects.map(project => (
+          <div key={project.id} className="card hover:shadow-lg transition-shadow">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h4 className="font-semibold text-gray-900">{project.name}</h4>
+                <p className="text-sm text-gray-500">{project.department}</p>
+              </div>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(project.qualification_status || 'pending')}`}>
+                {(project.qualification_status || 'pending').replace('_', ' ')}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{project.description}</p>
+
+            <div className="border-t pt-3">
+              <p className="text-xs text-gray-500 mb-2">4-Part Test Scores</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Purpose', value: project.permitted_purpose_score },
+                  { label: 'Tech', value: project.technological_nature_score },
+                  { label: 'Uncertain', value: project.uncertainty_score },
+                  { label: 'Experiment', value: project.experimentation_score },
+                ].map(score => (
+                  <div key={score.label} className="text-center">
+                    <div className={`text-lg font-bold ${
+                      (score.value || 0) >= 0.7 ? 'text-green-600' :
+                      (score.value || 0) >= 0.5 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
+                      {((score.value || 0) * 100).toFixed(0)}%
+                    </div>
+                    <div className="text-xs text-gray-500">{score.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-3 border-t">
+              <span className="text-sm text-gray-600">
+                QRE: <strong>{formatCurrency(project.total_qre || 0)}</strong>
+              </span>
+              <button className="text-purple-600 hover:text-purple-700 text-sm font-medium">
+                Edit Details
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// QRE Summary Tab
+const QRESummaryTab: React.FC<{
+  studyId: string;
+  qreSummary: QRESummary | null;
+  study: RDStudy | null;
+}> = ({ studyId, qreSummary, study }) => {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const categories = qreSummary?.by_category || {};
+  const totalQRE = study?.total_qre || qreSummary?.total_qualified || 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <p className="text-purple-100 text-sm">Total QRE</p>
+          <p className="text-2xl font-bold">{formatCurrency(totalQRE)}</p>
+        </div>
+        <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
+          <p className="text-green-100 text-sm">Federal Credit</p>
+          <p className="text-2xl font-bold">{formatCurrency(study?.federal_credit_final || 0)}</p>
+        </div>
+        <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <p className="text-blue-100 text-sm">State Credits</p>
+          <p className="text-2xl font-bold">{formatCurrency(study?.total_state_credits || 0)}</p>
+        </div>
+        <div className="card bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+          <p className="text-emerald-100 text-sm">Total Credits</p>
+          <p className="text-2xl font-bold">{formatCurrency(study?.total_credits || 0)}</p>
+        </div>
+      </div>
+
+      {/* QRE Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card">
+          <h3 className="font-semibold text-gray-900 mb-4">QRE by Category</h3>
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Category</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">IRC Ref</th>
+                <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Amount</th>
+                <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">%</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              <tr>
+                <td className="px-4 py-3">Wages</td>
+                <td className="px-4 py-3 text-gray-500">§41(b)(2)(A)</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(categories.wages?.qualified || 0)}</td>
+                <td className="px-4 py-3 text-right text-gray-500">
+                  {totalQRE ? ((categories.wages?.qualified || 0) / totalQRE * 100).toFixed(1) : 0}%
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3">Supplies</td>
+                <td className="px-4 py-3 text-gray-500">§41(b)(2)(C)</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(categories.supplies?.qualified || 0)}</td>
+                <td className="px-4 py-3 text-right text-gray-500">
+                  {totalQRE ? ((categories.supplies?.qualified || 0) / totalQRE * 100).toFixed(1) : 0}%
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3">Contract Research</td>
+                <td className="px-4 py-3 text-gray-500">§41(b)(3)</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(categories.contract?.qualified || 0)}</td>
+                <td className="px-4 py-3 text-right text-gray-500">
+                  {totalQRE ? ((categories.contract?.qualified || 0) / totalQRE * 100).toFixed(1) : 0}%
+                </td>
+              </tr>
+            </tbody>
+            <tfoot className="bg-gray-50 font-medium">
+              <tr>
+                <td className="px-4 py-3" colSpan={2}>Total</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(totalQRE)}</td>
+                <td className="px-4 py-3 text-right">100%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div className="card">
+          <h3 className="font-semibold text-gray-900 mb-4">Credit Summary</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Total QRE</span>
+              <span className="font-medium">{formatCurrency(totalQRE)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Calculation Method</span>
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded font-medium">
+                {study?.selected_method?.toUpperCase() || 'ASC'}
+              </span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Federal Credit</span>
+              <span className="font-medium">{formatCurrency(study?.federal_credit_final || 0)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">State Credits ({study?.states?.length || 0} states)</span>
+              <span className="font-medium">{formatCurrency(study?.total_state_credits || 0)}</span>
+            </div>
+            <div className="flex justify-between py-3 bg-green-50 -mx-4 px-4 rounded-lg">
+              <span className="font-semibold text-gray-900">Total Credits</span>
+              <span className="text-xl font-bold text-green-600">{formatCurrency(study?.total_credits || 0)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Calculations Tab
+const CalculationsTab: React.FC<{
+  studyId: string;
+  study: RDStudy | null;
+  onCalculate: () => void;
+  calculating: boolean;
+}> = ({ studyId, study, onCalculate, calculating }) => {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">Credit Calculations</h3>
+        <button
+          onClick={onCalculate}
+          disabled={calculating}
+          className="btn-primary flex items-center gap-2"
+        >
+          {calculating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Calculator className="w-4 h-4" />
+          )}
+          {calculating ? 'Calculating...' : 'Recalculate'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Regular Method */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-semibold text-gray-900">Federal - Regular Method</h4>
+            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">20% Credit Rate</span>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Total QRE</span>
+              <span>{formatCurrency(study?.total_qre || 0)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Base Amount</span>
+              <span>{formatCurrency(study?.regular_base_amount || 0)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Excess QRE</span>
+              <span>{formatCurrency(Math.max(0, (study?.total_qre || 0) - (study?.regular_base_amount || 0)))}</span>
+            </div>
+            <div className="flex justify-between py-3 bg-blue-50 -mx-4 px-4 rounded-lg">
+              <span className="font-semibold">Regular Credit</span>
+              <span className="text-xl font-bold text-blue-600">{formatCurrency(study?.federal_credit_regular || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ASC Method */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-semibold text-gray-900">Federal - ASC Method</h4>
+            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">14% Credit Rate</span>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Total QRE</span>
+              <span>{formatCurrency(study?.total_qre || 0)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Base Amount (50% avg)</span>
+              <span>{formatCurrency(study?.asc_base_amount || 0)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Excess QRE</span>
+              <span>{formatCurrency(Math.max(0, (study?.total_qre || 0) - (study?.asc_base_amount || 0)))}</span>
+            </div>
+            <div className="flex justify-between py-3 bg-indigo-50 -mx-4 px-4 rounded-lg">
+              <span className="font-semibold">ASC Credit</span>
+              <span className="text-xl font-bold text-indigo-600">{formatCurrency(study?.federal_credit_asc || 0)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recommendation */}
+      {study?.recommended_method && (
+        <div className="card bg-green-50 border-green-200">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+            <div>
+              <p className="font-semibold text-green-800">
+                Recommended: {study.recommended_method === 'asc' ? 'ASC' : 'Regular'} Method
+              </p>
+              {study.method_selection_reason && (
+                <p className="text-sm text-green-700">{study.method_selection_reason}</p>
+              )}
+            </div>
+            <div className="ml-auto text-right">
+              <p className="text-sm text-green-600">Final Federal Credit</p>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(study.federal_credit_final || 0)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Generate & Export Tab
+const GenerateExportTab: React.FC<{
+  studyId: string;
+  study: RDStudy | null;
+}> = ({ studyId, study }) => {
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const handleGenerate = async (type: 'pdf' | 'excel' | 'form_6765', isFinal: boolean = false) => {
+    setGenerating(type);
+    try {
+      const token = localStorage.getItem('access_token');
+      const endpoint = type === 'pdf'
+        ? `${API_BASE_URL}/rd-study/studies/${studyId}/generate/pdf?is_final=${isFinal}`
+        : type === 'excel'
+        ? `${API_BASE_URL}/rd-study/studies/${studyId}/generate/excel`
+        : `${API_BASE_URL}/rd-study/studies/${studyId}/generate/form-6765`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = type === 'pdf'
+          ? `RD_Study_${study?.entity_name}_${study?.tax_year}${isFinal ? '_FINAL' : '_DRAFT'}.pdf`
+          : type === 'excel'
+          ? `RD_Study_Workbook_${study?.entity_name}_${study?.tax_year}.xlsx`
+          : `Form_6765_${study?.entity_name}_${study?.tax_year}.pdf`;
+        a.click();
+        toast.success(`${type.toUpperCase()} generated successfully!`);
+      } else {
+        toast.error('Failed to generate document');
+      }
+    } catch (error) {
+      console.error('Generate failed:', error);
+      toast.error('Failed to generate document');
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* PDF Report */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+              <File className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">PDF Study Report</h3>
+              <p className="text-sm text-gray-500">Comprehensive audit-ready report</p>
+            </div>
+          </div>
+
+          <ul className="space-y-2 mb-6 text-sm text-gray-600">
+            {[
+              'Professional Cover Page',
+              'Executive Summary',
+              'Methodology & Qualification Analysis',
+              'QRE Schedules & Breakdowns',
+              'Federal & State Credit Calculations',
+              'Project Narratives',
+              'IRC Section 41 Citations',
+            ].map(item => (
+              <li key={item} className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                {item}
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleGenerate('pdf', false)}
+              disabled={generating === 'pdf'}
+              className="flex-1 btn-secondary flex items-center justify-center gap-2"
+            >
+              {generating === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Download Draft
+            </button>
+            <button
+              onClick={() => handleGenerate('pdf', true)}
+              disabled={generating === 'pdf'}
+              className="flex-1 btn-primary flex items-center justify-center gap-2"
+            >
+              {generating === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Download Final
+            </button>
+          </div>
+        </div>
+
+        {/* Excel Workbook */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <FileSpreadsheet className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Excel Workbook</h3>
+              <p className="text-sm text-gray-500">Detailed multi-sheet workbook</p>
+            </div>
+          </div>
+
+          <ul className="space-y-2 mb-6 text-sm text-gray-600">
+            {[
+              'Summary Dashboard',
+              'QRE Summary with Charts',
+              'Employee Schedule',
+              'Project Analysis',
+              'Wage/Supply/Contract QRE Detail',
+              'Federal Regular & ASC Calculations',
+              'State Credit Worksheets',
+              'Reconciliation & Sanity Checks',
+              'Form 6765 Data',
+            ].map(item => (
+              <li key={item} className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                {item}
+              </li>
+            ))}
+          </ul>
+
+          <button
+            onClick={() => handleGenerate('excel')}
+            disabled={generating === 'excel'}
+            className="w-full btn-primary bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2"
+          >
+            {generating === 'excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Download Excel Workbook
+          </button>
+        </div>
+      </div>
+
+      {/* Credit Summary */}
+      <div className="card bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold">{study?.entity_name}</h3>
+            <p className="text-purple-200">Tax Year {study?.tax_year}</p>
+            <div className="mt-2 flex items-center gap-4 text-sm text-purple-200">
+              <span>Federal: {formatCurrency(study?.federal_credit_final || 0)}</span>
+              <span>|</span>
+              <span>State: {formatCurrency(study?.total_state_credits || 0)}</span>
+              <span>|</span>
+              <span>Method: {study?.selected_method?.toUpperCase() || 'ASC'}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-purple-200 text-sm">Total R&D Credit</p>
+            <p className="text-3xl font-bold">{formatCurrency(study?.total_credits || 0)}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 const RDStudyWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [study, setStudy] = useState<RDStudy | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useState<TabId>('data-collection');
   const [projects, setProjects] = useState<RDProject[]>([]);
   const [employees, setEmployees] = useState<RDEmployee[]>([]);
-  const [qreSummary, setQreSummary] = useState<any>(null);
-  const [reviewQueue, setReviewQueue] = useState<any>(null);
+  const [qreSummary, setQreSummary] = useState<QRESummary | null>(null);
   const [calculating, setCalculating] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      loadStudy();
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (study) {
-      loadTabData();
-    }
-  }, [activeTab, study]);
-
-  const loadStudy = async () => {
+  const loadStudy = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
-      // Check if this is a demo study
-      if (id?.startsWith('demo-')) {
-        setStudy(generateDemoStudy(id));
-        setDemoMode(true);
-        return;
-      }
-      const data = await rdStudyService.getStudy(id!);
+      const data = await rdStudyService.getStudy(id);
       setStudy(data);
-      setDemoMode(false);
     } catch (error) {
       console.error('Failed to load study:', error);
-      // Fallback to demo mode instead of navigating away
-      setStudy(generateDemoStudy(id || 'demo-fallback'));
-      setDemoMode(true);
+      toast.error('Failed to load study');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const loadTabData = async () => {
+  const loadTabData = useCallback(async () => {
     if (!study) return;
-
-    // If in demo mode, use demo data
-    if (demoMode) {
-      switch (activeTab) {
-        case 'projects':
-          setProjects(generateDemoProjects());
-          break;
-        case 'employees':
-          setEmployees(generateDemoEmployees());
-          break;
-        case 'qres':
-          setQreSummary({
-            by_category: {
-              wages: { count: 3, gross: 560000, qualified: 407500 },
-              supplies: { count: 12, gross: 45000, qualified: 38250 },
-              contract: { count: 2, gross: 80000, qualified: 52000 },
-            },
-            total_gross: 685000,
-            total_qualified: 497750,
-          });
-          break;
-        case 'review':
-          setReviewQueue({
-            total_items: 8,
-            reviewed_items: 5,
-            pending_items: 3,
-            high_priority_items: 1,
-            items: [],
-          });
-          break;
-      }
-      return;
-    }
 
     try {
       switch (activeTab) {
@@ -233,41 +1552,24 @@ const RDStudyWorkspace: React.FC = () => {
           const qreData = await rdStudyService.getQRESummary(study.id);
           setQreSummary(qreData);
           break;
-        case 'review':
-          const reviewData = await rdStudyService.getReviewQueue(study.id);
-          setReviewQueue(reviewData);
-          break;
       }
     } catch (error) {
       console.error(`Failed to load ${activeTab} data:`, error);
     }
-  };
+  }, [study, activeTab]);
+
+  useEffect(() => {
+    loadStudy();
+  }, [loadStudy]);
+
+  useEffect(() => {
+    loadTabData();
+  }, [loadTabData]);
 
   const handleCalculate = async () => {
     if (!study) return;
-
-    if (demoMode) {
-      setCalculating(true);
-      // Simulate calculation in demo mode
-      setTimeout(() => {
-        setStudy(prev => prev ? {
-          ...prev,
-          total_credits: 97550,
-          federal_credit_final: 78040,
-          total_state_credits: 19510,
-          qre_wages: 407500,
-          qre_supplies: 38250,
-          qre_contract: 52000,
-          status: 'calculation' as RDStudyStatus,
-        } : null);
-        setCalculating(false);
-        toast.success('Credits calculated successfully! (Demo)');
-      }, 2000);
-      return;
-    }
-
+    setCalculating(true);
     try {
-      setCalculating(true);
       await rdStudyService.calculateCredits(study.id);
       toast.success('Credits calculated successfully');
       loadStudy();
@@ -278,15 +1580,10 @@ const RDStudyWorkspace: React.FC = () => {
     }
   };
 
-  const handleTransition = async (newStatus: RDStudyStatus) => {
-    if (!study) return;
-    try {
-      await rdStudyService.transitionStudy(study.id, newStatus);
-      toast.success(`Study moved to ${statusConfig[newStatus].label}`);
-      loadStudy();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to update status');
-    }
+  const handleDataImported = () => {
+    loadStudy();
+    loadTabData();
+    toast.success('Data imported successfully!');
   };
 
   const formatCurrency = (amount: number) => {
@@ -294,7 +1591,6 @@ const RDStudyWorkspace: React.FC = () => {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
     }).format(amount);
   };
 
@@ -324,23 +1620,6 @@ const RDStudyWorkspace: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Demo Mode Banner */}
-      {demoMode && (
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg px-6 py-3 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Brain className="w-5 h-5" />
-            <span className="font-medium">Demo Mode - Explore the R&D study workflow. Connect backend service for live data.</span>
-          </div>
-          <button
-            onClick={loadStudy}
-            className="flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Retry
-          </button>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -361,12 +1640,6 @@ const RDStudyWorkspace: React.FC = () => {
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color}`}>
                   {status.label}
                 </span>
-                {study.has_open_flags && (
-                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="w-4 h-4" />
-                    {study.risk_flags.length} Flags
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                 <span className="flex items-center gap-1">
@@ -383,42 +1656,19 @@ const RDStudyWorkspace: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCalculate}
-            disabled={calculating}
-            className="btn-secondary flex items-center gap-2"
-          >
-            {calculating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Calculator className="w-4 h-4" />
-            )}
-            Calculate Credits
-          </button>
-          {study.status === 'cpa_review' && (
-            <button
-              onClick={() => handleTransition('approved')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Check className="w-4 h-4" />
-              Approve Study
-            </button>
-          )}
+        <div className="text-right">
+          <p className="text-sm text-gray-500">Total R&D Credit</p>
+          <p className="text-3xl font-bold text-green-600">{formatCurrency(study.total_credits || 0)}</p>
         </div>
       </div>
 
       {/* Credit Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total QRE</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(study.total_qre)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(study.total_qre || 0)}</p>
             </div>
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
               <DollarSign className="w-5 h-5 text-purple-600" />
@@ -426,19 +1676,12 @@ const RDStudyWorkspace: React.FC = () => {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Federal Credit</p>
-              <p className="text-2xl font-bold text-blue-600">{formatCurrency(study.federal_credit_final)}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {study.selected_method === 'asc' ? 'ASC Method' : 'Regular Method'}
-              </p>
+              <p className="text-2xl font-bold text-blue-600">{formatCurrency(study.federal_credit_final || 0)}</p>
+              <p className="text-xs text-gray-400">{study.selected_method === 'asc' ? 'ASC Method' : 'Regular Method'}</p>
             </div>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -446,17 +1689,12 @@ const RDStudyWorkspace: React.FC = () => {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">State Credits</p>
-              <p className="text-2xl font-bold text-indigo-600">{formatCurrency(study.total_state_credits)}</p>
-              <p className="text-xs text-gray-400 mt-1">{study.states.length} state(s)</p>
+              <p className="text-2xl font-bold text-indigo-600">{formatCurrency(study.total_state_credits || 0)}</p>
+              <p className="text-xs text-gray-400">{study.states?.length || 0} state(s)</p>
             </div>
             <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
               <Building2 className="w-5 h-5 text-indigo-600" />
@@ -464,16 +1702,11 @@ const RDStudyWorkspace: React.FC = () => {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="card bg-gradient-to-br from-green-500 to-green-600 text-white"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm">Total Credits</p>
-              <p className="text-2xl font-bold">{formatCurrency(study.total_credits)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(study.total_credits || 0)}</p>
             </div>
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
               <CheckCircle className="w-5 h-5 text-white" />
@@ -515,323 +1748,26 @@ const RDStudyWorkspace: React.FC = () => {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Study Details */}
-              <div className="card">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Study Details</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-500">Entity Type</span>
-                    <span className="font-medium">{study.entity_type.replace('_', ' ').toUpperCase()}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-500">Fiscal Year</span>
-                    <span className="font-medium">
-                      {new Date(study.fiscal_year_start).toLocaleDateString()} -
-                      {new Date(study.fiscal_year_end).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-500">Short Year</span>
-                    <span className="font-medium">{study.is_short_year ? `Yes (${study.short_year_days} days)` : 'No'}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-500">Controlled Group</span>
-                    <span className="font-medium">{study.is_controlled_group ? study.controlled_group_name : 'No'}</span>
-                  </div>
-                  <div className="flex justify-between py-2">
-                    <span className="text-gray-500">States</span>
-                    <span className="font-medium">{study.states.join(', ') || 'None'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Analysis */}
-              <div className="card">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-purple-500" />
-                  AI Analysis
-                </h3>
-                {study.ai_analysis_summary ? (
-                  <div className="space-y-4">
-                    <p className="text-gray-600">{study.ai_analysis_summary}</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 bg-green-50 rounded-lg">
-                        <p className="text-sm text-green-600">Opportunity Score</p>
-                        <p className="text-2xl font-bold text-green-700">
-                          {((study.ai_opportunity_score || 0) * 100).toFixed(0)}%
-                        </p>
-                      </div>
-                      <div className="p-3 bg-orange-50 rounded-lg">
-                        <p className="text-sm text-orange-600">Risk Score</p>
-                        <p className="text-2xl font-bold text-orange-700">
-                          {((study.ai_risk_score || 0) * 100).toFixed(0)}%
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Brain className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>AI analysis not yet available</p>
-                    <p className="text-sm">Upload documents to trigger analysis</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Risk Flags */}
-              {study.risk_flags.length > 0 && (
-                <div className="card lg:col-span-2">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-orange-500" />
-                    Risk Flags ({study.risk_flags.length})
-                  </h3>
-                  <div className="space-y-3">
-                    {study.risk_flags.map((flag, index) => (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-lg border ${
-                          flag.severity === 'high' ? 'bg-red-50 border-red-200' :
-                          flag.severity === 'medium' ? 'bg-orange-50 border-orange-200' :
-                          'bg-yellow-50 border-yellow-200'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${
-                            flag.severity === 'high' ? 'text-red-500' :
-                            flag.severity === 'medium' ? 'text-orange-500' :
-                            'text-yellow-500'
-                          }`} />
-                          <div>
-                            <p className="font-medium text-gray-900">{flag.type}</p>
-                            <p className="text-sm text-gray-600">{flag.message}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+          {activeTab === 'data-collection' && (
+            <DataCollectionTab studyId={study.id} onDataImported={handleDataImported} />
           )}
-
-          {activeTab === 'projects' && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">R&D Projects ({projects.length})</h3>
-                <button className="btn-secondary text-sm">Add Project</button>
-              </div>
-              {projects.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <FlaskConical className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No projects added yet</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {projects.map(project => (
-                    <div key={project.id} className="p-4 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{project.name}</h4>
-                          <p className="text-sm text-gray-500">{project.department}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            project.qualification_status === 'qualified' ? 'bg-green-100 text-green-700' :
-                            project.qualification_status === 'not_qualified' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {project.qualification_status}
-                          </span>
-                          {project.overall_score && (
-                            <span className="text-sm text-gray-500">
-                              Score: {(project.overall_score * 100).toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {activeTab === 'client-invitations' && (
+            <ClientInvitationsTab studyId={study.id} study={study} onRefresh={loadStudy} />
           )}
-
           {activeTab === 'employees' && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">R&D Employees ({employees.length})</h3>
-                <button className="btn-secondary text-sm">Add Employee</button>
-              </div>
-              {employees.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No employees added yet</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Title</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Total Wages</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qualified %</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qualified Wages</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Reviewed</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {employees.map(emp => (
-                        <tr key={emp.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium">{emp.name}</td>
-                          <td className="px-4 py-3 text-gray-500">{emp.title || '-'}</td>
-                          <td className="px-4 py-3 text-right">{formatCurrency(emp.total_wages)}</td>
-                          <td className="px-4 py-3 text-right">{emp.qualified_time_percentage}%</td>
-                          <td className="px-4 py-3 text-right font-medium text-green-600">
-                            {formatCurrency(emp.qualified_wages)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {emp.cpa_reviewed ? (
-                              <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
-                            ) : (
-                              <Clock className="w-5 h-5 text-gray-400 mx-auto" />
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <EmployeesTab studyId={study.id} employees={employees} onRefresh={loadTabData} />
           )}
-
+          {activeTab === 'projects' && (
+            <ProjectsTab studyId={study.id} projects={projects} onRefresh={loadTabData} />
+          )}
           {activeTab === 'qres' && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">QRE Summary</h3>
-              {qreSummary ? (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {Object.entries(qreSummary.by_category || {}).map(([category, data]: [string, any]) => (
-                    <div key={category} className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500 capitalize">{category.replace('_', ' ')}</p>
-                      <p className="text-xl font-bold text-gray-900">{formatCurrency(data.qualified || 0)}</p>
-                      <p className="text-xs text-gray-400">{data.count} items</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No QRE data available</p>
-                </div>
-              )}
-            </div>
+            <QRESummaryTab studyId={study.id} qreSummary={qreSummary} study={study} />
           )}
-
           {activeTab === 'calculations' && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Credit Calculations</h3>
-                <button onClick={handleCalculate} disabled={calculating} className="btn-primary text-sm flex items-center gap-2">
-                  {calculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  Recalculate
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-3">Federal - Regular Method (20%)</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Total QRE</span>
-                      <span>{formatCurrency(study.total_qre)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-blue-600">
-                      <span>Credit</span>
-                      <span>{formatCurrency(study.federal_credit_regular)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-3">Federal - ASC Method (14%)</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Total QRE</span>
-                      <span>{formatCurrency(study.total_qre)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-blue-600">
-                      <span>Credit</span>
-                      <span>{formatCurrency(study.federal_credit_asc)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {study.recommended_method && (
-                <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                  <p className="text-green-700">
-                    <strong>Recommended:</strong> {study.recommended_method === 'asc' ? 'ASC' : 'Regular'} Method
-                    {study.method_selection_reason && ` - ${study.method_selection_reason}`}
-                  </p>
-                </div>
-              )}
-            </div>
+            <CalculationsTab studyId={study.id} study={study} onCalculate={handleCalculate} calculating={calculating} />
           )}
-
-          {activeTab === 'review' && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">CPA Review Queue</h3>
-              {reviewQueue ? (
-                <div>
-                  <div className="grid grid-cols-4 gap-4 mb-6">
-                    <div className="p-3 bg-gray-50 rounded-lg text-center">
-                      <p className="text-2xl font-bold">{reviewQueue.total_items}</p>
-                      <p className="text-sm text-gray-500">Total Items</p>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg text-center">
-                      <p className="text-2xl font-bold text-green-600">{reviewQueue.reviewed_items}</p>
-                      <p className="text-sm text-gray-500">Reviewed</p>
-                    </div>
-                    <div className="p-3 bg-orange-50 rounded-lg text-center">
-                      <p className="text-2xl font-bold text-orange-600">{reviewQueue.pending_items}</p>
-                      <p className="text-sm text-gray-500">Pending</p>
-                    </div>
-                    <div className="p-3 bg-red-50 rounded-lg text-center">
-                      <p className="text-2xl font-bold text-red-600">{reviewQueue.high_priority_items}</p>
-                      <p className="text-sm text-gray-500">High Priority</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {(reviewQueue.items || []).map((item: any) => (
-                      <div key={item.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs text-gray-400 uppercase">{item.entity_type}</span>
-                            <h4 className="font-medium">{item.title}</h4>
-                            <p className="text-sm text-gray-500">{item.description}</p>
-                          </div>
-                          <button className="btn-secondary text-sm">Review</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <CheckCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>Review queue loading...</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {(activeTab === 'narratives' || activeTab === 'documents') && (
-            <div className="card text-center py-12">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-gray-500">
-                {activeTab === 'narratives' ? 'Narrative management' : 'Document management'} coming soon
-              </p>
-            </div>
+          {activeTab === 'generate' && (
+            <GenerateExportTab studyId={study.id} study={study} />
           )}
         </motion.div>
       </AnimatePresence>

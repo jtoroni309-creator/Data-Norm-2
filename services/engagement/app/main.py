@@ -49,6 +49,10 @@ from .schemas import (
     HealthResponse
 )
 
+# Import routers
+from .group_audit_api import router as group_audit_router
+from .engagement_customer_api import router as customer_router
+
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
@@ -69,6 +73,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(group_audit_router, prefix="/api")
+app.include_router(customer_router)
 
 
 # ========================================

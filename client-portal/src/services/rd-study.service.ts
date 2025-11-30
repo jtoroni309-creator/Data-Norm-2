@@ -161,6 +161,11 @@ class RDStudyService {
     return response.data;
   }
 
+  async updateEmployee(studyId: string, employeeId: string, data: Partial<RDEmployee>): Promise<RDEmployee> {
+    const response = await this.api.patch<RDEmployee>(`/studies/${studyId}/employees/${employeeId}`, data);
+    return response.data;
+  }
+
   // ========================================
   // QRE Management
   // ========================================

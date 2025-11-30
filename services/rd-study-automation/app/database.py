@@ -86,7 +86,13 @@ async def init_db():
 
         # Ensure required extensions
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""))
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"pgvector\""))
+
+        # pgvector is optional - only available on certain PostgreSQL configurations
+        try:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"pgvector\""))
+            logger.info("pgvector extension enabled")
+        except Exception as e:
+            logger.warning(f"pgvector extension not available (vector search disabled): {e}")
 
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)

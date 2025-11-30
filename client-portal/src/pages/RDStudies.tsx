@@ -62,14 +62,18 @@ const generateDemoStudies = (): RDStudySummary[] => {
   return companies.map((company, index) => ({
     id: `demo-${index + 1}`,
     name: `${company.name} - ${2024 - (index % 2)} R&D Study`,
-    entity_name: company.entity,
+    client_id: `demo-client-${index + 1}`,
     client_name: company.name,
+    entity_name: company.entity,
+    entity_type: 'c_corp' as const,
     tax_year: 2024 - (index % 2),
     status: statuses[index % statuses.length],
+    total_qre: Math.floor(Math.random() * 800000) + 100000,
     total_credits: Math.floor(Math.random() * 500000) + 50000,
     federal_credit_final: Math.floor(Math.random() * 400000) + 40000,
     total_state_credits: Math.floor(Math.random() * 100000) + 10000,
     has_open_flags: index === 2,
+    cpa_approved: index === 4,
     created_at: new Date(Date.now() - index * 7 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - index * 2 * 24 * 60 * 60 * 1000).toISOString(),
   }));
@@ -153,14 +157,18 @@ const RDStudies: React.FC = () => {
       const newStudy: RDStudySummary = {
         id: `demo-new-${Date.now()}`,
         name: studyName,
-        entity_name: createForm.entity_name,
+        client_id: `demo-client-${Date.now()}`,
         client_name: createForm.client_name,
+        entity_name: createForm.entity_name,
+        entity_type: 'c_corp',
         tax_year: createForm.tax_year,
         status: 'draft',
+        total_qre: 0,
         total_credits: 0,
         federal_credit_final: 0,
         total_state_credits: 0,
         has_open_flags: false,
+        cpa_approved: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -176,8 +184,11 @@ const RDStudies: React.FC = () => {
         const newStudy = await rdStudyService.createStudy({
           name: studyName,
           entity_name: createForm.entity_name,
+          entity_type: 'c_corp',
           client_id: createForm.client_name, // This would normally be a UUID
           tax_year: createForm.tax_year,
+          fiscal_year_start: `01/01/${createForm.tax_year}`,
+          fiscal_year_end: `12/31/${createForm.tax_year}`,
         });
         toast.success('R&D Study created successfully!');
         setShowCreateModal(false);

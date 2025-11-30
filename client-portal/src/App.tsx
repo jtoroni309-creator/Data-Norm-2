@@ -24,6 +24,8 @@ import {
   FlaskConical,
   Calculator,
   ShieldAlert,
+  Network,
+  Brain,
 } from 'lucide-react';
 
 // Pages
@@ -61,11 +63,19 @@ import TaxReturnWorkspace from './pages/TaxReturnWorkspace';
 // Fraud Detection Pages
 import FraudDetection from './pages/FraudDetection';
 import FraudCaseWorkspace from './pages/FraudCaseWorkspace';
+// Group Audit Management
+import GroupAuditManagement from './pages/GroupAuditManagement';
+// R&D Client Data Collection (Public Page for invited clients)
+import { RDStudyClientDataCollection } from './pages/RDStudyClientDataCollection';
+// AI Agent Dashboard - Autonomous AI Operations
+import AIAgentDashboard from './pages/AIAgentDashboard';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/firm/dashboard' },
+  { id: 'ai-agents', label: 'AI Agents', icon: Brain, path: '/firm/ai-agents' },
   { id: 'clients', label: 'Clients', icon: Building2, path: '/firm/clients' },
   { id: 'audits', label: 'Audits', icon: FileText, path: '/firm/audits' },
+  { id: 'group-audits', label: 'Group Audits', icon: Network, path: '/firm/group-audits' },
   { id: 'soc', label: 'SOC Audits', icon: Shield, path: '/firm/soc-engagements' },
   { id: 'rd-studies', label: 'R&D Credits', icon: FlaskConical, path: '/firm/rd-studies' },
   { id: 'tax-returns', label: 'Tax Returns', icon: Calculator, path: '/firm/tax-returns' },
@@ -373,8 +383,12 @@ const App: React.FC = () => {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+        {/* R&D Study Client Data Collection - Public page for invited clients (no auth required) */}
+        <Route path="/rd-study-data-collection" element={<RDStudyClientDataCollection />} />
+
         {/* Firm Portal Routes with Layout - Protected by RouteGuard */}
         <Route path="/firm/dashboard" element={<RouteGuard portalType="firm"><AppLayout><FirmDashboard /></AppLayout></RouteGuard>} />
+        <Route path="/firm/ai-agents" element={<RouteGuard portalType="firm"><AppLayout><AIAgentDashboard /></AppLayout></RouteGuard>} />
         <Route path="/firm/clients" element={<RouteGuard portalType="firm"><AppLayout><FirmClients /></AppLayout></RouteGuard>} />
         <Route path="/firm/settings" element={<RouteGuard portalType="firm"><AppLayout><FirmSettings /></AppLayout></RouteGuard>} />
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><AppLayout><EmployeeManagement /></AppLayout></RouteGuard>} />
@@ -386,6 +400,7 @@ const App: React.FC = () => {
         <Route path="/firm/tax-returns/:id" element={<RouteGuard portalType="firm"><AppLayout><TaxReturnWorkspace /></AppLayout></RouteGuard>} />
         <Route path="/firm/fraud-detection" element={<RouteGuard portalType="firm"><AppLayout><FraudDetection /></AppLayout></RouteGuard>} />
         <Route path="/firm/fraud-detection/cases/:id" element={<RouteGuard portalType="firm"><AppLayout><FraudCaseWorkspace /></AppLayout></RouteGuard>} />
+        <Route path="/firm/group-audits" element={<RouteGuard portalType="firm"><AppLayout><GroupAuditManagement /></AppLayout></RouteGuard>} />
         <Route path="/firm/reports" element={<RouteGuard portalType="firm"><AppLayout><FirmReports /></AppLayout></RouteGuard>} />
         {/* Engagement Workspace Routes - Protected by RouteGuard */}
         <Route path="/firm/engagements/:id" element={<RouteGuard portalType="firm"><AppLayout><EngagementWorkspace /></AppLayout></RouteGuard>} />
@@ -397,6 +412,7 @@ const App: React.FC = () => {
         <Route path="/firm/engagements/:id/documents" element={<RouteGuard portalType="firm"><AppLayout><DocumentRepository /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/reports" element={<RouteGuard portalType="firm"><AppLayout><AuditReporting /></AppLayout></RouteGuard>} />
         <Route path="/firm/engagements/:id/ai-planning" element={<RouteGuard portalType="firm"><AppLayout><AIAuditPlanning /></AppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/group-audit" element={<RouteGuard portalType="firm"><AppLayout><GroupAuditManagement /></AppLayout></RouteGuard>} />
 
         {/* Customer Portal Routes - Protected by RouteGuard */}
         <Route path="/customer/dashboard" element={<RouteGuard portalType="client"><DashboardPage /></RouteGuard>} />

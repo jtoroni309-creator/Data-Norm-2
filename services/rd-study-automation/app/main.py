@@ -6,7 +6,7 @@ AI-first R&D tax credit study automation for CPA firms.
 
 import logging
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
 from datetime import datetime
 from decimal import Decimal

@@ -1,7 +1,7 @@
 """
 PDF Study Report Generator
 
-Generates audit-ready PDF R&D tax credit study reports.
+Generates audit-ready PDF R&D tax credit study reports using ReportLab.
 """
 
 import io
@@ -11,6 +11,18 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    PageBreak, Image, ListFlowable, ListItem, KeepTogether
+)
+from reportlab.platypus.tableofcontents import TableOfContents
+from reportlab.graphics.shapes import Drawing, Line
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +31,8 @@ class PDFStudyGenerator:
     Generates comprehensive PDF R&D tax credit study reports.
 
     Report includes:
+    - Cover Page
+    - Table of Contents
     - Executive Summary
     - Qualification Analysis
     - Evidence Matrix
@@ -31,10 +45,101 @@ class PDFStudyGenerator:
     - Appendix with Citations
     """
 
+    # Color definitions
+    PRIMARY_COLOR = colors.HexColor("#1F4E79")
+    SECONDARY_COLOR = colors.HexColor("#2E7D32")
+    WARNING_COLOR = colors.HexColor("#E65100")
+    LIGHT_GRAY = colors.HexColor("#F5F5F5")
+    BORDER_COLOR = colors.HexColor("#CCCCCC")
+
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
         self.include_watermark = self.config.get("include_watermark", True)
         self.watermark_text = "DRAFT - NOT FOR FILING"
+        self.styles = self._create_styles()
+
+    def _create_styles(self) -> Dict:
+        """Create custom paragraph styles."""
+        styles = getSampleStyleSheet()
+
+        # Title style
+        styles.add(ParagraphStyle(
+            name='CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=self.PRIMARY_COLOR,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        ))
+
+        # Section heading
+        styles.add(ParagraphStyle(
+            name='SectionHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=self.PRIMARY_COLOR,
+            spaceBefore=20,
+            spaceAfter=12,
+            fontName='Helvetica-Bold',
+            borderPadding=(0, 0, 5, 0),
+            borderWidth=2,
+            borderColor=self.PRIMARY_COLOR
+        ))
+
+        # Subsection heading
+        styles.add(ParagraphStyle(
+            name='SubsectionHeading',
+            parent=styles['Heading3'],
+            fontSize=12,
+            textColor=self.PRIMARY_COLOR,
+            spaceBefore=15,
+            spaceAfter=8,
+            fontName='Helvetica-Bold'
+        ))
+
+        # Body text
+        styles.add(ParagraphStyle(
+            name='BodyText',
+            parent=styles['Normal'],
+            fontSize=10,
+            leading=14,
+            alignment=TA_JUSTIFY,
+            spaceBefore=6,
+            spaceAfter=6
+        ))
+
+        # Caption
+        styles.add(ParagraphStyle(
+            name='Caption',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.gray,
+            alignment=TA_CENTER,
+            spaceBefore=4,
+            spaceAfter=12
+        ))
+
+        # Credit amount
+        styles.add(ParagraphStyle(
+            name='CreditAmount',
+            parent=styles['Normal'],
+            fontSize=14,
+            textColor=self.SECONDARY_COLOR,
+            fontName='Helvetica-Bold',
+            alignment=TA_RIGHT
+        ))
+
+        # Citation
+        styles.add(ParagraphStyle(
+            name='Citation',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.gray,
+            fontName='Helvetica-Oblique'
+        ))
+
+        return styles
 
     def generate_study_report(
         self,
@@ -52,533 +157,809 @@ class PDFStudyGenerator:
 
         Returns PDF content as bytes.
         """
-        # In production, use reportlab or weasyprint
-        # This is a structure representation
+        buffer = io.BytesIO()
 
-        report_structure = self._build_report_structure(
-            study_data,
-            projects,
-            employees,
-            qre_summary,
-            calculation_result,
-            narratives,
-            evidence_items,
-            is_final
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=0.75 * inch,
+            leftMargin=0.75 * inch,
+            topMargin=0.75 * inch,
+            bottomMargin=0.75 * inch,
+            title=f"R&D Tax Credit Study - {study_data.get('entity_name', 'Unknown')}",
+            author="Aura Audit AI"
         )
 
-        # Generate PDF content
-        pdf_content = self._generate_pdf_content(report_structure, is_final)
+        story = []
 
-        return pdf_content
+        # Build document sections
+        story.extend(self._build_cover_page(study_data, calculation_result, is_final))
+        story.append(PageBreak())
 
-    def _build_report_structure(
+        story.extend(self._build_executive_summary(
+            study_data, calculation_result, narratives, projects
+        ))
+        story.append(PageBreak())
+
+        story.extend(self._build_methodology_section(study_data))
+        story.append(PageBreak())
+
+        story.extend(self._build_qualification_analysis(projects))
+        story.append(PageBreak())
+
+        story.extend(self._build_qre_schedules(qre_summary, employees))
+        story.append(PageBreak())
+
+        story.extend(self._build_federal_calculation(calculation_result))
+        story.append(PageBreak())
+
+        if study_data.get("states"):
+            story.extend(self._build_state_addenda(study_data, calculation_result))
+            story.append(PageBreak())
+
+        story.extend(self._build_project_narratives(projects, narratives))
+        story.append(PageBreak())
+
+        story.extend(self._build_assumptions_section(study_data))
+        story.append(PageBreak())
+
+        story.extend(self._build_appendix(evidence_items))
+
+        # Build PDF
+        if is_final:
+            doc.build(story, onFirstPage=self._add_header_footer, onLaterPages=self._add_header_footer)
+        else:
+            doc.build(story, onFirstPage=self._add_draft_watermark, onLaterPages=self._add_draft_watermark)
+
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    def _add_header_footer(self, canvas, doc):
+        """Add header and footer to each page."""
+        canvas.saveState()
+
+        # Header line
+        canvas.setStrokeColor(self.PRIMARY_COLOR)
+        canvas.setLineWidth(1)
+        canvas.line(0.75 * inch, 10.25 * inch, 7.75 * inch, 10.25 * inch)
+
+        # Footer
+        canvas.setFont('Helvetica', 8)
+        canvas.setFillColor(colors.gray)
+        canvas.drawString(0.75 * inch, 0.5 * inch, f"Generated: {datetime.now().strftime('%B %d, %Y')}")
+        canvas.drawRightString(7.75 * inch, 0.5 * inch, f"Page {doc.page}")
+
+        # Confidential notice
+        canvas.setFont('Helvetica-Oblique', 7)
+        canvas.drawCentredString(4.25 * inch, 0.5 * inch, "CONFIDENTIAL - Prepared for client use only")
+
+        canvas.restoreState()
+
+    def _add_draft_watermark(self, canvas, doc):
+        """Add draft watermark to each page."""
+        canvas.saveState()
+
+        # Header and footer
+        self._add_header_footer(canvas, doc)
+
+        # Watermark
+        canvas.setFont('Helvetica-Bold', 60)
+        canvas.setFillColor(colors.HexColor("#FFCCCC"))
+        canvas.setFillAlpha(0.3)
+        canvas.translate(4.25 * inch, 5.5 * inch)
+        canvas.rotate(45)
+        canvas.drawCentredString(0, 0, "DRAFT")
+
+        canvas.restoreState()
+
+    def _build_cover_page(
         self,
         study_data: Dict,
-        projects: List[Dict],
-        employees: List[Dict],
-        qre_summary: Dict,
+        calculation_result: Dict,
+        is_final: bool
+    ) -> List:
+        """Build professional cover page with branding and key metrics."""
+        elements = []
+
+        # Header bar with decorative line
+        header_drawing = Drawing(6.5 * inch, 0.1 * inch)
+        header_drawing.add(Line(0, 0, 6.5 * inch, 0, strokeColor=self.PRIMARY_COLOR, strokeWidth=3))
+        elements.append(header_drawing)
+
+        elements.append(Spacer(1, 0.75 * inch))
+
+        # Prepared by section (top of cover)
+        prepared_style = ParagraphStyle(
+            name='PreparedBy',
+            fontSize=10,
+            textColor=colors.gray,
+            alignment=TA_CENTER,
+            fontName='Helvetica'
+        )
+        firm_name = study_data.get("firm_name", "Aura Audit AI")
+        elements.append(Paragraph(f"Prepared by {firm_name}", prepared_style))
+
+        elements.append(Spacer(1, 1.25 * inch))
+
+        # Main title with styled box
+        title_box_style = ParagraphStyle(
+            name='TitleBox',
+            fontSize=28,
+            textColor=self.PRIMARY_COLOR,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold',
+            leading=36
+        )
+        elements.append(Paragraph(
+            "Research &amp; Development<br/>Tax Credit Study",
+            title_box_style
+        ))
+
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # IRC Section subtitle
+        subtitle_style = ParagraphStyle(
+            name='Subtitle',
+            fontSize=12,
+            textColor=colors.gray,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Oblique'
+        )
+        elements.append(Paragraph("Pursuant to IRC Section 41", subtitle_style))
+
+        elements.append(Spacer(1, 0.75 * inch))
+
+        # Decorative divider
+        divider_drawing = Drawing(4 * inch, 0.05 * inch)
+        divider_drawing.add(Line(0, 0, 4 * inch, 0, strokeColor=self.SECONDARY_COLOR, strokeWidth=2))
+        elements.append(divider_drawing)
+
+        elements.append(Spacer(1, 0.5 * inch))
+
+        # Entity name (client)
+        entity_style = ParagraphStyle(
+            name='EntityName',
+            fontSize=20,
+            textColor=self.PRIMARY_COLOR,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        elements.append(Paragraph(study_data.get("entity_name", ""), entity_style))
+
+        elements.append(Spacer(1, 0.15 * inch))
+
+        # Entity type and EIN
+        entity_details_style = ParagraphStyle(
+            name='EntityDetails',
+            fontSize=11,
+            textColor=colors.gray,
+            alignment=TA_CENTER,
+            fontName='Helvetica'
+        )
+        entity_type = study_data.get("entity_type", "").replace("_", " ").upper()
+        ein = study_data.get("ein", "N/A")
+        elements.append(Paragraph(f"{entity_type} | EIN: {ein}", entity_details_style))
+
+        elements.append(Spacer(1, 0.4 * inch))
+
+        # Tax year with period
+        year_style = ParagraphStyle(
+            name='TaxYear',
+            fontSize=14,
+            textColor=self.PRIMARY_COLOR,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        fiscal_start = study_data.get("fiscal_year_start", "")
+        fiscal_end = study_data.get("fiscal_year_end", "")
+        if fiscal_start and fiscal_end:
+            elements.append(Paragraph(f"Tax Year {study_data.get('tax_year', '')}", year_style))
+            period_style = ParagraphStyle(
+                name='Period',
+                fontSize=10,
+                textColor=colors.gray,
+                alignment=TA_CENTER
+            )
+            elements.append(Paragraph(f"Period: {fiscal_start} through {fiscal_end}", period_style))
+        else:
+            elements.append(Paragraph(f"Tax Year {study_data.get('tax_year', '')}", year_style))
+
+        elements.append(Spacer(1, 0.75 * inch))
+
+        # Credit summary box - professional styling
+        total_credit = calculation_result.get("total_credits", 0)
+        federal_credit = calculation_result.get("federal_credit", 0)
+        state_credits = calculation_result.get("total_state_credits", 0)
+        total_qre = calculation_result.get("total_qre", 0)
+        selected_method = calculation_result.get("selected_method", "ASC").upper()
+
+        # Prominent total credit display
+        credit_display_style = ParagraphStyle(
+            name='CreditDisplay',
+            fontSize=14,
+            textColor=colors.white,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold',
+            backColor=self.SECONDARY_COLOR,
+            borderPadding=15
+        )
+        credit_amount_style = ParagraphStyle(
+            name='CreditAmount',
+            fontSize=32,
+            textColor=colors.white,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+
+        # Create summary table with enhanced styling
+        summary_data = [
+            ["TOTAL R&D TAX CREDIT", ""],
+            ["", f"${total_credit:,.0f}"],
+            ["", ""],
+            ["Federal Credit", f"${federal_credit:,.0f}"],
+            ["State Credits", f"${state_credits:,.0f}"],
+            ["Total QRE", f"${total_qre:,.0f}"],
+            ["Method Applied", selected_method],
+        ]
+
+        summary_table = Table(summary_data, colWidths=[2.75 * inch, 2.25 * inch])
+        summary_table.setStyle(TableStyle([
+            # Header row
+            ('BACKGROUND', (0, 0), (-1, 0), self.SECONDARY_COLOR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('SPAN', (0, 0), (-1, 0)),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            # Big credit amount row
+            ('BACKGROUND', (0, 1), (-1, 1), self.SECONDARY_COLOR),
+            ('TEXTCOLOR', (0, 1), (-1, 1), colors.white),
+            ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 1), (-1, 1), 28),
+            ('SPAN', (0, 1), (-1, 1)),
+            ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
+            # Spacer row
+            ('BACKGROUND', (0, 2), (-1, 2), self.LIGHT_GRAY),
+            ('SPAN', (0, 2), (-1, 2)),
+            # Data rows
+            ('BACKGROUND', (0, 3), (-1, -1), self.LIGHT_GRAY),
+            ('TEXTCOLOR', (0, 3), (0, -1), self.PRIMARY_COLOR),
+            ('TEXTCOLOR', (1, 3), (1, -1), colors.black),
+            ('FONTNAME', (0, 3), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 3), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 3), (-1, -1), 11),
+            ('ALIGN', (0, 3), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 3), (1, -1), 'RIGHT'),
+            ('PADDING', (0, 0), (-1, -1), 12),
+            ('BOX', (0, 0), (-1, -1), 2, self.PRIMARY_COLOR),
+            ('LINEBELOW', (0, 2), (-1, 2), 1, self.BORDER_COLOR),
+        ]))
+        elements.append(summary_table)
+
+        elements.append(Spacer(1, 1 * inch))
+
+        # Footer with status and date
+        footer_style = ParagraphStyle(
+            name='CoverFooter',
+            fontSize=10,
+            textColor=colors.gray,
+            alignment=TA_CENTER,
+            leading=16
+        )
+
+        status = "FINAL REPORT" if is_final else "DRAFT - Subject to Review"
+        status_color = self.SECONDARY_COLOR if is_final else self.WARNING_COLOR
+
+        status_style = ParagraphStyle(
+            name='Status',
+            fontSize=12,
+            textColor=status_color,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        elements.append(Paragraph(status, status_style))
+        elements.append(Spacer(1, 0.15 * inch))
+        elements.append(Paragraph(
+            f"Report Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}",
+            footer_style
+        ))
+
+        # Bottom decorative bar
+        elements.append(Spacer(1, 0.5 * inch))
+        footer_drawing = Drawing(6.5 * inch, 0.1 * inch)
+        footer_drawing.add(Line(0, 0, 6.5 * inch, 0, strokeColor=self.PRIMARY_COLOR, strokeWidth=3))
+        elements.append(footer_drawing)
+
+        return elements
+
+    def _build_executive_summary(
+        self,
+        study_data: Dict,
         calculation_result: Dict,
         narratives: Dict,
-        evidence_items: List[Dict],
-        is_final: bool
-    ) -> Dict[str, Any]:
-        """Build the report structure."""
-        return {
-            "metadata": {
-                "title": f"R&D Tax Credit Study - {study_data.get('entity_name', 'Unknown')}",
-                "tax_year": study_data.get("tax_year"),
-                "generated_at": datetime.utcnow().isoformat(),
-                "is_final": is_final,
-                "version": "1.0"
-            },
-            "cover_page": {
-                "title": "Research and Development Tax Credit Study",
-                "subtitle": f"Tax Year {study_data.get('tax_year')}",
-                "entity_name": study_data.get("entity_name"),
-                "prepared_for": study_data.get("entity_name"),
-                "prepared_by": "CPA Firm Name",  # Would come from firm data
-                "date": datetime.utcnow().strftime("%B %d, %Y")
-            },
-            "table_of_contents": self._generate_toc(projects),
-            "sections": [
-                {
-                    "id": "executive_summary",
-                    "title": "Executive Summary",
-                    "content": narratives.get("executive_summary", ""),
-                    "page_break_after": True
-                },
-                {
-                    "id": "methodology",
-                    "title": "Study Methodology",
-                    "content": self._generate_methodology_section(study_data),
-                    "page_break_after": True
-                },
-                {
-                    "id": "qualification_analysis",
-                    "title": "Qualification Analysis",
-                    "subsections": [
-                        {
-                            "title": "Federal 4-Part Test Overview",
-                            "content": self._generate_four_part_test_overview()
-                        },
-                        {
-                            "title": "Qualified Research Activities",
-                            "content": self._generate_activities_summary(projects)
-                        }
-                    ],
-                    "page_break_after": True
-                },
-                {
-                    "id": "evidence_matrix",
-                    "title": "Evidence Matrix",
-                    "content": self._generate_evidence_matrix(projects, evidence_items),
-                    "page_break_after": True
-                },
-                {
-                    "id": "project_narratives",
-                    "title": "Project Narratives",
-                    "subsections": [
-                        {
-                            "title": p.get("name", f"Project {i+1}"),
-                            "content": p.get("qualification_narrative", "")
-                        }
-                        for i, p in enumerate(projects)
-                    ],
-                    "page_break_after": True
-                },
-                {
-                    "id": "employee_narratives",
-                    "title": "Employee Role Narratives",
-                    "subsections": [
-                        {
-                            "title": e.get("name", f"Employee {i+1}"),
-                            "content": e.get("employee_narrative", "")
-                        }
-                        for i, e in enumerate(employees[:20])  # Limit for report
-                    ],
-                    "page_break_after": True
-                },
-                {
-                    "id": "qre_schedules",
-                    "title": "Qualified Research Expense Schedules",
-                    "content": self._generate_qre_schedule_content(qre_summary),
-                    "tables": [
-                        self._generate_qre_summary_table(qre_summary),
-                        self._generate_wage_qre_table(employees),
-                    ],
-                    "page_break_after": True
-                },
-                {
-                    "id": "federal_calculation",
-                    "title": "Federal Credit Calculation",
-                    "content": self._generate_federal_calculation_content(calculation_result),
-                    "tables": [
-                        self._generate_calculation_table(calculation_result)
-                    ],
-                    "page_break_after": True
-                },
-                {
-                    "id": "state_addenda",
-                    "title": "State Credit Addenda",
-                    "content": self._generate_state_addenda(study_data, calculation_result),
-                    "page_break_after": True
-                },
-                {
-                    "id": "assumptions",
-                    "title": "Assumptions and Limitations",
-                    "content": self._generate_assumptions_section(study_data),
-                    "page_break_after": True
-                },
-                {
-                    "id": "appendix",
-                    "title": "Appendix",
-                    "subsections": [
-                        {
-                            "title": "A. IRC Section 41 Citations",
-                            "content": self._generate_irc_citations()
-                        },
-                        {
-                            "title": "B. Treasury Regulation Citations",
-                            "content": self._generate_treasury_citations()
-                        },
-                        {
-                            "title": "C. Document Index",
-                            "content": self._generate_document_index(evidence_items)
-                        }
-                    ]
-                }
-            ]
-        }
+        projects: List[Dict]
+    ) -> List:
+        """Build executive summary section."""
+        elements = []
 
-    def _generate_toc(self, projects: List[Dict]) -> List[Dict]:
-        """Generate table of contents."""
-        toc = [
-            {"title": "Executive Summary", "page": 1},
-            {"title": "Study Methodology", "page": 3},
-            {"title": "Qualification Analysis", "page": 5},
-            {"title": "Evidence Matrix", "page": 8},
-            {"title": "Project Narratives", "page": 10},
-            {"title": "Employee Role Narratives", "page": 15 + len(projects)},
-            {"title": "QRE Schedules", "page": 20 + len(projects)},
-            {"title": "Federal Credit Calculation", "page": 25 + len(projects)},
-            {"title": "State Credit Addenda", "page": 28 + len(projects)},
-            {"title": "Assumptions and Limitations", "page": 30 + len(projects)},
-            {"title": "Appendix", "page": 32 + len(projects)},
+        elements.append(Paragraph("Executive Summary", self.styles['SectionHeading']))
+
+        # AI-generated or custom narrative
+        summary_text = narratives.get("executive_summary", "")
+        if not summary_text:
+            total_credit = calculation_result.get("total_credits", 0)
+            total_qre = calculation_result.get("total_qre", 0)
+            qualified_projects = len([p for p in projects if p.get("qualification_status") == "qualified"])
+
+            summary_text = f"""
+            <b>{study_data.get('entity_name', 'The Company')}</b> has completed a comprehensive analysis of its
+            research and development activities for tax year {study_data.get('tax_year', '')}. Based on our
+            evaluation of {len(projects)} research projects, {qualified_projects} projects were found to meet
+            the requirements of IRC Section 41 for the R&D tax credit.
+
+            The total Qualified Research Expenses (QRE) amount to <b>${total_qre:,.0f}</b>, resulting in
+            a total R&D tax credit of <b>${total_credit:,.0f}</b>.
+
+            The credit calculation was performed using the {calculation_result.get('selected_method', 'ASC').upper()}
+            method, which provided the most favorable outcome for the taxpayer.
+            """
+
+        elements.append(Paragraph(summary_text, self.styles['BodyText']))
+
+        elements.append(Spacer(1, 0.25 * inch))
+
+        # Key metrics table
+        elements.append(Paragraph("Key Metrics", self.styles['SubsectionHeading']))
+
+        metrics_data = [
+            ["Metric", "Value"],
+            ["Total Qualified Research Expenses", f"${calculation_result.get('total_qre', 0):,.0f}"],
+            ["Federal R&D Credit", f"${calculation_result.get('federal_credit', 0):,.0f}"],
+            ["Total State Credits", f"${calculation_result.get('total_state_credits', 0):,.0f}"],
+            ["Total Credits", f"${calculation_result.get('total_credits', 0):,.0f}"],
+            ["Credit Method", calculation_result.get('selected_method', 'ASC').upper()],
+            ["Qualified Projects", str(len([p for p in projects if p.get("qualification_status") == "qualified"]))],
         ]
-        return toc
 
-    def _generate_methodology_section(self, study_data: Dict) -> str:
-        """Generate methodology section content."""
-        return f"""
-This R&D Tax Credit Study was prepared in accordance with IRC Section 41 and applicable
-Treasury Regulations. The study covers the tax year ending {study_data.get('fiscal_year_end', 'N/A')}.
+        metrics_table = Table(metrics_data, colWidths=[3.5 * inch, 2.5 * inch])
+        metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, self.LIGHT_GRAY]),
+        ]))
+        elements.append(metrics_table)
 
-**Scope of Study**
+        return elements
 
-The scope of this study includes:
-- Identification and documentation of qualified research activities
-- Evaluation of activities against the Federal 4-part test
-- Calculation of Qualified Research Expenses (QRE)
-- Computation of Federal and state R&D tax credits
+    def _build_methodology_section(self, study_data: Dict) -> List:
+        """Build methodology section."""
+        elements = []
 
-**Information Sources**
+        elements.append(Paragraph("Study Methodology", self.styles['SectionHeading']))
 
-Information for this study was gathered from:
-- General ledger and trial balance data
-- Payroll records and W-2 data
-- Time tracking and project management systems
-- Employee interviews and questionnaires
-- Technical documentation and engineering records
-- Contracts and invoices
+        methodology_text = f"""
+        This R&D Tax Credit Study was prepared in accordance with IRC Section 41 and applicable
+        Treasury Regulations. The study covers the tax year ending {study_data.get('fiscal_year_end', 'N/A')}.
+        """
+        elements.append(Paragraph(methodology_text, self.styles['BodyText']))
 
-**Qualification Methodology**
+        # Scope
+        elements.append(Paragraph("Scope of Study", self.styles['SubsectionHeading']))
+        scope_items = [
+            "Identification and documentation of qualified research activities",
+            "Evaluation of activities against the Federal 4-part test",
+            "Calculation of Qualified Research Expenses (QRE)",
+            "Computation of Federal and state R&D tax credits"
+        ]
+        elements.append(self._create_bullet_list(scope_items))
 
-Each research activity was evaluated against the IRC Section 41 4-part test:
-1. Permitted Purpose (§41(d)(1)(B)(i))
-2. Technological in Nature (§41(d)(1)(B)(ii))
-3. Elimination of Uncertainty (§41(d)(1)(B)(iii))
-4. Process of Experimentation (§41(d)(1)(B)(iv))
+        # Information sources
+        elements.append(Paragraph("Information Sources", self.styles['SubsectionHeading']))
+        source_items = [
+            "General ledger and trial balance data",
+            "Payroll records and W-2 data",
+            "Time tracking and project management systems",
+            "Employee interviews and questionnaires",
+            "Technical documentation and engineering records",
+            "Contracts and invoices"
+        ]
+        elements.append(self._create_bullet_list(source_items))
 
-Activities meeting all four parts of the test were included in the QRE calculation.
+        # 4-part test
+        elements.append(Paragraph("Qualification Methodology", self.styles['SubsectionHeading']))
+        test_text = """
+        Each research activity was evaluated against the IRC Section 41 four-part test:
+        """
+        elements.append(Paragraph(test_text, self.styles['BodyText']))
 
-**QRE Methodology**
+        test_items = [
+            "<b>Permitted Purpose (§41(d)(1)(B)(i))</b> - Research must be undertaken for developing new or improved business components",
+            "<b>Technological in Nature (§41(d)(1)(B)(ii))</b> - Research must rely on principles of physical/biological sciences, engineering, or computer science",
+            "<b>Elimination of Uncertainty (§41(d)(1)(B)(iii))</b> - Research must address uncertainty regarding capability, method, or design",
+            "<b>Process of Experimentation (§41(d)(1)(B)(iv))</b> - Research must involve systematic evaluation of alternatives"
+        ]
+        elements.append(self._create_bullet_list(test_items))
 
-Qualified Research Expenses were calculated for:
-- Wages: Based on employee time allocations to qualified research activities
-- Supplies: Tangible property consumed in qualified research
-- Contract Research: 65% of amounts paid to non-qualified organizations (75% for qualified organizations)
+        return elements
 
-**Credit Calculation**
+    def _build_qualification_analysis(self, projects: List[Dict]) -> List:
+        """Build qualification analysis section."""
+        elements = []
 
-The Federal R&D credit was calculated using both the Regular Credit method (IRC §41(a)(1))
-and the Alternative Simplified Credit method (IRC §41(c)(4)). The method producing the
-greater benefit is recommended.
-"""
+        elements.append(Paragraph("Qualification Analysis", self.styles['SectionHeading']))
 
-    def _generate_four_part_test_overview(self) -> str:
-        """Generate 4-part test overview."""
-        return """
-**IRC Section 41(d) - Qualified Research**
-
-To qualify for the R&D tax credit under IRC Section 41, research activities must satisfy
-all four parts of the following test:
-
-**Part 1: Permitted Purpose (IRC §41(d)(1)(B)(i))**
-Research must be undertaken for the purpose of discovering information which is technological
-in nature, and the application of which is intended to be useful in the development of a new
-or improved business component of the taxpayer.
-
-**Part 2: Technological in Nature (IRC §41(d)(1)(B)(ii))**
-The research must fundamentally rely on principles of physical or biological sciences,
-engineering, or computer science. This element is satisfied when the information sought
-is based on the "hard sciences."
-
-**Part 3: Elimination of Uncertainty (IRC §41(d)(1)(B)(iii))**
-The research must be undertaken for the purpose of eliminating uncertainty concerning the
-development or improvement of a business component. Uncertainty exists if the information
-available to the taxpayer does not establish the capability or method for developing or
-improving the business component, or the appropriate design of the business component.
-
-**Part 4: Process of Experimentation (IRC §41(d)(1)(B)(iv))**
-The research must involve a process of experimentation for a qualified purpose. This means
-substantially all of the research activities must constitute elements of a process of
-experimentation for a qualified purpose. A process of experimentation is one in which the
-taxpayer evaluates one or more alternatives to achieve a result where the capability or
-method of achieving that result, or the appropriate design of that result, is uncertain.
-"""
-
-    def _generate_activities_summary(self, projects: List[Dict]) -> str:
-        """Generate activities summary."""
         qualified = [p for p in projects if p.get("qualification_status") == "qualified"]
         partial = [p for p in projects if p.get("qualification_status") == "partially_qualified"]
+        not_qualified = [p for p in projects if p.get("qualification_status") == "not_qualified"]
 
-        content = f"""
-**Summary of Research Activities**
+        summary_text = f"""
+        A total of <b>{len(projects)}</b> research projects were analyzed for qualification under IRC Section 41.
+        Of these, <b>{len(qualified)}</b> projects were found to be fully qualified, <b>{len(partial)}</b>
+        partially qualified, and <b>{len(not_qualified)}</b> did not meet the qualification criteria.
+        """
+        elements.append(Paragraph(summary_text, self.styles['BodyText']))
 
-Total projects analyzed: {len(projects)}
-Fully qualified projects: {len(qualified)}
-Partially qualified projects: {len(partial)}
+        elements.append(Spacer(1, 0.25 * inch))
 
-**Qualified Research Areas**
+        # Project summary table
+        if projects:
+            elements.append(Paragraph("Project Summary", self.styles['SubsectionHeading']))
 
-The following research areas were identified as meeting the requirements of IRC Section 41:
+            project_data = [["Project Name", "Status", "4-Part Score", "QRE"]]
+            for p in projects[:15]:  # Limit to 15 projects
+                status = p.get("qualification_status", "pending").replace("_", " ").title()
+                score = p.get("overall_score", 0)
+                score_str = f"{score:.0f}%" if isinstance(score, (int, float)) else str(score)
+                qre = p.get("total_qre", 0)
+                project_data.append([
+                    p.get("name", "")[:40],
+                    status,
+                    score_str,
+                    f"${qre:,.0f}" if qre else "-"
+                ])
 
-"""
-        for i, p in enumerate(qualified[:10], 1):
-            content += f"{i}. {p.get('name', 'Unknown Project')}\n"
-            content += f"   - Business Component: {p.get('business_component', 'N/A')}\n"
-            content += f"   - Qualification Score: {p.get('overall_score', 0):.0f}/100\n\n"
+            project_table = Table(project_data, colWidths=[2.5 * inch, 1.5 * inch, 1 * inch, 1.2 * inch])
+            project_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('ALIGN', (2, 0), (-1, -1), 'CENTER'),
+                ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
+                ('PADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, self.LIGHT_GRAY]),
+            ]))
+            elements.append(project_table)
 
-        return content
+        return elements
 
-    def _generate_evidence_matrix(
-        self,
-        projects: List[Dict],
-        evidence_items: List[Dict]
-    ) -> str:
-        """Generate evidence matrix content."""
-        content = """
-**Evidence Matrix**
+    def _build_qre_schedules(self, qre_summary: Dict, employees: List[Dict]) -> List:
+        """Build QRE schedules section."""
+        elements = []
 
-The following matrix summarizes the evidence supporting qualification for each research project:
+        elements.append(Paragraph("Qualified Research Expenses", self.styles['SectionHeading']))
 
-| Project | Permitted Purpose | Technological | Uncertainty | Experimentation |
-|---------|------------------|---------------|-------------|-----------------|
-"""
-        for p in projects[:15]:
-            pp_score = "✓" if p.get("permitted_purpose_score", 0) >= 70 else "△" if p.get("permitted_purpose_score", 0) >= 50 else "✗"
-            tn_score = "✓" if p.get("technological_nature_score", 0) >= 70 else "△" if p.get("technological_nature_score", 0) >= 50 else "✗"
-            uc_score = "✓" if p.get("uncertainty_score", 0) >= 70 else "△" if p.get("uncertainty_score", 0) >= 50 else "✗"
-            ex_score = "✓" if p.get("experimentation_score", 0) >= 70 else "△" if p.get("experimentation_score", 0) >= 50 else "✗"
+        total_wages = qre_summary.get("total_wages", 0)
+        total_supplies = qre_summary.get("total_supplies", 0)
+        total_contract = qre_summary.get("total_contract_research", 0)
+        total_qre = qre_summary.get("total_qre", total_wages + total_supplies + total_contract)
 
-            content += f"| {p.get('name', 'Unknown')[:30]} | {pp_score} | {tn_score} | {uc_score} | {ex_score} |\n"
+        summary_text = f"""
+        Total Qualified Research Expenses for the tax year amount to <b>${total_qre:,.0f}</b>,
+        comprised of wage expenses, supply costs, and contract research payments.
+        """
+        elements.append(Paragraph(summary_text, self.styles['BodyText']))
 
-        content += """
-Legend: ✓ = Strong evidence (≥70), △ = Moderate evidence (50-69), ✗ = Weak evidence (<50)
-"""
-        return content
+        # QRE breakdown table
+        elements.append(Paragraph("QRE by Category", self.styles['SubsectionHeading']))
 
-    def _generate_qre_schedule_content(self, qre_summary: Dict) -> str:
-        """Generate QRE schedule content."""
-        return f"""
-**Qualified Research Expense Summary**
+        qre_data = [
+            ["Category", "IRC Reference", "Amount", "% of Total"],
+            ["Wages", "§41(b)(2)(A)", f"${total_wages:,.0f}", f"{total_wages/total_qre*100:.1f}%" if total_qre else "0%"],
+            ["Supplies", "§41(b)(2)(C)", f"${total_supplies:,.0f}", f"{total_supplies/total_qre*100:.1f}%" if total_qre else "0%"],
+            ["Contract Research", "§41(b)(3)", f"${total_contract:,.0f}", f"{total_contract/total_qre*100:.1f}%" if total_qre else "0%"],
+            ["Total QRE", "", f"${total_qre:,.0f}", "100%"],
+        ]
 
-Total Qualified Research Expenses for the tax year:
+        qre_table = Table(qre_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch, 1 * inch])
+        qre_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, -1), (-1, -1), self.LIGHT_GRAY),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+        ]))
+        elements.append(qre_table)
 
-- Wage QRE: ${qre_summary.get('total_wages', 0):,.2f}
-- Supply QRE: ${qre_summary.get('total_supplies', 0):,.2f}
-- Contract Research QRE: ${qre_summary.get('total_contract_research', 0):,.2f}
-- Basic Research QRE: ${qre_summary.get('total_basic_research', 0):,.2f}
+        # Top employees
+        if employees:
+            elements.append(Spacer(1, 0.25 * inch))
+            elements.append(Paragraph("Top R&D Employees by Qualified Wages", self.styles['SubsectionHeading']))
 
-**Total QRE: ${qre_summary.get('total_qre', 0):,.2f}**
+            sorted_employees = sorted(employees, key=lambda x: x.get("qualified_wages", 0), reverse=True)[:10]
 
-**Wage QRE Methodology**
+            emp_data = [["Employee", "Title", "Qualified %", "Qualified Wages"]]
+            for emp in sorted_employees:
+                emp_data.append([
+                    emp.get("name", "")[:25],
+                    emp.get("title", "")[:20],
+                    f"{emp.get('qualified_time_percentage', 0):.0f}%",
+                    f"${emp.get('qualified_wages', 0):,.0f}"
+                ])
 
-Wage QRE was calculated based on W-2 wages paid to employees who performed, directly
-supervised, or directly supported qualified research activities. Time allocations were
-determined through:
-- Analysis of time tracking records
-- Employee interviews and questionnaires
-- Management estimates based on project involvement
+            emp_table = Table(emp_data, colWidths=[2 * inch, 2 * inch, 1 * inch, 1.5 * inch])
+            emp_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+                ('PADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, self.LIGHT_GRAY]),
+            ]))
+            elements.append(emp_table)
 
-**Supply QRE Methodology**
+        return elements
 
-Supply QRE includes tangible property (other than land or depreciable property) used in
-the conduct of qualified research. Supplies were identified through general ledger analysis
-and categorized based on their use in qualified research activities.
+    def _build_federal_calculation(self, calculation_result: Dict) -> List:
+        """Build federal calculation section."""
+        elements = []
 
-**Contract Research Methodology**
+        elements.append(Paragraph("Federal R&D Credit Calculation", self.styles['SectionHeading']))
 
-Contract research expenses include 65% of amounts paid to non-qualified organizations
-for qualified research performed on behalf of the taxpayer. Amounts paid to qualified
-research organizations are included at 75%.
-"""
+        regular = calculation_result.get("federal_regular", {})
+        asc = calculation_result.get("federal_asc", {})
+        selected_method = calculation_result.get("selected_method", "asc")
 
-    def _generate_qre_summary_table(self, qre_summary: Dict) -> Dict:
-        """Generate QRE summary table."""
-        return {
-            "title": "QRE Summary",
-            "headers": ["Category", "Gross Amount", "Qualified %", "QRE Amount"],
-            "rows": [
-                ["Wages", "N/A", "Various", f"${qre_summary.get('total_wages', 0):,.2f}"],
-                ["Supplies", "N/A", "100%", f"${qre_summary.get('total_supplies', 0):,.2f}"],
-                ["Contract Research", "N/A", "65%/75%", f"${qre_summary.get('total_contract_research', 0):,.2f}"],
-                ["Basic Research", "N/A", "100%", f"${qre_summary.get('total_basic_research', 0):,.2f}"],
-            ],
-            "footer": ["Total QRE", "", "", f"${qre_summary.get('total_qre', 0):,.2f}"]
-        }
+        intro_text = """
+        The Federal R&D credit was calculated using both available methods: the Regular Credit
+        method (IRC §41(a)(1)) and the Alternative Simplified Credit (ASC) method (IRC §41(c)(4)).
+        """
+        elements.append(Paragraph(intro_text, self.styles['BodyText']))
 
-    def _generate_wage_qre_table(self, employees: List[Dict]) -> Dict:
-        """Generate wage QRE detail table."""
-        return {
-            "title": "Wage QRE Detail",
-            "headers": ["Employee", "Title", "Total Wages", "Qualified %", "Wage QRE"],
-            "rows": [
-                [
-                    e.get("name", "Unknown")[:25],
-                    e.get("title", "")[:20],
-                    f"${e.get('total_wages', 0):,.2f}",
-                    f"{e.get('qualified_time_percentage', 0):.0f}%",
-                    f"${e.get('qualified_wages', 0):,.2f}"
-                ]
-                for e in employees[:25]
-            ]
-        }
+        # Comparison table
+        elements.append(Paragraph("Method Comparison", self.styles['SubsectionHeading']))
 
-    def _generate_federal_calculation_content(self, calculation_result: Dict) -> str:
-        """Generate federal calculation content."""
-        return f"""
-**Federal R&D Credit Calculation**
+        comparison_data = [
+            ["Item", "Regular Credit", "ASC"],
+            ["Total QRE", f"${regular.get('total_qre', 0):,.0f}", f"${asc.get('total_qre', 0):,.0f}"],
+            ["Base Amount", f"${regular.get('base_amount', 0):,.0f}", f"${asc.get('base_amount', 0):,.0f}"],
+            ["Excess QRE", f"${regular.get('excess_qre', 0):,.0f}", f"${asc.get('excess_qre', 0):,.0f}"],
+            ["Credit Rate", "20%", "14%"],
+            ["Tentative Credit", f"${regular.get('tentative_credit', 0):,.0f}", f"${asc.get('tentative_credit', 0):,.0f}"],
+            ["280C Reduction", f"${regular.get('section_280c_reduction', 0):,.0f}", f"${asc.get('section_280c_reduction', 0):,.0f}"],
+            ["Final Credit", f"${regular.get('final_credit', 0):,.0f}", f"${asc.get('final_credit', 0):,.0f}"],
+        ]
 
-The Federal R&D credit was calculated using both available methods:
+        comp_table = Table(comparison_data, colWidths=[2 * inch, 2 * inch, 2 * inch])
+        comp_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, -1), (-1, -1), self.LIGHT_GRAY),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+        ]))
+        elements.append(comp_table)
 
-**Regular Credit Method (IRC §41(a)(1))**
-Credit = 20% × (Current Year QRE - Base Amount)
+        elements.append(Spacer(1, 0.25 * inch))
 
-Regular Credit: ${calculation_result.get('regular_credit', 0):,.2f}
+        # Recommendation
+        rec_style = ParagraphStyle(
+            name='Recommendation',
+            fontSize=11,
+            textColor=self.SECONDARY_COLOR,
+            fontName='Helvetica-Bold',
+            backColor=self.LIGHT_GRAY,
+            borderPadding=10
+        )
+        elements.append(Paragraph(
+            f"Recommended Method: {selected_method.upper()} - "
+            f"Final Federal Credit: ${calculation_result.get('federal_credit', 0):,.0f}",
+            rec_style
+        ))
 
-**Alternative Simplified Credit (IRC §41(c)(4))**
-Credit = 14% × (Current Year QRE - 50% of Average QRE for 3 Prior Years)
+        return elements
 
-ASC Credit: ${calculation_result.get('asc_credit', 0):,.2f}
+    def _build_state_addenda(self, study_data: Dict, calculation_result: Dict) -> List:
+        """Build state credit addenda."""
+        elements = []
 
-**Recommended Method: {calculation_result.get('selected_method', 'ASC').upper()}**
+        elements.append(Paragraph("State R&D Credits", self.styles['SectionHeading']))
 
-Based on the calculations above, the {calculation_result.get('selected_method', 'ASC').upper()} method
-produces the greater credit and is recommended.
-
-**Final Federal Credit: ${calculation_result.get('federal_credit', 0):,.2f}**
-
-Note: The Section 280C(c) election has been made, resulting in a reduced credit in exchange
-for the ability to claim a full deduction for research expenses.
-"""
-
-    def _generate_calculation_table(self, calculation_result: Dict) -> Dict:
-        """Generate calculation comparison table."""
-        return {
-            "title": "Credit Calculation Comparison",
-            "headers": ["Item", "Regular Credit", "ASC"],
-            "rows": [
-                ["Total QRE", f"${calculation_result.get('total_qre', 0):,.2f}", f"${calculation_result.get('total_qre', 0):,.2f}"],
-                ["Base Amount", f"${calculation_result.get('regular_base', 0):,.2f}", f"${calculation_result.get('asc_base', 0):,.2f}"],
-                ["Excess QRE", f"${calculation_result.get('regular_excess', 0):,.2f}", f"${calculation_result.get('asc_excess', 0):,.2f}"],
-                ["Credit Rate", "20%", "14%"],
-                ["Tentative Credit", f"${calculation_result.get('regular_tentative', 0):,.2f}", f"${calculation_result.get('asc_tentative', 0):,.2f}"],
-                ["280C Reduction", f"${calculation_result.get('regular_280c', 0):,.2f}", f"${calculation_result.get('asc_280c', 0):,.2f}"],
-                ["Final Credit", f"${calculation_result.get('regular_credit', 0):,.2f}", f"${calculation_result.get('asc_credit', 0):,.2f}"],
-            ]
-        }
-
-    def _generate_state_addenda(self, study_data: Dict, calculation_result: Dict) -> str:
-        """Generate state credit addenda."""
         states = study_data.get("states", [])
         state_results = calculation_result.get("state_results", {})
 
-        if not states:
-            return "No state R&D credits were calculated for this study."
-
-        content = "**State R&D Credit Summary**\n\n"
-
-        for state in states:
-            state_data = state_results.get(state, {})
-            content += f"**{state}**\n"
-            content += f"- State Credit: ${state_data.get('final_credit', 0):,.2f}\n"
-            content += f"- Credit Type: {state_data.get('credit_type', 'N/A')}\n"
-            content += f"- Carryforward: {state_data.get('carryforward_years', 'N/A')} years\n\n"
-
-        return content
-
-    def _generate_assumptions_section(self, study_data: Dict) -> str:
-        """Generate assumptions and limitations section."""
-        return """
-**Assumptions**
-
-The following assumptions were made in preparing this study:
-
-1. All information provided by the taxpayer is accurate and complete.
-2. Time allocation estimates represent management's best estimate of time spent on qualified activities.
-3. Projects classified as qualified research meet all requirements of IRC Section 41.
-4. All research was conducted within the United States.
-5. The taxpayer had no funded research arrangements during the study period.
-
-**Limitations**
-
-This study is subject to the following limitations:
-
-1. The conclusions in this study are based on information available at the time of preparation.
-2. Changes in facts, circumstances, or law may affect the conclusions.
-3. The ultimate determination of qualification is subject to IRS review and interpretation.
-4. Time allocations based on estimates are inherently less precise than contemporaneous records.
-5. This study does not constitute legal or accounting advice.
-
-**Reliance**
-
-This study was prepared for the exclusive use of the taxpayer named herein and should not
-be relied upon by any third party without the express written consent of the preparer.
-"""
-
-    def _generate_irc_citations(self) -> str:
-        """Generate IRC citation appendix."""
-        return """
-**IRC Section 41 - Credit for Increasing Research Activities**
-
-- §41(a) - General Rule
-- §41(b) - Qualified Research Expenses
-- §41(c) - Base Amount / Alternative Simplified Credit
-- §41(d) - Qualified Research Defined
-- §41(e) - Credit Allowable with Respect to Certain Payments to Qualified Organizations
-- §41(f) - Special Rules
-- §41(h) - Termination
-
-**IRC Section 280C - Certain Expenses for Which Credits Are Allowable**
-
-- §280C(c) - Credit for Increasing Research Activities
-"""
-
-    def _generate_treasury_citations(self) -> str:
-        """Generate Treasury Regulation citations."""
-        return """
-**Treasury Regulation §1.41-1 through §1.41-9**
-
-- §1.41-2 - Qualified Research Expenses
-- §1.41-3 - Base Amount for Taxable Years Beginning After December 31, 1989
-- §1.41-4 - Qualified Research for Expenditures Paid or Incurred in Taxable Years Ending After December 31, 2003
-- §1.41-5 - Basic Research for Taxable Years Beginning After December 31, 1986
-- §1.41-6 - Aggregation of Expenditures
-- §1.41-8 - Alternative Simplified Credit
-"""
-
-    def _generate_document_index(self, evidence_items: List[Dict]) -> str:
-        """Generate document index."""
-        content = "**Document Index**\n\n"
-
-        for i, e in enumerate(evidence_items[:50], 1):
-            content += f"{i}. {e.get('title', 'Unknown Document')}\n"
-            content += f"   Type: {e.get('evidence_type', 'N/A')}\n"
-            content += f"   Source: {e.get('source_reference', 'N/A')}\n\n"
-
-        return content
-
-    def _generate_pdf_content(self, report_structure: Dict, is_final: bool) -> bytes:
+        intro_text = f"""
+        In addition to the Federal R&D credit, the company may be eligible for state R&D credits
+        in the following {len(states)} state(s): {', '.join(states)}.
         """
-        Generate actual PDF bytes.
+        elements.append(Paragraph(intro_text, self.styles['BodyText']))
 
-        In production, this would use reportlab or weasyprint.
+        if state_results:
+            state_data = [["State", "Credit Type", "Credit Rate", "Credit Amount"]]
+            for state_code, result in state_results.items():
+                state_data.append([
+                    result.get("state_name", state_code),
+                    result.get("credit_type", "Incremental"),
+                    f"{result.get('credit_rate', 0)*100:.1f}%",
+                    f"${result.get('final_credit', 0):,.0f}"
+                ])
+
+            state_table = Table(state_data, colWidths=[2 * inch, 1.5 * inch, 1.2 * inch, 1.5 * inch])
+            state_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+                ('PADDING', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+            ]))
+            elements.append(state_table)
+
+        return elements
+
+    def _build_project_narratives(self, projects: List[Dict], narratives: Dict) -> List:
+        """Build project narratives section."""
+        elements = []
+
+        elements.append(Paragraph("Project Qualification Narratives", self.styles['SectionHeading']))
+
+        intro_text = """
+        The following narratives describe the qualified research activities and how each project
+        satisfies the four-part test under IRC Section 41.
         """
-        # Placeholder - returns empty PDF structure
-        # In production, implement with reportlab:
-        #
-        # from reportlab.lib.pagesizes import letter
-        # from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-        # from reportlab.lib.styles import getSampleStyleSheet
-        #
-        # buffer = io.BytesIO()
-        # doc = SimpleDocTemplate(buffer, pagesize=letter)
-        # story = []
-        # styles = getSampleStyleSheet()
-        # ...build PDF...
-        # doc.build(story)
-        # return buffer.getvalue()
+        elements.append(Paragraph(intro_text, self.styles['BodyText']))
 
-        import json
-        return json.dumps(report_structure, indent=2, default=str).encode("utf-8")
+        for i, project in enumerate(projects[:10], 1):  # Limit to 10 projects
+            elements.append(Paragraph(
+                f"{i}. {project.get('name', 'Unnamed Project')}",
+                self.styles['SubsectionHeading']
+            ))
+
+            narrative = project.get("qualification_narrative", "")
+            if not narrative:
+                narrative = f"""
+                <b>Business Component:</b> {project.get('business_component', 'N/A')}<br/>
+                <b>Department:</b> {project.get('department', 'N/A')}<br/>
+                <b>Qualification Status:</b> {project.get('qualification_status', 'pending').replace('_', ' ').title()}<br/>
+                <b>Overall Score:</b> {project.get('overall_score', 0):.0f}/100<br/><br/>
+                {project.get('description', 'No description available.')}
+                """
+
+            elements.append(Paragraph(narrative, self.styles['BodyText']))
+            elements.append(Spacer(1, 0.15 * inch))
+
+        return elements
+
+    def _build_assumptions_section(self, study_data: Dict) -> List:
+        """Build assumptions and limitations section."""
+        elements = []
+
+        elements.append(Paragraph("Assumptions and Limitations", self.styles['SectionHeading']))
+
+        # Assumptions
+        elements.append(Paragraph("Assumptions", self.styles['SubsectionHeading']))
+        assumptions = [
+            "All information provided by the taxpayer is accurate and complete.",
+            "Time allocation estimates represent management's best estimate of time spent on qualified activities.",
+            "Projects classified as qualified research meet all requirements of IRC Section 41.",
+            "All research was conducted within the United States.",
+            "The taxpayer had no funded research arrangements during the study period."
+        ]
+        elements.append(self._create_bullet_list(assumptions))
+
+        # Limitations
+        elements.append(Paragraph("Limitations", self.styles['SubsectionHeading']))
+        limitations = [
+            "The conclusions in this study are based on information available at the time of preparation.",
+            "Changes in facts, circumstances, or law may affect the conclusions.",
+            "The ultimate determination of qualification is subject to IRS review and interpretation.",
+            "Time allocations based on estimates are inherently less precise than contemporaneous records.",
+            "This study does not constitute legal or accounting advice."
+        ]
+        elements.append(self._create_bullet_list(limitations))
+
+        # Reliance
+        elements.append(Paragraph("Reliance", self.styles['SubsectionHeading']))
+        reliance_text = """
+        This study was prepared for the exclusive use of the taxpayer named herein and should not
+        be relied upon by any third party without the express written consent of the preparer.
+        """
+        elements.append(Paragraph(reliance_text, self.styles['BodyText']))
+
+        return elements
+
+    def _build_appendix(self, evidence_items: List[Dict]) -> List:
+        """Build appendix section."""
+        elements = []
+
+        elements.append(Paragraph("Appendix", self.styles['SectionHeading']))
+
+        # IRC citations
+        elements.append(Paragraph("A. IRC Section 41 Citations", self.styles['SubsectionHeading']))
+        citations = [
+            "§41(a) - General Rule",
+            "§41(b) - Qualified Research Expenses",
+            "§41(c) - Base Amount / Alternative Simplified Credit",
+            "§41(d) - Qualified Research Defined",
+            "§41(e) - Credit for Certain Payments to Qualified Organizations",
+            "§41(f) - Special Rules",
+            "§280C(c) - Certain Expenses for Which Credits Are Allowable"
+        ]
+        elements.append(self._create_bullet_list(citations))
+
+        # Treasury regulations
+        elements.append(Paragraph("B. Treasury Regulation Citations", self.styles['SubsectionHeading']))
+        regs = [
+            "§1.41-2 - Qualified Research Expenses",
+            "§1.41-3 - Base Amount",
+            "§1.41-4 - Qualified Research",
+            "§1.41-5 - Basic Research",
+            "§1.41-8 - Alternative Simplified Credit"
+        ]
+        elements.append(self._create_bullet_list(regs))
+
+        # Document index
+        if evidence_items:
+            elements.append(Paragraph("C. Document Index", self.styles['SubsectionHeading']))
+            doc_data = [["#", "Document", "Type", "Source"]]
+            for i, item in enumerate(evidence_items[:30], 1):
+                doc_data.append([
+                    str(i),
+                    item.get("title", "Unknown")[:35],
+                    item.get("evidence_type", "N/A"),
+                    item.get("source_reference", "N/A")[:20]
+                ])
+
+            doc_table = Table(doc_data, colWidths=[0.4 * inch, 2.5 * inch, 1.5 * inch, 1.5 * inch])
+            doc_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), self.PRIMARY_COLOR),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('PADDING', (0, 0), (-1, -1), 4),
+                ('GRID', (0, 0), (-1, -1), 0.5, self.BORDER_COLOR),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, self.LIGHT_GRAY]),
+            ]))
+            elements.append(doc_table)
+
+        return elements
+
+    def _create_bullet_list(self, items: List[str]) -> ListFlowable:
+        """Create a bullet list from items."""
+        list_items = []
+        for item in items:
+            list_items.append(ListItem(
+                Paragraph(item, self.styles['BodyText']),
+                leftIndent=20,
+                bulletColor=self.PRIMARY_COLOR
+            ))
+        return ListFlowable(
+            list_items,
+            bulletType='bullet',
+            start='circle'
+        )
+
+    def _format_currency(self, amount) -> str:
+        """Format currency value."""
+        if isinstance(amount, (int, float, Decimal)):
+            return f"${amount:,.0f}"
+        return str(amount)

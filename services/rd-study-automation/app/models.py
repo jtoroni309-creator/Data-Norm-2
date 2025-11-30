@@ -8,7 +8,7 @@ with full audit trail and evidence linking.
 from sqlalchemy import (
     Column, String, Text, Integer, Float, Boolean, Date, DateTime,
     ForeignKey, Index, CheckConstraint, UniqueConstraint, Numeric,
-    Enum as SQLEnum, JSON
+    Enum as SQLEnum, JSON, LargeBinary
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
@@ -943,6 +943,9 @@ class RDOutputFile(Base):
 
     # Content hash for integrity
     content_hash = Column(String(64), nullable=True)
+
+    # File content (for demo/testing - in production use blob storage)
+    file_content = Column(LargeBinary, nullable=True)
 
 
 class RDRulesConfig(Base):

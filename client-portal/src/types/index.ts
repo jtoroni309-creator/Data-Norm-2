@@ -360,6 +360,7 @@ export type RDQualificationStatus =
   | 'qualified'
   | 'not_qualified'
   | 'partial'
+  | 'partially_qualified'
   | 'needs_review';
 
 export type RDQRECategory =
@@ -418,6 +419,8 @@ export interface RDStudy {
   ai_suggested_areas: Array<{ area: string; confidence: number }>;
   ai_analysis_summary?: string;
   total_qre: number;
+  regular_base_amount?: number;
+  asc_base_amount?: number;
   federal_credit_regular: number;
   federal_credit_asc: number;
   federal_credit_final: number;
@@ -474,6 +477,7 @@ export interface RDProject {
   uncertainty_score?: number;
   experimentation_score?: number;
   overall_score?: number;
+  total_qre?: number;
   qualification_narrative?: string;
   cpa_reviewed: boolean;
   cpa_override_status?: RDQualificationStatus;
@@ -492,6 +496,7 @@ export interface RDEmployee {
   total_wages: number;
   qualified_time_percentage: number;
   qualified_wages: number;
+  qualified_time_source?: 'survey' | 'timesheet' | 'estimate' | 'manager_estimate' | 'payroll';
   cpa_reviewed: boolean;
   cpa_adjusted_percentage?: number;
   cpa_adjustment_reason?: string;
