@@ -7,11 +7,9 @@ AI-powered services for data ingestion, analysis, and content generation.
 from .data_ingestion_service import DataIngestionService
 from .narrative_service import NarrativeService
 from .interview_bot import InterviewBot
-from .qualification_ai import QualificationAI
 
 __all__ = [
     "DataIngestionService",
     "NarrativeService",
     "InterviewBot",
-    "QualificationAI",
 ]
