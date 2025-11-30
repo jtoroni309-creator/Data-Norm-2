@@ -1,0 +1,68 @@
+name: Build and Deploy R&D Study Automation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'services/rd-study-automation/**'
+      - '.github/workflows/deploy-rd-study.yml'
+      - 'infra/k8s/base/rd-study-automation-deployment.yaml'
+
+env:
+  ACR_NAME: auraauditaiprodacr
+  IMAGE_NAME: aura/rd-study-automation
+  AKS_CLUSTER: aura-audit-ai-prod-aks
+  AKS_RESOURCE_GROUP: aura-audit-ai-prod-rg
+  NAMESPACE: aura-audit-ai
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push image
+        run: |
+          cd services/rd-study-automation
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+      - name: Install kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.1.0'
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ env.AKS_CLUSTER }}
+          use-kubelogin: 'true'
+
+      - name: Apply Kubernetes deployment
+        run: |
+          kubectl apply -f infra/k8s/base/rd-study-automation-deployment.yaml
+
+      - name: Deploy to AKS
+        run: |
+          kubectl set image deployment/rd-study-automation rd-study-automation=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} -n ${{ env.NAMESPACE }}
+          kubectl rollout status deployment/rd-study-automation -n ${{ env.NAMESPACE }} --timeout=180s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -l app=rd-study-automation -n ${{ env.NAMESPACE }}
+          kubectl logs -l app=rd-study-automation -n ${{ env.NAMESPACE }} --tail=20
