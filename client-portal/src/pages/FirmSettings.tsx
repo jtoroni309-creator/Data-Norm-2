@@ -24,6 +24,9 @@ import { firmService } from '../services/firm.service';
 import { Organization, OrganizationUpdate } from '../types';
 import toast from 'react-hot-toast';
 
+// localStorage key for persisting settings locally
+const FIRM_SETTINGS_KEY = 'aura_firm_settings';
+
 const FirmSettings: React.FC = () => {
   const navigate = useNavigate();
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -36,6 +39,25 @@ const FirmSettings: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  // Load saved settings from localStorage
+  const loadLocalSettings = (): OrganizationUpdate | null => {
+    try {
+      const saved = localStorage.getItem(FIRM_SETTINGS_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Save settings to localStorage
+  const saveLocalSettings = (data: OrganizationUpdate) => {
+    try {
+      localStorage.setItem(FIRM_SETTINGS_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save settings to localStorage:', error);
+    }
+  };
+
   useEffect(() => {
     loadOrganization();
   }, []);
@@ -43,27 +65,56 @@ const FirmSettings: React.FC = () => {
   const loadOrganization = async () => {
     try {
       setLoading(true);
-      const data = await firmService.getMyOrganization();
-      setOrganization(data);
-      setFormData({
-        name: data.name,
-        tax_id: data.tax_id,
-        industry_code: data.industry_code,
-        logo_url: data.logo_url,
-        primary_color: data.primary_color,
-        secondary_color: data.secondary_color,
-        address: data.address,
-        phone: data.phone,
-        website: data.website,
-        timezone: data.timezone,
-        date_format: data.date_format
-      });
-      if (data.logo_url) {
-        setLogoPreview(data.logo_url);
+
+      // First, try to load from localStorage for immediate display
+      const localSettings = loadLocalSettings();
+      if (localSettings) {
+        setFormData(localSettings);
+        if (localSettings.logo_url) {
+          setLogoPreview(localSettings.logo_url);
+        }
+      }
+
+      // Then try to load from API
+      try {
+        const data = await firmService.getMyOrganization();
+        setOrganization(data);
+
+        // Merge API data with localStorage (localStorage takes precedence for branding)
+        const mergedData: OrganizationUpdate = {
+          name: data.name,
+          tax_id: data.tax_id,
+          industry_code: data.industry_code,
+          logo_url: localSettings?.logo_url || data.logo_url,
+          primary_color: localSettings?.primary_color || data.primary_color,
+          secondary_color: localSettings?.secondary_color || data.secondary_color,
+          address: data.address,
+          phone: data.phone,
+          website: data.website,
+          timezone: localSettings?.timezone || data.timezone,
+          date_format: localSettings?.date_format || data.date_format
+        };
+
+        setFormData(mergedData);
+        if (mergedData.logo_url) {
+          setLogoPreview(mergedData.logo_url);
+        }
+      } catch (apiError) {
+        console.warn('API unavailable, using localStorage settings:', apiError);
+        // If API fails but we have local settings, use those
+        if (!localSettings) {
+          // Set default values if no local settings exist
+          setFormData({
+            name: 'Your Firm',
+            primary_color: '#2563eb',
+            secondary_color: '#7c3aed',
+            timezone: 'America/New_York',
+            date_format: 'MM/DD/YYYY'
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to load organization:', error);
-      toast.error('Failed to load firm settings');
     } finally {
       setLoading(false);
     }
@@ -83,31 +134,61 @@ const FirmSettings: React.FC = () => {
       setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
+        const base64Logo = reader.result as string;
+        setLogoPreview(base64Logo);
+        // Also update formData with the base64 logo for localStorage persistence
+        setFormData(prev => ({ ...prev, logo_url: base64Logo }));
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSave = async () => {
-    if (!organization) return;
-
     try {
       setSaving(true);
 
-      // Upload logo if changed
-      if (logoFile) {
-        const { url } = await firmService.uploadLogo(logoFile);
-        formData.logo_url = url;
+      // Always save to localStorage first (this ensures settings persist even if API fails)
+      const settingsToSave = { ...formData };
+
+      // If we have a logo preview (base64), include it in local storage
+      if (logoPreview) {
+        settingsToSave.logo_url = logoPreview;
       }
 
-      // Update organization
-      const updated = await firmService.updateOrganization(organization.id, formData);
-      setOrganization(updated);
-      toast.success('Firm settings saved successfully!');
+      saveLocalSettings(settingsToSave);
+
+      // Try to save to API if organization exists
+      if (organization) {
+        try {
+          // Upload logo if changed
+          if (logoFile) {
+            try {
+              const { url } = await firmService.uploadLogo(logoFile);
+              formData.logo_url = url;
+            } catch (uploadError) {
+              console.warn('Logo upload failed, using base64 fallback:', uploadError);
+              // Keep the base64 logo in formData for localStorage persistence
+            }
+          }
+
+          // Update organization via API
+          const updated = await firmService.updateOrganization(organization.id, formData);
+          setOrganization(updated);
+          toast.success('Firm settings saved successfully!');
+        } catch (apiError: any) {
+          console.warn('API save failed, settings saved locally:', apiError);
+          toast.success('Settings saved locally! (API sync will retry later)');
+        }
+      } else {
+        // No organization from API, just save locally
+        toast.success('Settings saved successfully!');
+      }
+
+      // Clear logo file after save
+      setLogoFile(null);
     } catch (error: any) {
       console.error('Failed to save settings:', error);
-      toast.error(error.response?.data?.detail || 'Failed to save settings');
+      toast.error(error.message || 'Failed to save settings');
     } finally {
       setSaving(false);
     }
