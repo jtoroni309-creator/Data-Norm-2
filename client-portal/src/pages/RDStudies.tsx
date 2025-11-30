@@ -185,16 +185,16 @@ const RDStudies: React.FC = () => {
           name: studyName,
           entity_name: createForm.entity_name,
           entity_type: 'c_corp',
-          client_id: createForm.client_name, // This would normally be a UUID
+          client_name: createForm.client_name, // Human-readable name
           tax_year: createForm.tax_year,
-          fiscal_year_start: `01/01/${createForm.tax_year}`,
-          fiscal_year_end: `12/31/${createForm.tax_year}`,
+          // fiscal_year_start/end will default based on tax_year in backend
         });
         toast.success('R&D Study created successfully!');
         setShowCreateModal(false);
         resetCreateForm();
         navigate(`/firm/rd-studies/${newStudy.id}`);
       } catch (error: any) {
+        console.error('Study creation error:', error);
         toast.error(error.response?.data?.detail || 'Failed to create study');
       }
     }

@@ -51,14 +51,15 @@ class ErrorResponse(BaseSchema):
 class StudyCreate(BaseSchema):
     """Create a new R&D study."""
     name: str = Field(..., min_length=1, max_length=500)
-    client_id: UUID
+    client_id: Optional[Union[UUID, str]] = None  # Optional - will be generated if not provided
+    client_name: Optional[str] = None  # Human-readable client name for display
     engagement_id: Optional[UUID] = None
     tax_year: int = Field(..., ge=2000, le=2100)
     entity_type: EntityType
     entity_name: str = Field(..., min_length=1, max_length=500)
     ein: Optional[str] = Field(None, pattern=r"^\d{2}-\d{7}$")
-    fiscal_year_start: date
-    fiscal_year_end: date
+    fiscal_year_start: Optional[date] = None  # Will default based on tax_year
+    fiscal_year_end: Optional[date] = None  # Will default based on tax_year
     is_short_year: bool = False
     short_year_days: Optional[int] = None
     is_controlled_group: bool = False

@@ -82,6 +82,24 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def ensure_database_schema():
+    """Ensure required database columns exist on startup"""
+    from sqlalchemy import text
+    from app.database import engine
+
+    async with engine.begin() as conn:
+        try:
+            # Add enabled_services column if it doesn't exist
+            await conn.execute(text("""
+                ALTER TABLE atlas.cpa_firms
+                ADD COLUMN IF NOT EXISTS enabled_services JSONB DEFAULT '{}'::jsonb
+            """))
+            logger.info("Database schema check completed - enabled_services column ensured")
+        except Exception as e:
+            logger.warning(f"Could not ensure database schema: {e}")
+
+
 # ========================================
 # Utility Functions
 # ========================================

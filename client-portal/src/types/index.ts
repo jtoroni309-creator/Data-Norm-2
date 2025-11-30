@@ -443,14 +443,15 @@ export interface RDStudy {
 
 export interface RDStudyCreate {
   name: string;
-  client_id: string;
+  client_id?: string;  // Optional - will be generated if not provided
+  client_name?: string;  // Human-readable client name
   engagement_id?: string;
   tax_year: number;
   entity_type: RDEntityType;
   entity_name: string;
   ein?: string;
-  fiscal_year_start: string;
-  fiscal_year_end: string;
+  fiscal_year_start?: string;  // Optional - defaults to tax_year start
+  fiscal_year_end?: string;  // Optional - defaults to tax_year end
   is_short_year?: boolean;
   short_year_days?: number;
   is_controlled_group?: boolean;

@@ -171,23 +171,54 @@ async def create_study(
     user_firm: tuple = Depends(get_current_user_firm_id)
 ):
     """Create a new R&D study."""
+    from uuid import uuid4
+    from datetime import date
+
     user_id, firm_id = user_firm
 
     if not firm_id:
         raise HTTPException(status_code=400, detail="Firm ID required")
 
+    # Handle client_id - generate if not provided or if it's a string (client name)
+    client_id = None
+    if study_data.client_id:
+        try:
+            # Try to parse as UUID
+            if isinstance(study_data.client_id, UUID):
+                client_id = study_data.client_id
+            else:
+                client_id = UUID(str(study_data.client_id))
+        except (ValueError, TypeError):
+            # Not a valid UUID, generate a new one
+            client_id = uuid4()
+    else:
+        client_id = uuid4()
+
+    # Handle fiscal year dates - default to calendar year if not provided
+    fiscal_year_start = study_data.fiscal_year_start
+    fiscal_year_end = study_data.fiscal_year_end
+    if not fiscal_year_start:
+        fiscal_year_start = date(study_data.tax_year, 1, 1)
+    if not fiscal_year_end:
+        fiscal_year_end = date(study_data.tax_year, 12, 31)
+
+    # Store client_name in notes if provided
+    notes = study_data.notes or ""
+    if study_data.client_name:
+        notes = f"Client: {study_data.client_name}\n{notes}".strip()
+
     # Create study
     study = RDStudy(
         firm_id=firm_id,
-        client_id=study_data.client_id,
+        client_id=client_id,
         engagement_id=study_data.engagement_id,
         name=study_data.name,
         tax_year=study_data.tax_year,
         entity_type=study_data.entity_type,
         entity_name=study_data.entity_name,
         ein=study_data.ein,
-        fiscal_year_start=study_data.fiscal_year_start,
-        fiscal_year_end=study_data.fiscal_year_end,
+        fiscal_year_start=fiscal_year_start,
+        fiscal_year_end=fiscal_year_end,
         is_short_year=study_data.is_short_year,
         short_year_days=study_data.short_year_days,
         is_controlled_group=study_data.is_controlled_group,
@@ -195,7 +226,7 @@ async def create_study(
         aggregation_method=study_data.aggregation_method,
         states=study_data.states,
         primary_state=study_data.primary_state,
-        notes=study_data.notes,
+        notes=notes,
         rules_version=settings.RULES_VERSION,
         created_by=user_id,
         status=StudyStatus.DRAFT,
