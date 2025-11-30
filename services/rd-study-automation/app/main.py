@@ -173,6 +173,18 @@ async def get_current_user_firm_id(
         firm_id = payload.get("firm_id")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
+
+        # If firm_id not in JWT, use a default firm_id from settings or generate from user_id
+        if not firm_id:
+            # Use default firm ID from settings, or derive from user's org
+            default_firm_id = getattr(settings, 'DEFAULT_FIRM_ID', None)
+            if default_firm_id:
+                firm_id = default_firm_id
+            else:
+                # Use a deterministic UUID based on the deployment (same for all users in this deployment)
+                from uuid import uuid5, NAMESPACE_DNS
+                firm_id = str(uuid5(NAMESPACE_DNS, "aura-audit-ai.toroniandcompany.com"))
+
         return UUID(user_id), UUID(firm_id) if firm_id else None
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
