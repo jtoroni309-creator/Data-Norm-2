@@ -62,7 +62,7 @@ class Fact(Base):
     instant_date = Column(Date, index=True)
     context_ref = Column(String)
     decimals = Column(Integer)
-    metadata = Column(JSONB)
+    fact_metadata = Column(JSONB)  # Renamed from 'metadata' (SQLAlchemy reserved)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationships
