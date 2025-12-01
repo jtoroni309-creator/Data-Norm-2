@@ -292,7 +292,7 @@ class UserInvitation(Base):
     email = Column(String, nullable=False, index=True)
     organization_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.organizations.id"), nullable=False)
     role = Column(SQLEnum(RoleEnum, name="user_role"), nullable=False)
-    invited_by_user_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False)
+    invited_by_user_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=True)
     token = Column(String, nullable=False, unique=True, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     accepted_at = Column(DateTime(timezone=True))

@@ -907,30 +907,36 @@ async def update_organization_services(
         )
 
     # Update enabled_services using raw SQL to ensure JSONB is handled correctly
+    import json
+    services_json = json.dumps(services)
+
     try:
+        # Use CAST instead of :: since asyncpg treats :: as part of parameter name
         update_query = text("""
             UPDATE atlas.cpa_firms
-            SET enabled_services = :services, updated_at = NOW()
-            WHERE id = :org_id
+            SET enabled_services = CAST(:services AS JSONB), updated_at = NOW()
+            WHERE id = CAST(:org_id AS UUID)
         """)
-        await db.execute(update_query, {"services": services, "org_id": org_id})
+        await db.execute(update_query, {"services": services_json, "org_id": str(org_id)})
         await db.commit()
+        logger.info(f"Successfully updated enabled_services for org {org_id} to: {services}")
     except Exception as e:
         # Column might not exist - try to add it
-        logger.warning(f"enabled_services column may not exist: {e}")
+        logger.warning(f"enabled_services update failed: {e}")
         await db.rollback()
 
         try:
             alter_query = text("""
                 ALTER TABLE atlas.cpa_firms
-                ADD COLUMN IF NOT EXISTS enabled_services JSONB DEFAULT '{}'::jsonb
+                ADD COLUMN IF NOT EXISTS enabled_services JSONB DEFAULT CAST('{}' AS JSONB)
             """)
             await db.execute(alter_query)
             await db.commit()
 
             # Retry the update
-            await db.execute(update_query, {"services": services, "org_id": org_id})
+            await db.execute(update_query, {"services": services_json, "org_id": str(org_id)})
             await db.commit()
+            logger.info(f"Successfully updated enabled_services after adding column for org {org_id}")
         except Exception as e2:
             logger.error(f"Failed to update enabled_services: {e2}")
             await db.rollback()
@@ -1423,12 +1429,12 @@ async def admin_invite_user_to_organization(
             RETURNING id, email, token, expires_at, created_at
         """)
 
-        # Use a system user or the first admin for invited_by
+        # Use a system user or NULL for invited_by (admin invitations don't require a user context)
         admin_result = await db.execute(
             select(User).where(User.cpa_firm_id == None).limit(1)
         )
         admin_user = admin_result.scalar_one_or_none()
-        invited_by_id = admin_user.id if admin_user else uuid4()
+        invited_by_id = admin_user.id if admin_user else None
 
         result = await db.execute(insert_query, {
             "id": invitation_id,
