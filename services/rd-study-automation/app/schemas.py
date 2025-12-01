@@ -164,7 +164,7 @@ class StudyResponse(BaseSchema):
     primary_state: Optional[str]
     ai_risk_score: Optional[float]
     ai_opportunity_score: Optional[float]
-    ai_suggested_areas: List[Dict[str, Any]]
+    ai_suggested_areas: Optional[Dict[str, Any]] = None
     ai_analysis_summary: Optional[str]
     total_qre: Decimal
     federal_credit_regular: Decimal
@@ -357,12 +357,16 @@ class EmployeeCreate(BaseSchema):
     name: str = Field(..., min_length=1, max_length=300)
     title: Optional[str] = None
     department: Optional[str] = None
+    state: Optional[str] = Field(None, min_length=2, max_length=2, description="2-letter state code")
     hire_date: Optional[date] = None
     termination_date: Optional[date] = None
     total_wages: Decimal = Field(default=Decimal("0"))
     w2_wages: Decimal = Field(default=Decimal("0"))
     bonus: Decimal = Field(default=Decimal("0"))
     stock_compensation: Decimal = Field(default=Decimal("0"))
+    qualified_time_percentage: float = Field(default=0, ge=0, le=100)
+    qualified_time_source: Optional[str] = Field(None, description="Source: time_study, project_records, manager_estimate")
+    project_id: Optional[UUID] = Field(None, description="Primary project assignment")
 
 
 class EmployeeUpdate(BaseSchema):

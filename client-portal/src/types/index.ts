@@ -367,6 +367,7 @@ export type RDQRECategory =
   | 'wages'
   | 'supplies'
   | 'contract_research'
+  | 'computer_rental'
   | 'basic_research'
   | 'energy_research';
 
@@ -510,6 +511,8 @@ export interface RDQRE {
   employee_id?: string;
   category: RDQRECategory;
   subcategory?: string;
+  description?: string;
+  vendor_name?: string;
   gross_amount: number;
   qualified_percentage: number;
   qualified_amount: number;

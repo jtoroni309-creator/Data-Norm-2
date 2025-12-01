@@ -73,6 +73,7 @@ class QRECategory(str, Enum):
     CONTRACT_RESEARCH = "contract_research"
     BASIC_RESEARCH = "basic_research"
     ENERGY_RESEARCH = "energy_research"
+    COMPUTER_RENTAL = "computer_rental"
 
 
 class DocumentType(str, Enum):
@@ -315,6 +316,11 @@ class RDProject(Base):
 
     # Risk flags
     risk_flags = Column(JSONB, default=list)
+
+    @property
+    def has_risk_flags(self) -> bool:
+        """Check if project has any risk flags."""
+        return bool(self.risk_flags and len(self.risk_flags) > 0)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -98,16 +98,14 @@ class PDFStudyGenerator:
             fontName='Helvetica-Bold'
         ))
 
-        # Body text
-        styles.add(ParagraphStyle(
-            name='BodyText',
-            parent=styles['Normal'],
-            fontSize=10,
-            leading=14,
-            alignment=TA_JUSTIFY,
-            spaceBefore=6,
-            spaceAfter=6
-        ))
+        # Body text - use existing BodyText style but customize it
+        # Don't add new 'BodyText' as it already exists in getSampleStyleSheet()
+        body_style = styles['BodyText']
+        body_style.fontSize = 10
+        body_style.leading = 14
+        body_style.alignment = TA_JUSTIFY
+        body_style.spaceBefore = 6
+        body_style.spaceAfter = 6
 
         # Caption
         styles.add(ParagraphStyle(

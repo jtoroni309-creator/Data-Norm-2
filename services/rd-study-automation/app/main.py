@@ -824,6 +824,9 @@ async def create_employee(
     if not study_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Study not found")
 
+    # Calculate qualified wages based on percentage
+    qualified_wages = Decimal(str(employee_data.w2_wages)) * Decimal(str(employee_data.qualified_time_percentage)) / Decimal("100")
+
     employee = RDEmployee(
         study_id=study_id,
         employee_id=employee_data.employee_id,
@@ -835,7 +838,10 @@ async def create_employee(
         total_wages=employee_data.total_wages,
         w2_wages=employee_data.w2_wages,
         bonus=employee_data.bonus,
-        stock_compensation=employee_data.stock_compensation
+        stock_compensation=employee_data.stock_compensation,
+        qualified_time_percentage=employee_data.qualified_time_percentage,
+        qualified_time_source=employee_data.qualified_time_source,
+        qualified_wages=qualified_wages
     )
 
     db.add(employee)
@@ -1640,18 +1646,18 @@ async def submit_client_data_manual(
     }
 
     # Store in study's client_submissions
-    if not study.ai_analysis:
-        study.ai_analysis = {}
-    if "client_submissions" not in study.ai_analysis:
-        study.ai_analysis["client_submissions"] = []
-    study.ai_analysis["client_submissions"].append(data_record)
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    if "client_submissions" not in study.ai_suggested_areas:
+        study.ai_suggested_areas["client_submissions"] = []
+    study.ai_suggested_areas["client_submissions"].append(data_record)
 
     await db.commit()
 
     return {
         "status": "success",
         "message": "Data submitted successfully and pending CPA review",
-        "submission_id": len(study.ai_analysis["client_submissions"])
+        "submission_id": len(study.ai_suggested_areas["client_submissions"])
     }
 
 
@@ -1700,11 +1706,11 @@ async def submit_client_data_excel(
         "status": "pending_review"
     }
 
-    if not study.ai_analysis:
-        study.ai_analysis = {}
-    if "client_submissions" not in study.ai_analysis:
-        study.ai_analysis["client_submissions"] = []
-    study.ai_analysis["client_submissions"].append(data_record)
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    if "client_submissions" not in study.ai_suggested_areas:
+        study.ai_suggested_areas["client_submissions"] = []
+    study.ai_suggested_areas["client_submissions"].append(data_record)
 
     await db.commit()
 
@@ -1713,7 +1719,7 @@ async def submit_client_data_excel(
         "message": f"Excel file parsed successfully. Found {parsed_data.get('record_count', 0)} records.",
         "parsed_summary": parsed_data.get("summary", {}),
         "confidence": parsed_data.get("confidence", 0.0),
-        "submission_id": len(study.ai_analysis["client_submissions"])
+        "submission_id": len(study.ai_suggested_areas["client_submissions"])
     }
 
 
@@ -1754,9 +1760,9 @@ async def setup_client_api_connection(
         "last_sync": None
     }
 
-    if not study.ai_analysis:
-        study.ai_analysis = {}
-    study.ai_analysis["api_connection"] = api_connection
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["api_connection"] = api_connection
 
     await db.commit()
 
@@ -1786,8 +1792,8 @@ async def get_client_submissions(
 
     # Return only submission metadata, not study progress/calculations
     submissions = []
-    if study.ai_analysis and "client_submissions" in study.ai_analysis:
-        for idx, sub in enumerate(study.ai_analysis["client_submissions"]):
+    if study.ai_suggested_areas and "client_submissions" in study.ai_suggested_areas:
+        for idx, sub in enumerate(study.ai_suggested_areas["client_submissions"]):
             submissions.append({
                 "submission_id": idx + 1,
                 "type": sub.get("submission_type"),
@@ -1801,7 +1807,7 @@ async def get_client_submissions(
         "study_id": str(study_id),
         "study_name": study.name,
         "submissions": submissions,
-        "api_connected": bool(study.ai_analysis and study.ai_analysis.get("api_connection"))
+        "api_connected": bool(study.ai_suggested_areas and study.ai_suggested_areas.get("api_connection"))
     }
 
 

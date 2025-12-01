@@ -64,22 +64,32 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
     )
     narratives = narratives_result.scalars().all()
 
-    # Get evidence
-    evidence_result = await db.execute(
-        select(RDEvidence).where(RDEvidence.study_id == study_id)
-    )
-    evidence = evidence_result.scalars().all()
+    # Get evidence through projects (RDEvidence has project_id, not study_id)
+    project_ids = [p.id for p in projects]
+    if project_ids:
+        evidence_result = await db.execute(
+            select(RDEvidence).where(RDEvidence.project_id.in_(project_ids))
+        )
+        evidence = evidence_result.scalars().all()
+    else:
+        evidence = []
 
     # Build calculation result
     regular_calc = next((c for c in calculations if c.calculation_type == "federal_regular"), None)
     asc_calc = next((c for c in calculations if c.calculation_type == "federal_asc"), None)
 
+    # Calculate QRE breakdowns from employees and QREs
+    qre_wages = sum(float(e.qualified_wages or 0) for e in employees)
+    qre_supplies = sum(float(q.qualified_amount or 0) for q in qres if q.category and q.category.value == "supplies")
+    qre_contract = sum(float(q.qualified_amount or 0) for q in qres if q.category and q.category.value == "contract_research")
+    qre_basic_research = sum(float(q.qualified_amount or 0) for q in qres if q.category and q.category.value == "basic_research")
+
     calculation_result = {
         "total_qre": float(study.total_qre or 0),
-        "qre_wages": float(study.qre_wages or 0),
-        "qre_supplies": float(study.qre_supplies or 0),
-        "qre_contract": float(study.qre_contract or 0),
-        "qre_basic_research": float(study.qre_basic_research or 0),
+        "qre_wages": qre_wages,
+        "qre_supplies": qre_supplies,
+        "qre_contract": qre_contract,
+        "qre_basic_research": qre_basic_research,
         "federal_credit": float(study.federal_credit_final or 0),
         "federal_credit_regular": float(study.federal_credit_regular or 0),
         "federal_credit_asc": float(study.federal_credit_asc or 0),
@@ -88,12 +98,12 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
         "selected_method": study.selected_method.value if study.selected_method else "asc",
         "federal_regular": {
             "total_qre": float(study.total_qre or 0),
-            "qre_wages": float(study.qre_wages or 0),
-            "qre_supplies": float(study.qre_supplies or 0),
-            "qre_contract": float(study.qre_contract or 0),
-            "qre_basic_research": float(study.qre_basic_research or 0),
+            "qre_wages": qre_wages,
+            "qre_supplies": qre_supplies,
+            "qre_contract": qre_contract,
+            "qre_basic_research": qre_basic_research,
             "fixed_base_percentage": 0.03,
-            "avg_gross_receipts": float(study.current_year_gross_receipts or 0),
+            "avg_gross_receipts": 0,  # RDStudy doesn't have this field; would get from RDCalculation
             "base_amount": float(study.total_qre or 0) * 0.5,
             "excess_qre": float(study.total_qre or 0) * 0.5,
             "tentative_credit": float(study.federal_credit_regular or 0) / 0.79,
@@ -147,7 +157,7 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
             "technological_nature_score": float(p.technological_nature_score or 0),
             "uncertainty_score": float(p.uncertainty_score or 0),
             "experimentation_score": float(p.experimentation_score or 0),
-            "total_qre": float(p.total_qre or 0),
+            "total_qre": 0,  # RDProject doesn't have total_qre; would need to sum from QREs
             "qualification_narrative": p.qualification_narrative,
             "cpa_reviewed": p.cpa_reviewed,
         }
@@ -177,7 +187,7 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
         {
             "id": str(q.id),
             "category": q.category.value if q.category else "wages",
-            "description": q.description,
+            "description": q.supply_description or q.contractor_name or q.subcategory or "",
             "gross_amount": float(q.gross_amount or 0),
             "qualified_amount": float(q.qualified_amount or 0),
             "qualified_percentage": float(q.qualified_percentage or 100),

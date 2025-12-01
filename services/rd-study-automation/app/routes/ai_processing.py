@@ -389,7 +389,7 @@ async def import_analyzed_data(
                         name=str(name).strip(),
                         description=str(row.get(mappings.get("description", ""), "")).strip() or None,
                         business_component=str(row.get(mappings.get("business_component", ""), "")).strip() or None,
-                        qualification_status=QualificationStatus.pending
+                        qualification_status=QualificationStatus.PENDING
                     )
                     db.add(project)
                     imported_count += 1
@@ -409,7 +409,7 @@ async def import_analyzed_data(
 
                     qre = QualifiedResearchExpense(
                         study_id=study_id,
-                        category=QRECategory.supplies,
+                        category=QRECategory.SUPPLIES,
                         description=str(desc).strip() or "Imported supply",
                         supply_vendor=str(row.get(mappings.get("vendor", ""), "")).strip() or None,
                         gross_amount=gross_amount,
@@ -470,9 +470,9 @@ async def connect_payroll_provider(
     provider = canonical_provider
 
     # Store connection config (would be encrypted in production)
-    if not study.ai_analysis:
-        study.ai_analysis = {}
-    study.ai_analysis["payroll_connection"] = {
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["payroll_connection"] = {
         "provider": provider,
         "status": "pending_oauth",
         "configured_at": datetime.utcnow().isoformat()
@@ -505,7 +505,7 @@ async def qualify_project_with_ai(openai_client, project: RDProject) -> dict:
 
     # Determine model/deployment name based on client type
     if settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
-        model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4"
+        model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4-turbo"
     else:
         model_name = settings.OPENAI_CHAT_MODEL
 
@@ -618,7 +618,7 @@ async def analyze_employee_allocation_with_ai(openai_client, employee: RDEmploye
 
     # Determine model/deployment name based on client type
     if settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
-        model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4"
+        model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4-turbo"
     else:
         model_name = settings.OPENAI_CHAT_MODEL
 
@@ -876,7 +876,7 @@ async def upload_project_data(
                 name=str(row[name_col]).strip(),
                 description=str(row[desc_col]).strip() if desc_col < len(row) and row[desc_col] else None,
                 department=str(row[dept_col]).strip() if dept_col < len(row) and row[dept_col] else None,
-                qualification_status=QualificationStatus.pending
+                qualification_status=QualificationStatus.PENDING
             )
             db.add(project)
             projects_created += 1
@@ -936,7 +936,7 @@ async def upload_expense_data(
         amount_col = next((i for i, h in enumerate(headers) if h and 'amount' in str(h).lower()), 2)
         gl_col = next((i for i, h in enumerate(headers) if h and ('gl' in str(h).lower() or 'account' in str(h).lower())), None)
 
-        category = QRECategory.supplies if expense_type == "supplies" else QRECategory.contract_research
+        category = QRECategory.SUPPLIES if expense_type == "supplies" else QRECategory.CONTRACT_RESEARCH
 
         for row in sheet.iter_rows(min_row=2, values_only=True):
             if not row[amount_col]:
@@ -1042,7 +1042,7 @@ async def ai_complete_study(
     # AI ANALYSIS: Qualify projects using real AI
     ai_used = openai_client is not None
     for project in projects:
-        if project.qualification_status == QualificationStatus.pending:
+        if project.qualification_status == QualificationStatus.PENDING:
             # Use real AI analysis for project qualification
             qual_result = await qualify_project_with_ai(openai_client, project)
 
@@ -1067,11 +1067,11 @@ async def ai_complete_study(
             # Set qualification status
             status_str = qual_result.get("qualification_status", "needs_review")
             if status_str == "qualified":
-                project.qualification_status = QualificationStatus.qualified
+                project.qualification_status = QualificationStatus.QUALIFIED
             elif status_str == "not_qualified":
-                project.qualification_status = QualificationStatus.not_qualified
+                project.qualification_status = QualificationStatus.NOT_QUALIFIED
             else:
-                project.qualification_status = QualificationStatus.needs_review
+                project.qualification_status = QualificationStatus.NEEDS_REVIEW
 
     # AI ANALYSIS: Adjust employee allocations using real AI
     for employee in employees:
@@ -1095,8 +1095,8 @@ async def ai_complete_study(
 
     # Calculate totals
     total_wage_qre = sum(e.qualified_wages or Decimal('0') for e in employees)
-    total_supply_qre = sum(q.qualified_amount or Decimal('0') for q in qres if q.category == QRECategory.supplies)
-    total_contract_qre = sum(q.qualified_amount or Decimal('0') for q in qres if q.category == QRECategory.contract_research)
+    total_supply_qre = sum(q.qualified_amount or Decimal('0') for q in qres if q.category == QRECategory.SUPPLIES)
+    total_contract_qre = sum(q.qualified_amount or Decimal('0') for q in qres if q.category == QRECategory.CONTRACT_RESEARCH)
     total_qre = total_wage_qre + total_supply_qre + total_contract_qre
 
     # Calculate credits
@@ -1113,8 +1113,65 @@ async def ai_complete_study(
     regular_credit_final = regular_credit * Decimal('0.79')
 
     # Select better method
-    selected_method = CreditMethod.asc if asc_credit_final >= regular_credit_final else CreditMethod.regular
+    selected_method = CreditMethod.ASC if asc_credit_final >= regular_credit_final else CreditMethod.REGULAR
     final_credit = max(asc_credit_final, regular_credit_final)
+
+    # Calculate state credits based on employee states
+    from ..engines.calculation_engine import CalculationEngine
+    from ..engines.rules_engine import RulesEngine
+
+    # Get unique states from employees
+    employee_states = set()
+    for emp in employees:
+        emp_state = getattr(emp, 'state', None)
+        if emp_state and len(emp_state) == 2:
+            employee_states.add(emp_state.upper())
+
+    # Calculate state credits
+    total_state_credits = Decimal('0')
+    state_results = {}
+
+    if employee_states:
+        rules_engine = RulesEngine()
+        calc_engine = CalculationEngine(rules_engine)
+
+        for state_code in employee_states:
+            state_rules = rules_engine.get_state_rules(state_code)
+            if state_rules and state_rules.has_rd_credit:
+                # Calculate state QRE allocation based on employees in that state
+                state_wage_qre = sum(
+                    e.qualified_wages or Decimal('0')
+                    for e in employees
+                    if getattr(e, 'state', '').upper() == state_code
+                )
+
+                state_qre_data = {
+                    "wages": state_wage_qre,
+                    "supplies": Decimal('0'),  # Allocate supplies by state if tracked
+                    "contract_research": Decimal('0')
+                }
+
+                state_result = calc_engine.calculate_state_credit(
+                    state_code=state_code,
+                    tax_year=study.tax_year or 2024,
+                    qre_data=state_qre_data,
+                    federal_qre=total_qre,
+                    federal_base_amount=Decimal('0')
+                )
+
+                if state_result:
+                    state_results[state_code] = {
+                        "state_name": state_result.state_name,
+                        "credit_rate": float(state_result.credit_rate),
+                        "credit_type": state_result.credit_type,
+                        "state_qre": float(state_result.state_qre),
+                        "final_credit": float(state_result.final_credit),
+                        "carryforward_years": state_result.carryforward_years,
+                        "state_form": state_result.state_form
+                    }
+                    total_state_credits += state_result.final_credit
+
+    total_credits = final_credit + total_state_credits
 
     # Update study
     study.total_qre = total_qre
@@ -1125,24 +1182,33 @@ async def ai_complete_study(
     study.federal_credit_asc = asc_credit_final
     study.federal_credit_final = final_credit
     study.selected_method = selected_method
-    study.total_credits = final_credit  # Add state credits in production
-    study.status = StudyStatus.cpa_review
+    study.total_credits = total_credits
+    study.status = StudyStatus.CPA_APPROVAL
     study.updated_at = datetime.utcnow()
 
+    # Store state results in ai_analysis
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["state_credits"] = state_results
+    study.ai_suggested_areas["total_state_credits"] = float(total_state_credits)
+
     # Create calculation record
+    # credit_rate is required (NOT NULL): 0.14 for ASC, 0.20 for Regular
+    credit_rate = Decimal('0.14') if selected_method == CreditMethod.ASC else Decimal('0.20')
     calculation = RDCalculation(
         study_id=study_id,
-        calculation_type="federal_asc" if selected_method == CreditMethod.asc else "federal_regular",
+        calculation_type="federal_asc" if selected_method == CreditMethod.ASC else "federal_regular",
         total_qre=total_qre,
         calculated_credit=final_credit,
+        credit_rate=credit_rate,
         is_final=False,
         calculation_steps=[
             {"step": 1, "description": "Total Wage QRE", "value": str(total_wage_qre)},
             {"step": 2, "description": "Total Supply QRE", "value": str(total_supply_qre)},
             {"step": 3, "description": "Total Contract QRE", "value": str(total_contract_qre)},
             {"step": 4, "description": "Total QRE", "value": str(total_qre)},
-            {"step": 5, "description": "Credit Rate", "value": "14%" if selected_method == CreditMethod.asc else "20%"},
-            {"step": 6, "description": "Tentative Credit", "value": str(asc_credit if selected_method == CreditMethod.asc else regular_credit)},
+            {"step": 5, "description": "Credit Rate", "value": "14%" if selected_method == CreditMethod.ASC else "20%"},
+            {"step": 6, "description": "Tentative Credit", "value": str(asc_credit if selected_method == CreditMethod.ASC else regular_credit)},
             {"step": 7, "description": "Section 280C Reduction (21%)", "value": "Applied"},
             {"step": 8, "description": "Final Credit", "value": str(final_credit)},
         ]
@@ -1180,6 +1246,330 @@ async def ai_complete_study(
 # =============================================================================
 # QUICK STUDY WIZARD
 # =============================================================================
+
+# =============================================================================
+# 4-PART TEST QUESTIONNAIRE
+# =============================================================================
+
+@router.get("/studies/{study_id}/projects/{project_id}/questionnaire")
+async def get_project_questionnaire(
+    study_id: UUID,
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get saved questionnaire answers for a project."""
+    project = await db.get(RDProject, project_id)
+    if not project or project.study_id != study_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Return stored questionnaire answers from ai_qualification_analysis
+    answers = {}
+    if project.ai_qualification_analysis and isinstance(project.ai_qualification_analysis, dict):
+        answers = project.ai_qualification_analysis.get("questionnaire_answers", {})
+
+    return {
+        "project_id": str(project_id),
+        "project_name": project.name,
+        "answers": answers,
+        "has_answers": bool(answers)
+    }
+
+
+@router.post("/studies/{study_id}/projects/{project_id}/questionnaire")
+async def save_project_questionnaire(
+    study_id: UUID,
+    project_id: UUID,
+    answers: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Save 4-Part Test questionnaire answers for a project.
+    The questionnaire covers:
+    - Part 1: Permitted Purpose (business component improvement)
+    - Part 2: Technological in Nature (relies on hard sciences)
+    - Part 3: Elimination of Uncertainty (capability, method, design)
+    - Part 4: Process of Experimentation (systematic evaluation)
+    """
+    project = await db.get(RDProject, project_id)
+    if not project or project.study_id != study_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Validate and score answers
+    part_scores = {}
+
+    # Part 1: Permitted Purpose
+    part1 = answers.get("part1", {})
+    part1_score = 0
+    if part1.get("improves_business_component"):
+        part1_score += 40
+    if part1.get("business_component_type"):
+        part1_score += 20
+    if part1.get("improvement_type") in ["new_development", "improvement", "capability"]:
+        part1_score += 40
+    part_scores["permitted_purpose"] = min(100, part1_score)
+
+    # Part 2: Technological in Nature
+    part2 = answers.get("part2", {})
+    part2_score = 0
+    sciences = part2.get("hard_sciences", [])
+    if sciences:
+        part2_score += 50
+        if len(sciences) > 1:
+            part2_score += 20
+    if part2.get("relies_on_principles"):
+        part2_score += 30
+    part_scores["technological_nature"] = min(100, part2_score)
+
+    # Part 3: Elimination of Uncertainty
+    part3 = answers.get("part3", {})
+    part3_score = 0
+    uncertainties = part3.get("uncertainty_types", [])
+    if "capability" in uncertainties:
+        part3_score += 35
+    if "method" in uncertainties:
+        part3_score += 35
+    if "design" in uncertainties:
+        part3_score += 30
+    if part3.get("uncertainty_description"):
+        part3_score += 10
+    part_scores["uncertainty"] = min(100, part3_score)
+
+    # Part 4: Process of Experimentation
+    part4 = answers.get("part4", {})
+    part4_score = 0
+    methods = part4.get("experimentation_methods", [])
+    if "modeling" in methods:
+        part4_score += 25
+    if "simulation" in methods:
+        part4_score += 25
+    if "systematic_trial_error" in methods:
+        part4_score += 30
+    if "other_evaluation" in methods:
+        part4_score += 20
+    if part4.get("evaluated_alternatives"):
+        part4_score += 20
+    part_scores["experimentation"] = min(100, part4_score)
+
+    # Overall score
+    overall_score = sum(part_scores.values()) / 4
+
+    # Determine qualification status
+    if overall_score >= 75:
+        qual_status = "qualified"
+    elif overall_score >= 50:
+        qual_status = "needs_review"
+    else:
+        qual_status = "not_qualified"
+
+    # Store answers and scores
+    if not project.ai_qualification_analysis:
+        project.ai_qualification_analysis = {}
+
+    project.ai_qualification_analysis["questionnaire_answers"] = answers
+    project.ai_qualification_analysis["questionnaire_scores"] = part_scores
+    project.ai_qualification_analysis["questionnaire_completed_at"] = datetime.utcnow().isoformat()
+
+    # Update project scores
+    project.permitted_purpose_score = Decimal(str(part_scores["permitted_purpose"]))
+    project.technological_nature_score = Decimal(str(part_scores["technological_nature"]))
+    project.uncertainty_score = Decimal(str(part_scores["uncertainty"]))
+    project.experimentation_score = Decimal(str(part_scores["experimentation"]))
+    project.overall_score = Decimal(str(overall_score))
+
+    # Set qualification status based on score
+    if qual_status == "qualified":
+        project.qualification_status = QualificationStatus.QUALIFIED
+    elif qual_status == "not_qualified":
+        project.qualification_status = QualificationStatus.NOT_QUALIFIED
+    else:
+        project.qualification_status = QualificationStatus.NEEDS_REVIEW
+
+    project.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return {
+        "success": True,
+        "project_id": str(project_id),
+        "scores": part_scores,
+        "overall_score": overall_score,
+        "qualification_status": qual_status,
+        "message": "Questionnaire saved successfully"
+    }
+
+
+@router.post("/studies/{study_id}/projects/{project_id}/generate-narrative")
+async def generate_project_narrative(
+    study_id: UUID,
+    project_id: UUID,
+    request: Request,
+    payload: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate AI-powered technical narrative for the 4-Part Test.
+    Uses questionnaire answers and project details to create audit-defensible documentation.
+    """
+    openai_client = getattr(request.app.state, 'openai_client', None)
+
+    project = await db.get(RDProject, project_id)
+    if not project or project.study_id != study_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    questionnaire_answers = payload.get("questionnaire_answers", {})
+    if not questionnaire_answers:
+        # Try to get from stored data
+        if project.ai_qualification_analysis:
+            questionnaire_answers = project.ai_qualification_analysis.get("questionnaire_answers", {})
+
+    if not questionnaire_answers:
+        raise HTTPException(
+            status_code=400,
+            detail="No questionnaire answers provided. Please complete the 4-Part Test questionnaire first."
+        )
+
+    # Build comprehensive project context
+    part1 = questionnaire_answers.get("part1", {})
+    part2 = questionnaire_answers.get("part2", {})
+    part3 = questionnaire_answers.get("part3", {})
+    part4 = questionnaire_answers.get("part4", {})
+
+    if openai_client:
+        try:
+            # Determine model
+            if settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
+                model_name = settings.AZURE_OPENAI_DEPLOYMENT or "gpt-4-turbo"
+            else:
+                model_name = settings.OPENAI_CHAT_MODEL
+
+            prompt = f"""Generate a comprehensive technical narrative for this R&D project's 4-Part Test qualification.
+This narrative should be audit-defensible and suitable for IRS Form 6765 documentation.
+
+PROJECT INFORMATION:
+- Name: {project.name}
+- Description: {project.description or 'Not provided'}
+- Business Component: {project.business_component or part1.get('business_component_type', 'Not specified')}
+
+QUESTIONNAIRE RESPONSES:
+
+PART 1 - PERMITTED PURPOSE:
+- Improves Business Component: {part1.get('improves_business_component', False)}
+- Component Type: {part1.get('business_component_type', 'Not specified')}
+- Improvement Type: {part1.get('improvement_type', 'Not specified')}
+- Description: {part1.get('improvement_description', 'Not provided')}
+
+PART 2 - TECHNOLOGICAL IN NATURE:
+- Hard Sciences Used: {', '.join(part2.get('hard_sciences', [])) or 'None specified'}
+- Relies on Scientific Principles: {part2.get('relies_on_principles', False)}
+- Technical Description: {part2.get('technical_description', 'Not provided')}
+
+PART 3 - ELIMINATION OF UNCERTAINTY:
+- Uncertainty Types: {', '.join(part3.get('uncertainty_types', [])) or 'None specified'}
+- Uncertainty Description: {part3.get('uncertainty_description', 'Not provided')}
+- What Was Unknown: {part3.get('what_was_unknown', 'Not provided')}
+
+PART 4 - PROCESS OF EXPERIMENTATION:
+- Methods Used: {', '.join(part4.get('experimentation_methods', [])) or 'None specified'}
+- Evaluated Alternatives: {part4.get('evaluated_alternatives', False)}
+- Experimentation Description: {part4.get('experimentation_description', 'Not provided')}
+
+Generate a JSON response with narratives for each part of the test:
+{{
+    "permitted_purpose_narrative": "<detailed narrative explaining how this project meets the Permitted Purpose test>",
+    "technological_nature_narrative": "<detailed narrative explaining the technological nature and hard sciences involved>",
+    "uncertainty_narrative": "<detailed narrative describing the technical uncertainties faced>",
+    "experimentation_narrative": "<detailed narrative describing the systematic process of experimentation>",
+    "executive_summary": "<2-3 sentence summary of why this project qualifies for R&D tax credit>",
+    "documentation_recommendations": ["<list of additional documentation that would strengthen the case>"]
+}}"""
+
+            response = await openai_client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert R&D tax credit consultant with deep knowledge of IRC Section 41. Generate professional, audit-defensible technical narratives that clearly demonstrate qualification under the 4-Part Test. Use specific technical language and reference the actual project activities."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=2500
+            )
+
+            result_text = response.choices[0].message.content.strip()
+            if result_text.startswith("```"):
+                result_text = result_text.split("```")[1]
+                if result_text.startswith("json"):
+                    result_text = result_text[4:]
+
+            narratives = json.loads(result_text)
+            ai_used = True
+            logger.info(f"AI narrative generation successful for project {project_id}")
+
+        except Exception as e:
+            logger.error(f"AI narrative generation failed: {e}")
+            narratives = _fallback_generate_narratives(project, questionnaire_answers)
+            ai_used = False
+    else:
+        narratives = _fallback_generate_narratives(project, questionnaire_answers)
+        ai_used = False
+
+    # Store narratives in project
+    project.permitted_purpose_narrative = narratives.get("permitted_purpose_narrative", "")
+    project.technological_nature_narrative = narratives.get("technological_nature_narrative", "")
+    project.uncertainty_narrative = narratives.get("uncertainty_narrative", "")
+    project.experimentation_narrative = narratives.get("experimentation_narrative", "")
+    project.qualification_narrative = narratives.get("executive_summary", "")
+
+    if not project.ai_qualification_analysis:
+        project.ai_qualification_analysis = {}
+    project.ai_qualification_analysis["ai_narratives"] = narratives
+    project.ai_qualification_analysis["narratives_generated_at"] = datetime.utcnow().isoformat()
+    project.ai_qualification_analysis["ai_used"] = ai_used
+
+    project.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return {
+        "success": True,
+        "project_id": str(project_id),
+        "narratives": narratives,
+        "ai_used": ai_used,
+        "message": "Technical narratives generated successfully"
+    }
+
+
+def _fallback_generate_narratives(project: RDProject, answers: dict) -> dict:
+    """Generate fallback narratives when AI is unavailable."""
+    part1 = answers.get("part1", {})
+    part2 = answers.get("part2", {})
+    part3 = answers.get("part3", {})
+    part4 = answers.get("part4", {})
+
+    component_type = part1.get("business_component_type", "product")
+    sciences = part2.get("hard_sciences", ["engineering"])
+    uncertainties = part3.get("uncertainty_types", ["capability"])
+    methods = part4.get("experimentation_methods", ["systematic_trial_error"])
+
+    return {
+        "permitted_purpose_narrative": f"The {project.name} project was undertaken with the intent to develop or improve a {component_type} for use in the taxpayer's trade or business. {part1.get('improvement_description', 'The project involved substantial development activities aimed at improving functionality, performance, or reliability.')}",
+
+        "technological_nature_narrative": f"This project's activities fundamentally rely on principles of {', '.join(sciences)}. The technical team applied established scientific methodologies and engineering principles to achieve the project objectives. {part2.get('technical_description', 'Development required specialized technical knowledge and expertise.')}",
+
+        "uncertainty_narrative": f"At the outset of this project, the development team faced significant technical uncertainties regarding {', '.join(uncertainties)}. {part3.get('uncertainty_description', 'These uncertainties could not be resolved through conventional means and required systematic technical investigation.')} The capability to achieve the desired result was not known prior to the commencement of research activities.",
+
+        "experimentation_narrative": f"To resolve the technical uncertainties, the project team employed a systematic process of experimentation including {', '.join([m.replace('_', ' ') for m in methods])}. {part4.get('experimentation_description', 'Multiple approaches were evaluated and tested to determine the optimal solution.')} This iterative process of hypothesis, testing, and refinement is consistent with the requirements of IRC Section 41.",
+
+        "executive_summary": f"The {project.name} project qualifies for the R&D tax credit under IRC Section 41 as it involves permitted purpose activities (developing/improving a {component_type}), relies on {sciences[0] if sciences else 'hard science'} principles, addresses technical uncertainties regarding {uncertainties[0] if uncertainties else 'capability'}, and employs systematic experimentation to resolve those uncertainties.",
+
+        "documentation_recommendations": [
+            "Technical design documents and specifications",
+            "Meeting notes discussing technical challenges",
+            "Test results and iteration records",
+            "Email communications regarding technical decisions",
+            "Employee time tracking for R&D activities"
+        ]
+    }
+
 
 @router.post("/studies/{study_id}/wizard/quick-complete")
 async def quick_complete_wizard(
@@ -1259,7 +1649,7 @@ async def quick_complete_wizard(
                     study_id=study_id,
                     name=str(row[0]).strip(),
                     description=str(row[1]).strip() if len(row) > 1 and row[1] else None,
-                    qualification_status=QualificationStatus.pending
+                    qualification_status=QualificationStatus.PENDING
                 )
                 db.add(project)
                 projects_created += 1
@@ -1290,7 +1680,7 @@ async def quick_complete_wizard(
 
                 qre = QualifiedResearchExpense(
                     study_id=study_id,
-                    category=QRECategory.supplies,
+                    category=QRECategory.SUPPLIES,
                     description=str(row[0]).strip(),
                     gross_amount=gross_amount,
                     qualified_percentage=Decimal('100'),
@@ -1319,22 +1709,20 @@ async def quick_complete_wizard(
 
     # Calculate totals
     total_wage_qre = sum(e.qualified_wages or Decimal('0') for e in employees)
-    total_supply_qre = sum(q.qualified_amount or Decimal('0') for q in qres if q.category == QRECategory.supplies)
+    total_supply_qre = sum(q.qualified_amount or Decimal('0') for q in qres if q.category == QRECategory.SUPPLIES)
     total_qre = total_wage_qre + total_supply_qre
 
     # ASC calculation (first year: 6% of QRE)
     asc_credit = total_qre * Decimal('0.06')
     final_credit = asc_credit * Decimal('0.79')  # After 280C reduction
 
-    # Update study
+    # Update study totals (only total_qre exists on model)
     study.total_qre = total_qre
-    study.qre_wages = total_wage_qre
-    study.qre_supplies = total_supply_qre
     study.federal_credit_asc = final_credit
     study.federal_credit_final = final_credit
-    study.selected_method = CreditMethod.asc
+    study.selected_method = CreditMethod.ASC
     study.total_credits = final_credit
-    study.status = StudyStatus.cpa_review
+    study.status = StudyStatus.CPA_APPROVAL
 
     await db.commit()
 

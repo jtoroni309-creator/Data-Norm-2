@@ -63,7 +63,7 @@ spec:
               key: api-key
               optional: true
         - name: AZURE_OPENAI_DEPLOYMENT
-          value: "gpt-4"
+          value: "gpt-4-turbo"
         resources:
           requests:
             memory: "256Mi"
