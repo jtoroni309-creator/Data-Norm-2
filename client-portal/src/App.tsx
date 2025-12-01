@@ -159,6 +159,7 @@ import RiskAssessment from './pages/RiskAssessment';
 import DocumentRepository from './pages/DocumentRepository';
 import AuditReporting from './pages/AuditReporting';
 import SOCEngagements from './pages/SOCEngagements';
+import SOCEngagementWorkspace from './pages/SOCEngagementWorkspace';
 import AIAuditPlanning from './pages/AIAuditPlanning';
 // R&D Tax Credit Pages
 import RDStudies from './pages/RDStudies';
@@ -790,6 +791,7 @@ const App: React.FC = () => {
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><ThemedAppLayout><EmployeeManagement /></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/audits" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><FirmAudits /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/soc-engagements" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="soc-compliance"><SOCEngagements /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/soc-engagements/:id/workspace" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="soc-compliance"><SOCEngagementWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/rd-studies" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="rd-study-automation"><RDStudies /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/rd-studies/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="rd-study-automation"><RDStudyWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/tax-returns" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="tax-optimization"><TaxReturns /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
