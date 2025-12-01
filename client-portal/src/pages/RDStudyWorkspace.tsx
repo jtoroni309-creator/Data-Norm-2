@@ -1837,26 +1837,54 @@ const RDStudyWorkspace: React.FC = () => {
             {/* Export Tab */}
             {activeTab === 'export' && (
               <div className="space-y-6">
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Generate Reports</h3>
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Generate & Download Reports</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { name: 'Excel Workbook', desc: 'Complete study data in Excel format', icon: '📊', type: 'excel' },
-                    { name: 'PDF Report', desc: 'Professional PDF study report', icon: '📄', type: 'pdf' },
-                    { name: 'Form 6765', desc: 'IRS Form 6765 data', icon: '📋', type: 'form_6765' },
+                    { name: 'Excel Workbook', desc: 'Complete study data in Excel format', icon: '📊', type: 'excel', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+                    { name: 'PDF Report', desc: 'Professional PDF study report', icon: '📄', type: 'pdf', mime: 'application/pdf' },
+                    { name: 'Form 6765', desc: 'IRS Form 6765 data', icon: '📋', type: 'form_6765', mime: 'application/pdf' },
                   ].map((item) => (
                     <button
                       key={item.type}
                       onClick={async () => {
                         try {
+                          setSuccessMessage(`Generating ${item.name}...`);
                           const headers = getAuthHeaders();
-                          await axios.post(
+
+                          // Step 1: Generate the file
+                          const generateRes = await axios.post(
                             `${API_BASE_URL}/rd-study/studies/${studyId}/outputs/generate`,
                             { output_types: [item.type], include_draft_watermark: true },
                             { headers }
                           );
-                          setSuccessMessage(`${item.name} generated successfully`);
+
+                          // Step 2: Get the generated file info
+                          const generatedFile = generateRes.data?.files?.[0];
+                          if (!generatedFile?.id) {
+                            throw new Error('File generation failed - no file ID returned');
+                          }
+
+                          // Step 3: Download the generated file
+                          const downloadRes = await axios.get(
+                            `${API_BASE_URL}/rd-study/studies/${studyId}/outputs/${generatedFile.id}/download`,
+                            { headers, responseType: 'blob' }
+                          );
+
+                          // Step 4: Trigger browser download
+                          const blob = new Blob([downloadRes.data], { type: item.mime });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = generatedFile.filename || `${item.type}_${study?.entity_name}_${study?.tax_year}.${item.type === 'excel' ? 'xlsx' : 'pdf'}`;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          window.URL.revokeObjectURL(url);
+
+                          setSuccessMessage(`${item.name} downloaded successfully!`);
                         } catch (err: any) {
-                          setError(err.response?.data?.detail || `Failed to generate ${item.name}`);
+                          console.error('Download error:', err);
+                          setError(err.response?.data?.detail || err.message || `Failed to generate/download ${item.name}`);
                         }
                       }}
                       className={`${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-6 text-left transition-colors`}
@@ -1866,6 +1894,31 @@ const RDStudyWorkspace: React.FC = () => {
                       <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{item.desc}</div>
                     </button>
                   ))}
+                </div>
+
+                {/* Previously Generated Files */}
+                <div className={`${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-xl p-6`}>
+                  <h4 className={`font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Previously Generated Files</h4>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const headers = getAuthHeaders();
+                        const res = await axios.get(`${API_BASE_URL}/rd-study/studies/${studyId}/outputs`, { headers });
+                        const files = res.data || [];
+                        if (files.length === 0) {
+                          setSuccessMessage('No previously generated files found.');
+                        } else {
+                          // For now, just show count - could expand to show list
+                          setSuccessMessage(`Found ${files.length} previously generated file(s). Use the buttons above to generate and download new files.`);
+                        }
+                      } catch (err) {
+                        console.warn('Could not fetch previous files:', err);
+                      }
+                    }}
+                    className={`text-sm ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                  >
+                    Check for previous files →
+                  </button>
                 </div>
               </div>
             )}

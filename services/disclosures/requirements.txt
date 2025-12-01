@@ -11,3 +11,4 @@ pgvector==0.2.4
 numpy==1.26.3
 pytest==7.4.4
 pytest-asyncio==0.23.3
+python-multipart==0.0.9

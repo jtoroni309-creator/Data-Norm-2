@@ -494,164 +494,39 @@ const AIAgentDashboard: React.FC = () => {
         fetch(`${API_BASE_URL}/engagement/ai/closes`, { headers }),
       ]);
 
-      // Process agents response
+      // Process agents response - NO DEMO FALLBACK
       if (agentsRes.status === 'fulfilled' && agentsRes.value.ok) {
         const agentsData = await agentsRes.value.json();
         setAgents(agentsData.agents || []);
       } else {
-        // Fallback to enhanced default agents if API unavailable
-        setAgents([
-          {
-            agent_id: 'agent_close_manager',
-            name: 'Close Manager Agent',
-            description: 'Orchestrates financial close process, predicts bottlenecks, assigns tasks automatically',
-            agent_type: 'close_management',
-            mode: 'semi_autonomous',
-            capabilities: ['read_data', 'schedule_tasks', 'send_notifications', 'generate_reports'],
-            specializations: ['financial_close', 'task_management', 'deadline_prediction'],
-            total_tasks_completed: 1247,
-            success_rate: 0.98,
-            is_active: true,
-            queue_depth: 3,
-          },
-          {
-            agent_id: 'agent_reconciler',
-            name: 'Intelligent Reconciler',
-            description: 'Auto-matches transactions with 95%+ accuracy, learns from corrections',
-            agent_type: 'reconciliation',
-            mode: 'fully_autonomous',
-            capabilities: ['read_data', 'write_data', 'execute_reconciliation'],
-            specializations: ['bank_reconciliation', 'intercompany', 'three_way_match'],
-            total_tasks_completed: 8432,
-            success_rate: 0.96,
-            is_active: true,
-            queue_depth: 12,
-          },
-          {
-            agent_id: 'agent_journal_entry',
-            name: 'Journal Entry Agent',
-            description: 'Creates, validates, and posts journal entries autonomously',
-            agent_type: 'journal_entry',
-            mode: 'supervised',
-            capabilities: ['read_data', 'create_journal_entries', 'post_journal_entries'],
-            specializations: ['accruals', 'deferrals', 'asc_842', 'revenue_recognition'],
-            total_tasks_completed: 3891,
-            success_rate: 0.99,
-            is_active: true,
-            queue_depth: 5,
-          },
-          {
-            agent_id: 'agent_variance_analyst',
-            name: 'Variance Analysis Agent',
-            description: 'Analyzes variances, generates explanations, identifies anomalies',
-            agent_type: 'variance_analysis',
-            mode: 'fully_autonomous',
-            capabilities: ['read_data', 'generate_reports', 'send_notifications'],
-            specializations: ['flux_analysis', 'budget_variance', 'trend_analysis'],
-            total_tasks_completed: 5621,
-            success_rate: 0.94,
-            is_active: true,
-            queue_depth: 0,
-          },
-          {
-            agent_id: 'agent_anomaly_hunter',
-            name: 'Anomaly Detection Agent',
-            description: 'Continuously monitors for anomalies, fraud indicators, unusual patterns',
-            agent_type: 'anomaly_detection',
-            mode: 'fully_autonomous',
-            capabilities: ['read_data', 'send_notifications', 'generate_reports'],
-            specializations: ['fraud_detection', 'outlier_detection', 'pattern_recognition'],
-            total_tasks_completed: 15234,
-            success_rate: 0.97,
-            is_active: true,
-            queue_depth: 0,
-          },
-          {
-            agent_id: 'agent_compliance',
-            name: 'Compliance Agent',
-            description: 'Monitors compliance requirements, checks controls, identifies gaps',
-            agent_type: 'compliance',
-            mode: 'semi_autonomous',
-            capabilities: ['read_data', 'generate_reports', 'send_notifications'],
-            specializations: ['sox_compliance', 'gaap_compliance', 'regulatory'],
-            total_tasks_completed: 2156,
-            success_rate: 0.99,
-            is_active: true,
-            queue_depth: 2,
-          },
-          {
-            agent_id: 'agent_workpaper',
-            name: 'AI Workpaper Generator',
-            description: 'Generates professional Excel workpapers exceeding CPA quality standards',
-            agent_type: 'audit_assistance',
-            mode: 'fully_autonomous',
-            capabilities: ['read_data', 'generate_workpapers', 'create_excel', 'apply_standards'],
-            specializations: ['planning_memo', 'materiality', 'analytics', 'lead_schedules'],
-            total_tasks_completed: 2847,
-            success_rate: 0.99,
-            is_active: true,
-            queue_depth: 1,
-          },
-          {
-            agent_id: 'agent_risk_analyzer',
-            name: 'Risk Assessment Agent',
-            description: 'AI-powered risk analysis with PCAOB AS 2110 compliance',
-            agent_type: 'audit_assistance',
-            mode: 'semi_autonomous',
-            capabilities: ['read_data', 'analyze_risk', 'generate_reports'],
-            specializations: ['inherent_risk', 'control_risk', 'fraud_risk', 'significant_accounts'],
-            total_tasks_completed: 1923,
-            success_rate: 0.97,
-            is_active: true,
-            queue_depth: 0,
-          },
-        ]);
+        // Show empty state instead of demo data
+        console.warn('AI Agents API unavailable');
+        setAgents([]);
       }
 
-      // Process metrics response
+      // Process metrics response - NO DEMO FALLBACK
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
         const metricsData = await metricsRes.value.json();
         setMetrics(metricsData);
       } else {
+        // Show empty state instead of demo data
+        console.warn('AI Metrics API unavailable');
         setMetrics({
-          active_agents: 8,
-          total_tasks_today: 523,
-          automation_rate: '94%',
-          time_saved_hours: 247,
+          active_agents: 0,
+          total_tasks_today: 0,
+          automation_rate: '0%',
+          time_saved_hours: 0,
         });
       }
 
-      // Process closes response
+      // Process closes response - NO DEMO FALLBACK
       if (closesRes.status === 'fulfilled' && closesRes.value.ok) {
         const closesData = await closesRes.value.json();
         setCloses(closesData.closes || []);
       } else {
-        setCloses([
-          {
-            close_id: 'close_1',
-            period: 'December 2024',
-            entity_name: 'Acme Corporation',
-            status: 'in_progress',
-            progress_percentage: 75,
-            total_tasks: 12,
-            completed_tasks: 9,
-            predicted_completion_date: '2025-01-05',
-            risk_score: 25,
-            automation_rate: 85,
-          },
-          {
-            close_id: 'close_2',
-            period: 'Q4 2024',
-            entity_name: 'Acme Corporation',
-            status: 'in_progress',
-            progress_percentage: 45,
-            total_tasks: 24,
-            completed_tasks: 11,
-            predicted_completion_date: '2025-01-15',
-            risk_score: 45,
-            automation_rate: 72,
-          },
-        ]);
+        // Show empty state instead of demo data
+        console.warn('AI Closes API unavailable');
+        setCloses([]);
       }
 
     } catch (error) {
