@@ -946,11 +946,14 @@ async def create_qre(
 
     qualified_amount = qre_data.gross_amount * Decimal(str(qre_data.qualified_percentage)) / 100
 
+    # Get the enum value (lowercase) if it's an enum, otherwise use as-is
+    category_value = qre_data.category.value if hasattr(qre_data.category, 'value') else qre_data.category
+
     qre = QualifiedResearchExpense(
         study_id=study_id,
         project_id=qre_data.project_id,
         employee_id=qre_data.employee_id,
-        category=qre_data.category,
+        category=category_value,
         subcategory=qre_data.subcategory,
         is_w2_wages=qre_data.is_w2_wages,
         supply_description=qre_data.supply_description,

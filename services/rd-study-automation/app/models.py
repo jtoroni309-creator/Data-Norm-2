@@ -190,7 +190,7 @@ class RDStudy(Base):
     # AI analysis results
     ai_risk_score = Column(Float, nullable=True)  # 0-100
     ai_opportunity_score = Column(Float, nullable=True)  # 0-100
-    ai_suggested_areas = Column(JSONB, default=list)
+    ai_suggested_areas = Column(JSONB, default=dict)
     ai_analysis_summary = Column(Text, nullable=True)
 
     # Credit amounts (calculated)
@@ -452,8 +452,8 @@ class QualifiedResearchExpense(Base):
     project_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.rd_projects.id", ondelete="SET NULL"), nullable=True)
     employee_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.rd_employees.id", ondelete="SET NULL"), nullable=True)
 
-    # QRE category
-    category = Column(SQLEnum(QRECategory, create_type=False), nullable=False)
+    # QRE category - use String to avoid SQLAlchemy enum name/value mismatch with PostgreSQL
+    category = Column(String(50), nullable=False)
     subcategory = Column(String(100), nullable=True)
 
     # For wages
