@@ -16,8 +16,8 @@ export interface SOCEngagementCreate {
   review_period_start?: string;
   review_period_end?: string;
   point_in_time_date?: string;
-  partner_id: string;
-  manager_id: string;
+  partner_id?: string;  // Optional - defaults to current user on server
+  manager_id?: string;  // Optional - defaults to current user on server
   fiscal_year_end?: string;
 }
 
@@ -133,7 +133,12 @@ class SOCCopilotService {
   }
 
   async createEngagement(data: SOCEngagementCreate): Promise<SOCEngagement> {
-    const response = await this.api.post<SOCEngagement>('/engagements', data);
+    // Filter out empty partner_id and manager_id - server will default to current user
+    const cleanData = { ...data };
+    if (!cleanData.partner_id) delete cleanData.partner_id;
+    if (!cleanData.manager_id) delete cleanData.manager_id;
+
+    const response = await this.api.post<SOCEngagement>('/engagements', cleanData);
     return response.data;
   }
 

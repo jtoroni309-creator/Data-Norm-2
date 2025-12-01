@@ -173,8 +173,8 @@ class EngagementCreate(BaseModel):
     review_period_start: Optional[date] = None
     review_period_end: Optional[date] = None
     point_in_time_date: Optional[date] = None
-    partner_id: UUID
-    manager_id: UUID
+    partner_id: Optional[UUID] = None  # Made optional - defaults to current user if Partner
+    manager_id: Optional[UUID] = None  # Made optional - defaults to current user if Manager
     fiscal_year_end: Optional[date] = None
 
 
@@ -318,6 +318,10 @@ async def create_engagement(
                 detail="Type 2 engagements require review period start and end dates"
             )
 
+    # Default partner_id and manager_id to current user if not provided
+    partner_id = engagement_data.partner_id or current_user.id
+    manager_id = engagement_data.manager_id or current_user.id
+
     # Create engagement
     new_engagement = SOCEngagement(
         client_name=engagement_data.client_name,
@@ -329,8 +333,8 @@ async def create_engagement(
         review_period_start=engagement_data.review_period_start,
         review_period_end=engagement_data.review_period_end,
         point_in_time_date=engagement_data.point_in_time_date,
-        partner_id=engagement_data.partner_id,
-        manager_id=engagement_data.manager_id,
+        partner_id=partner_id,
+        manager_id=manager_id,
         created_by=current_user.id,
         fiscal_year_end=engagement_data.fiscal_year_end
     )
