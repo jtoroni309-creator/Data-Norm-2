@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -474,7 +474,7 @@ async def get_latest_check_summary(
 async def waive_check(
     engagement_id: UUID,
     check_id: UUID,
-    waiver_reason: str = Field(..., min_length=10),
+    waiver_reason: str = Body(..., min_length=10, embed=True),
     db: AsyncSession = Depends(get_db),
     current_user_id: UUID = Depends(get_current_user_id)
 ):
