@@ -9,11 +9,12 @@ from pydantic import BaseModel
 class EdgarClient:
     """Client for interacting with SEC EDGAR API"""
 
-    BASE_URL = "https://data.sec.gov"
+    DEFAULT_BASE_URL = "https://data.sec.gov"
 
-    def __init__(self):
+    def __init__(self, base_url: str = None, user_agent: str = None):
+        self.base_url = base_url or self.DEFAULT_BASE_URL
         self.headers = {
-            "User-Agent": "AuraAuditAI/1.0 (support@auraai.com)",
+            "User-Agent": user_agent or "AuraAuditAI/1.0 (support@auraai.com)",
             "Accept": "application/json"
         }
 
@@ -28,7 +29,7 @@ class EdgarClient:
             Company facts data
         """
         cik = cik.zfill(10)
-        url = f"{self.BASE_URL}/api/xbrl/companyfacts/CIK{cik}.json"
+        url = f"{self.base_url}/api/xbrl/companyfacts/CIK{cik}.json"
 
         async with httpx.AsyncClient() as client:
             try:
@@ -49,7 +50,7 @@ class EdgarClient:
             Submissions data
         """
         cik = cik.zfill(10)
-        url = f"{self.BASE_URL}/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=10-K&dateb=&owner=include&count=10&output=json"
+        url = f"{self.base_url}/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=10-K&dateb=&owner=include&count=10&output=json"
 
         async with httpx.AsyncClient() as client:
             try:
