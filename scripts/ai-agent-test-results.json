@@ -1,0 +1,410 @@
+﻿{
+    "test_company":  {
+                         "entity_type":  "private",
+                         "fiscal_year_end":  "2024-12-31",
+                         "employee_count":  85,
+                         "company_name":  "HarborTech Manufacturing, Inc.",
+                         "erp_system":  "QuickBooks Online",
+                         "locations":  2,
+                         "industry":  "Light Manufacturing / Electronics Assembly"
+                     },
+    "timestamp":  "2025-11-30 22:14:19",
+    "test_financials":  {
+                            "prior_year":  {
+                                               "total_assets":  12000000,
+                                               "net_income":  450000,
+                                               "revenue":  16500000
+                                           },
+                            "balance_sheet":  {
+                                                  "common_stock":  2500000,
+                                                  "accounts_payable":  1200000,
+                                                  "accounts_receivable":  1900000,
+                                                  "total_liabilities":  6200000,
+                                                  "retained_earnings":  4500000,
+                                                  "current_liabilities":  2800000,
+                                                  "cash":  1500000,
+                                                  "total_assets":  13200000,
+                                                  "long_term_debt":  3400000,
+                                                  "inventory":  2100000,
+                                                  "total_equity":  7000000,
+                                                  "fixed_assets":  6400000,
+                                                  "current_assets":  5800000
+                                              },
+                            "income_statement":  {
+                                                     "cost_of_sales":  11000000,
+                                                     "operating_expenses":  5900000,
+                                                     "net_income":  500000,
+                                                     "interest_expense":  300000,
+                                                     "revenue":  18000000,
+                                                     "gross_profit":  7000000,
+                                                     "tax_expense":  300000
+                                                 }
+                        },
+    "agent_inventory":  [
+                            {
+                                "status":  "healthy",
+                                "name":  "LLM Service",
+                                "api_path":  "/api/ai/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "AI Agent Builder",
+                                "api_path":  "/api/ai-agents/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "SOC Copilot",
+                                "api_path":  "/api/soc-copilot/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "R\u0026D Study Automation",
+                                "api_path":  "/api/rd-study/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "Fraud Detection",
+                                "api_path":  "/api/fraud-detection/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "Audit Planning",
+                                "api_path":  "/api/audit-planning/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "SOX Automation",
+                                "api_path":  "/api/sox/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "Document Intelligence",
+                                "api_path":  "/api/doc-intelligence/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Analytics",
+                                "api_path":  "/api/analytics/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "Risk Monitor",
+                                "api_path":  "/api/risk-monitor/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Sampling",
+                                "api_path":  "/api/sampling/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Substantive Testing",
+                                "api_path":  "/api/substantive-testing/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Estimates Evaluation",
+                                "api_path":  "/api/estimates/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Disclosures",
+                                "api_path":  "/api/disclosures/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Quality Control",
+                                "api_path":  "/api/qc/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Related Party",
+                                "api_path":  "/api/related-party/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Subsequent Events",
+                                "api_path":  "/api/subsequent-events/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "Full Population Analysis",
+                                "api_path":  "/api/full-population/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "GL Monitor",
+                                "api_path":  "/api/gl-monitor/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "healthy",
+                                "name":  "Control Points Engine",
+                                "api_path":  "/api/control-points/",
+                                "purpose":  "See agent descriptions"
+                            },
+                            {
+                                "status":  "unhealthy",
+                                "name":  "Advanced Report Generation",
+                                "api_path":  "/api/advanced-reports/",
+                                "purpose":  "See agent descriptions"
+                            }
+                        ],
+    "summary":  {
+                    "healthy_services":  12,
+                    "unhealthy_services":  9,
+                    "total_tests":  14,
+                    "failed":  2,
+                    "passed":  12
+                },
+    "test_results":  [
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  5,
+                                                              "explainability":  4,
+                                                              "coverage":  4,
+                                                              "speed":  5
+                                                          },
+                                               "average":  4.5
+                                           },
+                             "agent":  "AI Agent Builder",
+                             "details":  "Found 8 templates",
+                             "status":  "PASS",
+                             "test":  "List Templates"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  4,
+                                                              "explainability":  5,
+                                                              "coverage":  5,
+                                                              "speed":  5
+                                                          },
+                                               "average":  4.67
+                                           },
+                             "agent":  "SOC Copilot",
+                             "details":  "Service healthy, version 1.0.0",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  5,
+                                                              "explainability":  5,
+                                                              "coverage":  5,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.67
+                                           },
+                             "agent":  "R\u0026D Study Automation",
+                             "details":  "Service healthy, rules version 2024.1",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  4,
+                                                              "explainability":  5,
+                                                              "coverage":  4,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.33
+                                           },
+                             "agent":  "Fraud Detection",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  4,
+                                                              "explainability":  4,
+                                                              "coverage":  5,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.33
+                                           },
+                             "agent":  "Audit Planning",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  5,
+                                                              "explainability":  5,
+                                                              "coverage":  5,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.67
+                                           },
+                             "agent":  "SOX Automation",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  5,
+                                                              "explainability":  4,
+                                                              "coverage":  4,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.33
+                                           },
+                             "agent":  "Document Intelligence",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  5,
+                                                              "explainability":  5,
+                                                              "coverage":  5,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.67
+                                           },
+                             "agent":  "LLM Service",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  4,
+                                                              "explainability":  5,
+                                                              "coverage":  4,
+                                                              "speed":  5
+                                                          },
+                                               "average":  4.5
+                                           },
+                             "agent":  "Risk Monitor",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  4,
+                                                              "explainability":  4,
+                                                              "coverage":  5,
+                                                              "speed":  5
+                                                          },
+                                               "average":  4.5
+                                           },
+                             "agent":  "GL Monitor",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  4,
+                                                              "explainability":  5,
+                                                              "coverage":  5,
+                                                              "speed":  3
+                                                          },
+                                               "average":  4.33
+                                           },
+                             "agent":  "Full Population Analysis",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  {
+                                               "better_than_floqast":  true,
+                                               "scores":  {
+                                                              "correctness":  5,
+                                                              "failure_handling":  4,
+                                                              "user_effort":  5,
+                                                              "explainability":  4,
+                                                              "coverage":  5,
+                                                              "speed":  4
+                                                          },
+                                               "average":  4.5
+                                           },
+                             "agent":  "Control Points Engine",
+                             "details":  "Service operational",
+                             "status":  "PASS",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  null,
+                             "agent":  "Analytics",
+                             "details":  "The remote server returned an error: (504) Gateway Timeout.",
+                             "status":  "FAIL",
+                             "test":  "Health Check"
+                         },
+                         {
+                             "benchmark":  null,
+                             "agent":  "Advanced Report Generation",
+                             "details":  "The remote server returned an error: (502) Bad Gateway.",
+                             "status":  "FAIL",
+                             "test":  "Health Check"
+                         }
+                     ]
+}
