@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ServiceProvider, useServices, ServiceGuard, NAV_SERVICE_MAP } from './contexts/ServiceContext';
 import {
   LayoutDashboard,
   Users,
@@ -237,8 +238,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { notifications, markAsRead, markAllAsRead, clearNotification, unreadCount } = useNotifications();
+  const { isNavItemEnabled } = useServices();
   const notificationRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Filter navigation based on enabled services
+  const filteredNavigation = navigation.filter(item => isNavItemEnabled(item.id));
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -329,7 +334,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {/* Navigation */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
@@ -723,11 +728,13 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
-// Layout wrapper that provides theme context
+// Layout wrapper that provides theme and service context
 const ThemedAppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <ThemeProvider>
-      <AppLayout>{children}</AppLayout>
+      <ServiceProvider>
+        <AppLayout>{children}</AppLayout>
+      </ServiceProvider>
     </ThemeProvider>
   );
 };
@@ -775,33 +782,33 @@ const App: React.FC = () => {
         {/* R&D Study Client Data Collection - Public page for invited clients (no auth required) */}
         <Route path="/rd-study-data-collection" element={<RDStudyClientDataCollection />} />
 
-        {/* Firm Portal Routes with Layout - Protected by RouteGuard */}
+        {/* Firm Portal Routes with Layout - Protected by RouteGuard and ServiceGuard */}
         <Route path="/firm/dashboard" element={<RouteGuard portalType="firm"><ThemedAppLayout><FirmDashboard /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/ai-agents" element={<RouteGuard portalType="firm"><ThemedAppLayout><AIAgentDashboard /></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/ai-agents" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="ai-assistant"><AIAgentDashboard /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/clients" element={<RouteGuard portalType="firm"><ThemedAppLayout><FirmClients /></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/settings" element={<RouteGuard portalType="firm"><ThemedAppLayout><FirmSettings /></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/employees" element={<RouteGuard portalType="firm"><ThemedAppLayout><EmployeeManagement /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/audits" element={<RouteGuard portalType="firm"><ThemedAppLayout><FirmAudits /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/soc-engagements" element={<RouteGuard portalType="firm"><ThemedAppLayout><SOCEngagements /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/rd-studies" element={<RouteGuard portalType="firm"><ThemedAppLayout><RDStudies /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/rd-studies/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><RDStudyWorkspace /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/tax-returns" element={<RouteGuard portalType="firm"><ThemedAppLayout><TaxReturns /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/tax-returns/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><TaxReturnWorkspace /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/fraud-detection" element={<RouteGuard portalType="firm"><ThemedAppLayout><FraudDetection /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/fraud-detection/cases/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><FraudCaseWorkspace /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/group-audits" element={<RouteGuard portalType="firm"><ThemedAppLayout><GroupAuditManagement /></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/audits" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><FirmAudits /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/soc-engagements" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="soc-compliance"><SOCEngagements /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/rd-studies" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="rd-study-automation"><RDStudies /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/rd-studies/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="rd-study-automation"><RDStudyWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/tax-returns" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="tax-optimization"><TaxReturns /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/tax-returns/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="tax-optimization"><TaxReturnWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/fraud-detection" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="fraud-detection"><FraudDetection /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/fraud-detection/cases/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="fraud-detection"><FraudCaseWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/group-audits" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="group-audit"><GroupAuditManagement /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/reports" element={<RouteGuard portalType="firm"><ThemedAppLayout><FirmReports /></ThemedAppLayout></RouteGuard>} />
-        {/* Engagement Workspace Routes - Protected by RouteGuard */}
-        <Route path="/firm/engagements/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><EngagementWorkspace /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/workspace" element={<RouteGuard portalType="firm"><ThemedAppLayout><EngagementWorkspace /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/workpapers" element={<RouteGuard portalType="firm"><ThemedAppLayout><WorkpaperManager /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/analytics" element={<RouteGuard portalType="firm"><ThemedAppLayout><AnalyticalProcedures /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/testing" element={<RouteGuard portalType="firm"><ThemedAppLayout><AuditTesting /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/risk" element={<RouteGuard portalType="firm"><ThemedAppLayout><RiskAssessment /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/documents" element={<RouteGuard portalType="firm"><ThemedAppLayout><DocumentRepository /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/reports" element={<RouteGuard portalType="firm"><ThemedAppLayout><AuditReporting /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/ai-planning" element={<RouteGuard portalType="firm"><ThemedAppLayout><AIAuditPlanning /></ThemedAppLayout></RouteGuard>} />
-        <Route path="/firm/engagements/:id/group-audit" element={<RouteGuard portalType="firm"><ThemedAppLayout><GroupAuditManagement /></ThemedAppLayout></RouteGuard>} />
+        {/* Engagement Workspace Routes - Protected by RouteGuard and ServiceGuard */}
+        <Route path="/firm/engagements/:id" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><EngagementWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/workspace" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><EngagementWorkspace /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/workpapers" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><WorkpaperManager /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/analytics" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><AnalyticalProcedures /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/testing" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><AuditTesting /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/risk" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><RiskAssessment /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/documents" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><DocumentRepository /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/reports" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="core-financial-audit"><AuditReporting /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/ai-planning" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="ai-assistant"><AIAuditPlanning /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
+        <Route path="/firm/engagements/:id/group-audit" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="group-audit"><GroupAuditManagement /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
 
         {/* Customer Portal Routes - Protected by RouteGuard */}
         <Route path="/customer/dashboard" element={<RouteGuard portalType="client"><DashboardPage /></RouteGuard>} />
