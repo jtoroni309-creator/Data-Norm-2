@@ -69,38 +69,3 @@ EXPOSE ${PORT}
 
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
-
-
-# Stage 3: Development
-FROM production as development
-
-USER root
-
-# Install development dependencies
-RUN pip install --no-cache-dir \
-    pytest \
-    pytest-asyncio \
-    pytest-cov \
-    black \
-    mypy \
-    ruff
-
-USER appuser
-
-# Development command with hot reload
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
-
-# Stage 4: Testing
-FROM development as testing
-
-USER root
-
-# Install test dependencies
-COPY --chown=appuser:appgroup ./tests ./tests
-COPY --chown=appuser:appgroup ./pytest.ini ./pytest.ini
-
-USER appuser
-
-# Test command
-CMD ["pytest", "tests/", "-v", "--cov=app", "--cov-report=term-missing"]
