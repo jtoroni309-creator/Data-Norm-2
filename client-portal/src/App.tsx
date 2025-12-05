@@ -174,6 +174,8 @@ import FraudCaseWorkspace from './pages/FraudCaseWorkspace';
 import GroupAuditManagement from './pages/GroupAuditManagement';
 // R&D Client Data Collection (Public Page for invited clients)
 import { RDStudyClientDataCollection } from './pages/RDStudyClientDataCollection';
+// Enhanced R&D Client Portal (for rdclient subdomain)
+import { RDClientPortal } from './pages/RDClientPortal';
 // AI Agent Dashboard - Autonomous AI Operations
 import AIAgentDashboard from './pages/AIAgentDashboard';
 
@@ -194,9 +196,20 @@ const navigation = [
 
 const SmartRedirect: React.FC = () => {
   const isCpaPortal = window.location.hostname.startsWith('cpa.');
-  const targetPath = isCpaPortal ? "/firm/dashboard" : "/client/dashboard";
+  const isRDClientPortal = window.location.hostname.startsWith('rdclient.');
 
+  // R&D Client Portal gets its own dedicated portal
+  if (isRDClientPortal) {
+    return <Navigate to="/rd-portal" replace />;
+  }
+
+  const targetPath = isCpaPortal ? "/firm/dashboard" : "/client/dashboard";
   return <Navigate to={targetPath} replace />;
+};
+
+// Check if on R&D Client Portal subdomain
+const isRDClientSubdomain = () => {
+  return window.location.hostname.startsWith('rdclient.');
 };
 
 // Route guard component to ensure correct portal access based on subdomain
@@ -783,6 +796,10 @@ const App: React.FC = () => {
         {/* R&D Study Client Data Collection - Public page for invited clients (no auth required) */}
         <Route path="/rd-study-data-collection" element={<RDStudyClientDataCollection />} />
 
+        {/* R&D Client Portal - Enhanced portal for rdclient subdomain (no auth - uses invitation token) */}
+        <Route path="/rd-portal" element={<RDClientPortal />} />
+        <Route path="/rd-portal/:token" element={<RDClientPortal />} />
+
         {/* Firm Portal Routes with Layout - Protected by RouteGuard and ServiceGuard */}
         <Route path="/firm/dashboard" element={<RouteGuard portalType="firm"><ThemedAppLayout><FirmDashboard /></ThemedAppLayout></RouteGuard>} />
         <Route path="/firm/ai-agents" element={<RouteGuard portalType="firm"><ThemedAppLayout><ServiceGuard serviceId="ai-assistant"><AIAgentDashboard /></ServiceGuard></ThemedAppLayout></RouteGuard>} />
@@ -823,10 +840,10 @@ const App: React.FC = () => {
         <Route path="/client/integrations" element={<RouteGuard portalType="client"><IntegrationsPage /></RouteGuard>} />
 
         {/* Landing Page - Microsoft Fluent Design */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={isRDClientSubdomain() ? <Navigate to="/rd-portal" replace /> : <HomePage />} />
 
-        {/* Fallback - redirect to home */}
-        <Route path="*" element={<HomePage />} />
+        {/* Fallback - redirect to appropriate portal based on subdomain */}
+        <Route path="*" element={isRDClientSubdomain() ? <Navigate to="/rd-portal" replace /> : <HomePage />} />
       </Routes>
     </BrowserRouter>
   );

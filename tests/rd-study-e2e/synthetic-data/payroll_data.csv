@@ -1,0 +1,49 @@
+employee_id,name,title,department,hire_date,termination_date,annual_salary,bonus,w2_wages,qualified_time_pct,state,role_category
+EMP001,Dr. Michael Zhang,Chief Technology Officer,Engineering,2019-03-15,,325000,85000,410000,45,PA,supervisor
+EMP002,Sarah Martinez,VP of Engineering,Engineering,2020-01-20,,285000,65000,350000,50,PA,supervisor
+EMP003,David Kim,Director of AI Research,AI/ML,2021-06-01,,265000,55000,320000,75,PA,engineer
+EMP004,Jennifer Lee,Senior ML Engineer,AI/ML,2021-08-15,,195000,35000,230000,85,PA,engineer
+EMP005,Robert Chen,Senior Software Architect,Engineering,2019-09-01,,210000,40000,250000,70,PA,engineer
+EMP006,Amanda Foster,Principal Data Scientist,AI/ML,2020-11-10,,205000,45000,250000,80,PA,scientist
+EMP007,James Wilson,Senior Backend Engineer,Engineering,2022-02-15,,175000,25000,200000,65,PA,engineer
+EMP008,Lisa Thompson,ML Engineer II,AI/ML,2022-05-01,,155000,20000,175000,90,PA,engineer
+EMP009,Kevin Brown,Software Engineer III,Engineering,2021-04-20,,165000,22000,187000,60,PA,engineer
+EMP010,Michelle Davis,Senior Frontend Engineer,Engineering,2020-08-01,,170000,28000,198000,55,PA,engineer
+EMP011,Christopher Taylor,DevOps Lead,Infrastructure,2021-01-15,,185000,32000,217000,40,PA,technician
+EMP012,Emily Garcia,QA Automation Lead,Engineering,2020-03-10,,145000,18000,163000,50,PA,technician
+EMP013,Daniel Anderson,Cloud Architect,Infrastructure,2022-09-01,,195000,35000,230000,55,PA,engineer
+EMP014,Rachel Martinez,Data Engineer,AI/ML,2023-01-15,,140000,15000,155000,70,PA,engineer
+EMP015,Matthew Robinson,Research Engineer,AI/ML,2022-06-20,,150000,22000,172000,85,PA,scientist
+EMP016,Dr. Anna Park,Director of Product AI,AI/ML,2020-04-01,,245000,50000,295000,65,NY,supervisor
+EMP017,Jason Liu,Senior AI Engineer,AI/ML,2021-03-15,,185000,35000,220000,80,NY,engineer
+EMP018,Stephanie White,ML Platform Lead,AI/ML,2021-09-01,,175000,30000,205000,75,NY,engineer
+EMP019,Brandon Lee,Software Engineer IV,Engineering,2020-07-15,,168000,25000,193000,70,NY,engineer
+EMP020,Nicole Jackson,Backend Engineer III,Engineering,2022-01-20,,155000,20000,175000,65,NY,engineer
+EMP021,Andrew Miller,Senior Security Engineer,Security,2021-05-10,,180000,30000,210000,45,NY,engineer
+EMP022,Jessica Thomas,NLP Research Scientist,AI/ML,2022-08-01,,165000,28000,193000,90,NY,scientist
+EMP023,Ryan Moore,Computer Vision Engineer,AI/ML,2022-04-15,,158000,22000,180000,85,NY,engineer
+EMP024,Samantha Harris,Senior Data Analyst,Analytics,2021-11-01,,135000,18000,153000,55,NY,engineer
+EMP025,William Clark,Infrastructure Engineer,Infrastructure,2022-11-15,,145000,20000,165000,35,NY,technician
+EMP026,Dr. Maria Rodriguez,Head of Research,AI/ML,2019-08-01,,275000,60000,335000,70,NY,scientist
+EMP027,Eric Johnson,Algorithm Engineer,AI/ML,2023-02-01,,148000,18000,166000,80,NY,engineer
+EMP028,Katherine Adams,Full Stack Developer,Engineering,2022-07-01,,152000,20000,172000,60,NY,engineer
+EMP029,Patrick O'Brien,Senior DevOps Engineer,Infrastructure,2021-02-15,,165000,25000,190000,40,NY,technician
+EMP030,Lauren Scott,Product Engineer,Engineering,2023-03-15,,138000,15000,153000,55,NY,engineer
+EMP031,Dr. Steven Wright,AI Research Director,AI/ML,2020-02-01,,255000,55000,310000,75,CA,supervisor
+EMP032,Christina Nguyen,Principal Engineer,Engineering,2019-11-15,,215000,45000,260000,70,CA,engineer
+EMP033,Mark Peterson,Senior ML Ops Engineer,AI/ML,2021-07-01,,175000,30000,205000,65,CA,engineer
+EMP034,Ashley Turner,Research Scientist II,AI/ML,2022-03-01,,155000,25000,180000,85,CA,scientist
+EMP035,Jonathan Hall,Platform Engineer,Infrastructure,2022-05-15,,160000,22000,182000,50,CA,engineer
+EMP036,Diana Lopez,Senior Data Engineer,Analytics,2021-10-01,,165000,28000,193000,60,CA,engineer
+EMP037,Timothy Green,Software Architect,Engineering,2020-09-15,,198000,38000,236000,65,CA,engineer
+EMP038,Megan Baker,ML Engineer III,AI/ML,2022-12-01,,145000,18000,163000,80,CA,engineer
+EMP039,Brian Campbell,Systems Engineer,Infrastructure,2023-01-20,,140000,15000,155000,45,CA,technician
+EMP040,Heather Mitchell,QA Engineer III,Engineering,2022-08-15,,125000,15000,140000,40,CA,technician
+EMP041,Paul Williams,Senior Backend Dev,Engineering,2021-04-01,,170000,25000,195000,55,TX,engineer
+EMP042,Jennifer Young,Data Scientist II,AI/ML,2022-06-01,,145000,20000,165000,75,TX,scientist
+EMP043,Gregory Allen,Cloud Engineer,Infrastructure,2022-09-15,,155000,22000,177000,50,TX,engineer
+EMP044,Laura King,Software Engineer II,Engineering,2023-02-15,,128000,12000,140000,60,TX,engineer
+EMP045,Richard Hill,DevOps Engineer II,Infrastructure,2022-11-01,,140000,18000,158000,40,TX,technician
+EMP046,Michelle Evans,Frontend Engineer II,Engineering,2023-04-01,,125000,12000,137000,55,NJ,engineer
+EMP047,Joseph Carter,Backend Developer II,Engineering,2022-10-15,,132000,15000,147000,60,NJ,engineer
+EMP048,Susan Phillips,QA Analyst,Engineering,2023-01-10,,95000,8000,103000,35,NJ,technician

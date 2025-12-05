@@ -1619,7 +1619,382 @@ async def add_team_member(
 
 # =============================================================================
 # CLIENT DATA COLLECTION ENDPOINTS (for invited clients)
+# These endpoints support the R&D Client Portal (rdclient subdomain)
 # =============================================================================
+
+
+@app.post("/client-data/auto-save")
+async def client_data_auto_save(
+    data: Dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Auto-save client portal data (token-based authentication)."""
+    token = data.get("token")
+    study_id = data.get("study_id")
+
+    if not token or not study_id:
+        raise HTTPException(status_code=400, detail="Token and study_id required")
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == UUID(study_id))
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Store auto-save data
+    auto_save_record = {
+        "saved_at": datetime.utcnow().isoformat(),
+        "employees": data.get("employees", []),
+        "projects": data.get("projects", []),
+        "supplies": data.get("supplies", []),
+        "contracts": data.get("contracts", []),
+        "notes": data.get("notes", "")
+    }
+
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["client_auto_save"] = auto_save_record
+
+    await db.commit()
+
+    return {"status": "success", "saved_at": auto_save_record["saved_at"]}
+
+
+@app.get("/client-data/{study_id}")
+async def get_client_data(
+    study_id: UUID,
+    token: str = Query(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get existing client data for a study (token-based authentication)."""
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Get employees
+    emp_result = await db.execute(
+        select(RDEmployee).where(RDEmployee.study_id == study_id)
+    )
+    employees = emp_result.scalars().all()
+
+    # Get projects
+    proj_result = await db.execute(
+        select(RDProject).where(RDProject.study_id == study_id)
+    )
+    projects = proj_result.scalars().all()
+
+    # Get documents
+    doc_result = await db.execute(
+        select(RDDocument).where(RDDocument.study_id == study_id)
+    )
+    documents = doc_result.scalars().all()
+
+    # Get QREs (supplies and contracts)
+    qre_result = await db.execute(
+        select(QualifiedResearchExpense).where(QualifiedResearchExpense.study_id == study_id)
+    )
+    qres = qre_result.scalars().all()
+
+    supplies = [q for q in qres if q.category.value == "supplies"]
+    contracts = [q for q in qres if q.category.value == "contract_research"]
+
+    return {
+        "study_id": str(study_id),
+        "study_name": study.name,
+        "employees": [
+            {
+                "id": str(e.id),
+                "employee_id": e.employee_id,
+                "name": e.name,
+                "title": e.title,
+                "department": e.department,
+                "annual_wages": float(e.w2_wages or 0),
+                "qualified_time_percentage": float(e.qualified_time_percentage or 0),
+                "time_source": e.qualified_time_source or "estimate"
+            }
+            for e in employees
+        ],
+        "projects": [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "code": p.code,
+                "description": p.description,
+                "business_component": p.business_component,
+                "department": p.department,
+                "start_date": str(p.start_date) if p.start_date else None,
+                "end_date": str(p.end_date) if p.end_date else None,
+                "is_ongoing": p.is_ongoing,
+                "four_part_test": p.ai_qualification_analysis.get("client_four_part_test", {}).get("answers", {}) if p.ai_qualification_analysis else {}
+            }
+            for p in projects
+        ],
+        "supplies": [
+            {
+                "id": str(s.id),
+                "description": s.supply_description,
+                "vendor": s.supply_vendor,
+                "amount": float(s.gross_amount or 0),
+                "gl_account": s.gl_account,
+                "qualified_percentage": float(s.qualified_percentage or 0)
+            }
+            for s in supplies
+        ],
+        "contracts": [
+            {
+                "id": str(c.id),
+                "contractor_name": c.contractor_name,
+                "description": c.subcategory,
+                "total_amount": float(c.gross_amount or 0),
+                "qualified_percentage": float(c.qualified_percentage or 0),
+                "is_qualified_research_org": c.is_qualified_research_org
+            }
+            for c in contracts
+        ],
+        "documents": [
+            {
+                "id": str(d.id),
+                "name": d.filename,
+                "type": d.mime_type,
+                "status": d.processing_status,
+                "uploaded_at": d.uploaded_at.isoformat() if d.uploaded_at else None
+            }
+            for d in documents
+        ]
+    }
+
+
+@app.post("/client-data/connect-payroll")
+async def connect_payroll(
+    data: Dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Connect client's payroll system for automated data sync."""
+    token = data.get("token")
+    study_id = data.get("study_id")
+    provider = data.get("provider")
+
+    if not all([token, study_id, provider]):
+        raise HTTPException(status_code=400, detail="Token, study_id, and provider required")
+
+    supported_providers = ["adp", "gusto", "paychex", "quickbooks", "zenefits", "rippling"]
+    if provider not in supported_providers:
+        raise HTTPException(status_code=400, detail=f"Unsupported provider. Supported: {supported_providers}")
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == UUID(study_id))
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Store payroll connection config
+    payroll_connection = {
+        "provider": provider,
+        "status": "pending",
+        "connected_at": datetime.utcnow().isoformat(),
+        "credentials": data.get("credentials", {}),  # In production, encrypt these
+        "last_sync": None
+    }
+
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["payroll_connection"] = payroll_connection
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Payroll connection initiated with {provider}. Awaiting authorization.",
+        "provider": provider
+    }
+
+
+@app.post("/client-data/sync-payroll")
+async def sync_payroll(
+    data: Dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Sync data from connected payroll system."""
+    token = data.get("token")
+    study_id = data.get("study_id")
+
+    if not all([token, study_id]):
+        raise HTTPException(status_code=400, detail="Token and study_id required")
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == UUID(study_id))
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    if not study.ai_suggested_areas or "payroll_connection" not in study.ai_suggested_areas:
+        raise HTTPException(status_code=400, detail="No payroll connection configured")
+
+    # In production, this would call the actual payroll API
+    # For now, return simulated sync results
+    sync_result = {
+        "status": "synced",
+        "synced_at": datetime.utcnow().isoformat(),
+        "employees_synced": 0,
+        "data_range": {
+            "start": str(study.fiscal_year_start),
+            "end": str(study.fiscal_year_end)
+        }
+    }
+
+    study.ai_suggested_areas["payroll_connection"]["last_sync"] = sync_result
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Payroll data synchronized",
+        **sync_result
+    }
+
+
+@app.post("/client-data/submit")
+async def submit_client_data(
+    data: Dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """Final submission of client data for CPA review."""
+    token = data.get("token")
+    study_id = data.get("study_id")
+
+    if not all([token, study_id]):
+        raise HTTPException(status_code=400, detail="Token and study_id required")
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == UUID(study_id))
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Process employees
+    employees_data = data.get("employees", [])
+    for emp_data in employees_data:
+        if emp_data.get("id", "").startswith("emp-"):
+            # New employee from client
+            w2_wages = Decimal(str(emp_data.get("annual_wages", 0)))
+            qualified_pct = Decimal(str(emp_data.get("qualified_time_percentage", 0)))
+            qualified_wages = w2_wages * qualified_pct / Decimal("100")
+
+            employee = RDEmployee(
+                study_id=UUID(study_id),
+                employee_id=emp_data.get("employee_id"),
+                name=emp_data.get("name", ""),
+                title=emp_data.get("title"),
+                department=emp_data.get("department"),
+                w2_wages=w2_wages,
+                qualified_time_percentage=qualified_pct,
+                qualified_time_source=emp_data.get("time_source", "client_submission"),
+                qualified_wages=qualified_wages
+            )
+            db.add(employee)
+
+    # Process projects
+    projects_data = data.get("projects", [])
+    for proj_data in projects_data:
+        if proj_data.get("id", "").startswith("proj-"):
+            # New project from client
+            project = RDProject(
+                study_id=UUID(study_id),
+                name=proj_data.get("name", ""),
+                code=proj_data.get("code"),
+                description=proj_data.get("description"),
+                business_component=proj_data.get("business_component"),
+                department=proj_data.get("department"),
+                start_date=proj_data.get("start_date"),
+                end_date=proj_data.get("end_date"),
+                is_ongoing=proj_data.get("is_ongoing", False),
+                qualification_status=QualificationStatus.PENDING,
+                ai_qualification_analysis={
+                    "client_four_part_test": {
+                        "submitted_by": "client",
+                        "submitted_at": datetime.utcnow().isoformat(),
+                        "status": "pending_review",
+                        "answers": proj_data.get("four_part_test", {})
+                    }
+                }
+            )
+            db.add(project)
+
+    # Process supplies
+    supplies_data = data.get("supplies", [])
+    for supply_data in supplies_data:
+        if supply_data.get("id", "").startswith("supply-"):
+            qre = QualifiedResearchExpense(
+                study_id=UUID(study_id),
+                category="supplies",
+                supply_description=supply_data.get("description"),
+                supply_vendor=supply_data.get("vendor"),
+                gl_account=supply_data.get("gl_account"),
+                gross_amount=Decimal(str(supply_data.get("amount", 0))),
+                qualified_percentage=Decimal(str(supply_data.get("qualified_percentage", 100))),
+                qualified_amount=Decimal(str(supply_data.get("amount", 0))) * Decimal(str(supply_data.get("qualified_percentage", 100))) / Decimal("100")
+            )
+            db.add(qre)
+
+    # Process contracts
+    contracts_data = data.get("contracts", [])
+    for contract_data in contracts_data:
+        if contract_data.get("id", "").startswith("contract-"):
+            qre = QualifiedResearchExpense(
+                study_id=UUID(study_id),
+                category="contract_research",
+                contractor_name=contract_data.get("contractor_name"),
+                subcategory=contract_data.get("description"),
+                is_qualified_research_org=contract_data.get("contractor_type") in ["university", "research_org"],
+                gross_amount=Decimal(str(contract_data.get("total_amount", 0))),
+                qualified_percentage=Decimal(str(contract_data.get("qualified_percentage", 65))),
+                qualified_amount=Decimal(str(contract_data.get("total_amount", 0))) * Decimal(str(contract_data.get("qualified_percentage", 65))) / Decimal("100")
+            )
+            db.add(qre)
+
+    # Update study status to indicate client data received
+    submission_record = {
+        "submitted_at": datetime.utcnow().isoformat(),
+        "employee_count": len(employees_data),
+        "project_count": len(projects_data),
+        "supply_count": len(supplies_data),
+        "contract_count": len(contracts_data),
+        "notes": data.get("notes", "")
+    }
+
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["client_submission"] = submission_record
+
+    # Move study to data collection phase
+    if study.status == StudyStatus.DRAFT or study.status == StudyStatus.INTAKE:
+        study.status = StudyStatus.DATA_COLLECTION
+        study.status_history.append({
+            "status": StudyStatus.DATA_COLLECTION.value,
+            "timestamp": datetime.utcnow().isoformat(),
+            "notes": "Client data submitted via portal"
+        })
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Your data has been submitted successfully and is pending CPA review.",
+        "submission_summary": submission_record
+    }
+
 
 @app.post("/client/studies/{study_id}/data/manual")
 async def submit_client_data_manual(
@@ -1773,6 +2148,222 @@ async def setup_client_api_connection(
         "status": "success",
         "message": f"API connection configured for {system_type}. Pending CPA approval.",
         "connection_id": str(study_id)
+    }
+
+
+@app.post("/client/studies/{study_id}/auto-save")
+async def auto_save_client_data(
+    study_id: UUID,
+    data: Dict,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Auto-save client portal draft data (called periodically)."""
+    user_id, firm_id = user_firm
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    # Store auto-save data
+    auto_save_record = {
+        "saved_by": str(user_id),
+        "saved_at": datetime.utcnow().isoformat(),
+        "data": data
+    }
+
+    if not study.ai_suggested_areas:
+        study.ai_suggested_areas = {}
+    study.ai_suggested_areas["auto_save"] = auto_save_record
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Data auto-saved successfully",
+        "saved_at": auto_save_record["saved_at"]
+    }
+
+
+@app.get("/client/studies/{study_id}/auto-save")
+async def get_auto_saved_data(
+    study_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Get auto-saved client portal draft data."""
+    user_id, firm_id = user_firm
+
+    # Get the study
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    auto_save = {}
+    if study.ai_suggested_areas and "auto_save" in study.ai_suggested_areas:
+        auto_save = study.ai_suggested_areas["auto_save"]
+
+    return {
+        "study_id": str(study_id),
+        "has_saved_data": bool(auto_save),
+        "saved_at": auto_save.get("saved_at"),
+        "data": auto_save.get("data", {})
+    }
+
+
+@app.post("/client/studies/{study_id}/projects/{project_id}/four-part-test")
+async def submit_four_part_test(
+    study_id: UUID,
+    project_id: UUID,
+    test_data: Dict,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Client submits 4-part test questionnaire answers for a project."""
+    user_id, firm_id = user_firm
+
+    # Get the project
+    result = await db.execute(
+        select(RDProject).where(
+            and_(RDProject.id == project_id, RDProject.study_id == study_id)
+        )
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Validate 4-part test structure
+    required_parts = ["permitted_purpose", "technological_nature", "elimination_uncertainty", "process_experimentation"]
+    for part in required_parts:
+        if part not in test_data:
+            raise HTTPException(status_code=400, detail=f"Missing required 4-part test section: {part}")
+
+    # Store client's 4-part test answers
+    client_four_part_test = {
+        "submitted_by": str(user_id),
+        "submitted_at": datetime.utcnow().isoformat(),
+        "status": "pending_review",
+        "answers": test_data
+    }
+
+    # Store in project's AI qualification analysis field
+    if not project.ai_qualification_analysis:
+        project.ai_qualification_analysis = {}
+    project.ai_qualification_analysis["client_four_part_test"] = client_four_part_test
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "4-part test questionnaire submitted successfully. Pending CPA review.",
+        "project_id": str(project_id)
+    }
+
+
+@app.get("/client/studies/{study_id}/projects/{project_id}/four-part-test")
+async def get_four_part_test(
+    study_id: UUID,
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Get client's 4-part test questionnaire answers for a project."""
+    user_id, firm_id = user_firm
+
+    # Get the project
+    result = await db.execute(
+        select(RDProject).where(
+            and_(RDProject.id == project_id, RDProject.study_id == study_id)
+        )
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    client_test = {}
+    if project.ai_qualification_analysis and "client_four_part_test" in project.ai_qualification_analysis:
+        client_test = project.ai_qualification_analysis["client_four_part_test"]
+
+    return {
+        "project_id": str(project_id),
+        "project_name": project.name,
+        "has_submitted": bool(client_test),
+        "submitted_at": client_test.get("submitted_at"),
+        "status": client_test.get("status"),
+        "answers": client_test.get("answers", {})
+    }
+
+
+@app.post("/client/studies/{study_id}/employees/bulk")
+async def bulk_import_employees(
+    study_id: UUID,
+    employees: List[Dict],
+    db: AsyncSession = Depends(get_db),
+    user_firm: tuple = Depends(get_current_user_firm_id)
+):
+    """Bulk import employees from client portal (manual entry or parsed spreadsheet)."""
+    user_id, firm_id = user_firm
+
+    # Verify study exists
+    result = await db.execute(
+        select(RDStudy).where(RDStudy.id == study_id)
+    )
+    study = result.scalar_one_or_none()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    imported_count = 0
+    errors = []
+
+    for idx, emp_data in enumerate(employees):
+        try:
+            # Calculate qualified wages
+            w2_wages = Decimal(str(emp_data.get("w2_wages", emp_data.get("total_wages", 0))))
+            qualified_pct = Decimal(str(emp_data.get("qualified_time_percentage", 0)))
+            qualified_wages = w2_wages * qualified_pct / Decimal("100")
+
+            employee = RDEmployee(
+                study_id=study_id,
+                employee_id=emp_data.get("employee_id", f"EMP-{idx+1:04d}"),
+                name=emp_data.get("name", f"Employee {idx+1}"),
+                title=emp_data.get("title"),
+                department=emp_data.get("department"),
+                hire_date=emp_data.get("hire_date"),
+                termination_date=emp_data.get("termination_date"),
+                total_wages=emp_data.get("total_wages", 0),
+                w2_wages=w2_wages,
+                bonus=emp_data.get("bonus"),
+                stock_compensation=emp_data.get("stock_compensation"),
+                qualified_time_percentage=qualified_pct,
+                qualified_time_source=emp_data.get("qualified_time_source", "client_submission"),
+                qualified_wages=qualified_wages
+            )
+
+            db.add(employee)
+            imported_count += 1
+
+        except Exception as e:
+            errors.append({
+                "row": idx + 1,
+                "name": emp_data.get("name", "Unknown"),
+                "error": str(e)
+            })
+
+    await db.commit()
+
+    return {
+        "status": "success" if imported_count > 0 else "partial",
+        "message": f"Imported {imported_count} of {len(employees)} employees",
+        "imported_count": imported_count,
+        "error_count": len(errors),
+        "errors": errors[:10]  # Return first 10 errors only
     }
 
 

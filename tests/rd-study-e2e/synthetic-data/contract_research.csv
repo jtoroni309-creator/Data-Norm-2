@@ -1,0 +1,13 @@
+contract_id,contractor_name,contractor_ein,contract_date,description,total_amount,qualified_percentage,project_code,state,is_qualified_org,contract_type
+CR001,Stanford University AI Research Lab,94-1156365,2024-01-15,Collaborative research on novel attention mechanisms for transformer models,285000,100,NOVA-LLM-2024,CA,true,basic_research
+CR002,MIT Lincoln Laboratory,04-2103594,2024-02-01,Post-quantum cryptography protocol validation and security analysis,195000,100,QSEC-2024,NY,true,basic_research
+CR003,Carnegie Mellon University,25-0969449,2024-03-10,Neural architecture search algorithm development partnership,165000,100,AUTOML-2024,PA,true,basic_research
+CR004,DataTech Solutions LLC,83-1234567,2024-01-20,Custom ML pipeline development and optimization consulting,125000,65,NOVA-LLM-2024,PA,false,contract_research
+CR005,CryptoSec Consulting Inc,81-2345678,2024-04-05,Security audit and penetration testing for quantum protocols,95000,65,QSEC-2024,NY,false,contract_research
+CR006,University of Pennsylvania,23-1352685,2024-02-15,Stream processing algorithm research collaboration,145000,100,RTAE-2024,PA,true,basic_research
+CR007,Berkeley AI Research,94-3067788,2024-05-01,Computer vision model architecture consultation,135000,100,CVDP-2024,CA,true,basic_research
+CR008,NYU Center for Data Science,13-5562308,2024-03-20,NLP model fine-tuning research partnership,155000,100,NOVA-LLM-2024,NY,true,basic_research
+CR009,AlgoTech Systems Corp,82-3456789,2024-06-10,High-performance computing optimization consulting,88000,65,RTAE-2024,TX,false,contract_research
+CR010,DocuVision Analytics LLC,84-4567890,2024-04-15,OCR algorithm benchmarking and validation services,72000,65,CVDP-2024,NY,false,contract_research
+CR011,Cornell Tech Applied ML Lab,15-0532082,2024-05-20,AutoML search space design research,125000,100,AUTOML-2024,NY,true,basic_research
+CR012,Princeton Computational Research,21-0634501,2024-07-01,Distributed systems theoretical analysis,110000,100,RTAE-2024,NJ,true,basic_research

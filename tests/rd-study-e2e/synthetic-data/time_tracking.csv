@@ -1,0 +1,56 @@
+employee_id,project_code,month,total_hours,qualified_hours,activity_description
+EMP001,NOVA-LLM-2024,2024-01,160,72,Executive oversight of LLM development strategy and technical architecture decisions
+EMP001,AUTOML-2024,2024-01,160,48,Strategic direction for AutoML platform development
+EMP002,NOVA-LLM-2024,2024-01,168,84,Engineering leadership for LLM training infrastructure
+EMP002,RTAE-2024,2024-01,168,42,Technical review of streaming architecture designs
+EMP003,NOVA-LLM-2024,2024-01,176,132,Hands-on development of novel attention mechanisms
+EMP003,AUTOML-2024,2024-01,176,44,Meta-learning algorithm research
+EMP004,NOVA-LLM-2024,2024-01,176,150,Implementation of transformer model variants
+EMP005,RTAE-2024,2024-01,168,118,Distributed system architecture development
+EMP005,NOVA-LLM-2024,2024-01,168,50,Backend infrastructure for model serving
+EMP006,NOVA-LLM-2024,2024-01,176,141,Data preprocessing pipeline for LLM training
+EMP006,CVDP-2024,2024-01,176,35,Document dataset curation
+EMP007,RTAE-2024,2024-01,168,109,Stream processing engine development
+EMP008,NOVA-LLM-2024,2024-01,168,151,Model training and evaluation experiments
+EMP009,AUTOML-2024,2024-01,160,96,Pipeline automation development
+EMP010,CVDP-2024,2024-01,168,92,UI/UX for document processing interface
+EMP011,RTAE-2024,2024-01,168,67,DevOps infrastructure for real-time systems
+EMP012,AUTOML-2024,2024-01,160,80,Automated testing framework development
+EMP013,RTAE-2024,2024-01,168,92,Cloud architecture for streaming platform
+EMP014,NOVA-LLM-2024,2024-01,176,123,Data engineering for training datasets
+EMP015,NOVA-LLM-2024,2024-01,176,150,Research experiments on model architectures
+EMP016,CVDP-2024,2024-01,168,109,Product direction for document AI features
+EMP017,NOVA-LLM-2024,2024-01,176,141,Inference optimization development
+EMP018,AUTOML-2024,2024-01,168,126,ML platform development
+EMP019,RTAE-2024,2024-01,168,118,Backend development for analytics engine
+EMP020,RTAE-2024,2024-01,168,109,API development for streaming data
+EMP021,QSEC-2024,2024-01,168,76,Security engineering for crypto protocols
+EMP022,NOVA-LLM-2024,2024-01,176,158,NLP research and model development
+EMP023,CVDP-2024,2024-01,168,143,Computer vision model development
+EMP024,AUTOML-2024,2024-01,160,88,Data analysis for ML experiments
+EMP025,RTAE-2024,2024-01,168,59,Infrastructure support for streaming systems
+EMP026,QSEC-2024,2024-01,176,123,Research direction for quantum-safe protocols
+EMP026,NOVA-LLM-2024,2024-01,176,53,Advisory on model security
+EMP027,NOVA-LLM-2024,2024-01,168,134,Algorithm development for LLM
+EMP028,CVDP-2024,2024-01,168,101,Full-stack development for doc platform
+EMP029,RTAE-2024,2024-01,168,67,DevOps for analytics infrastructure
+EMP030,RTAE-2024,2024-01,168,92,Product engineering for analytics features
+EMP031,AUTOML-2024,2024-01,176,132,Research leadership for AutoML
+EMP031,CVDP-2024,2024-01,176,44,Advisory on CV model selection
+EMP032,AUTOML-2024,2024-01,168,118,Principal engineering for ML platform
+EMP033,AUTOML-2024,2024-01,168,109,MLOps development for AutoML
+EMP034,CVDP-2024,2024-01,176,150,Research on document understanding models
+EMP035,RTAE-2024,2024-01,168,84,Platform engineering for streaming
+EMP036,NOVA-LLM-2024,2024-01,168,101,Data engineering for LLM datasets
+EMP037,RTAE-2024,2024-01,168,109,Architecture design for analytics
+EMP038,AUTOML-2024,2024-01,168,134,ML model development
+EMP039,RTAE-2024,2024-01,168,76,Systems engineering
+EMP040,AUTOML-2024,2024-01,168,67,Quality assurance testing
+EMP041,RTAE-2024,2024-01,168,92,Backend development
+EMP042,AUTOML-2024,2024-01,168,126,Data science experiments
+EMP043,RTAE-2024,2024-01,168,84,Cloud engineering
+EMP044,RTAE-2024,2024-01,168,101,Software development
+EMP045,RTAE-2024,2024-01,168,67,DevOps support
+EMP046,CVDP-2024,2024-01,168,92,Frontend development
+EMP047,CVDP-2024,2024-01,168,101,Backend development
+EMP048,CVDP-2024,2024-01,168,59,QA testing

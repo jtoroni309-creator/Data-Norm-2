@@ -1,0 +1,21 @@
+expense_id,date,description,vendor,gl_account,amount,project_code,state,qualified_pct
+SUP001,2024-01-15,GPU Compute Cluster - NVIDIA A100,Dell Technologies,6400-Research,185000,NOVA-LLM-2024,PA,100
+SUP002,2024-02-01,Cloud Computing Credits - AI Training,Amazon Web Services,6420-Cloud,95000,NOVA-LLM-2024,PA,85
+SUP003,2024-03-10,Development Server Hardware,HP Enterprise,6400-Research,42000,AUTOML-2024,PA,100
+SUP004,2024-01-20,ML Training Datasets - Licensed Data,Scale AI,6440-Data,38000,NOVA-LLM-2024,NY,100
+SUP005,2024-04-05,High-Performance Storage Array,NetApp,6400-Research,65000,RTAE-2024,PA,90
+SUP006,2024-02-15,Specialized Cryptography Testing Equipment,Keysight Technologies,6410-Testing,28000,QSEC-2024,NY,100
+SUP007,2024-05-01,Computer Vision Camera Systems,FLIR Systems,6400-Research,35000,CVDP-2024,NY,100
+SUP008,2024-03-20,Lab Workstations - R&D,Lenovo,6400-Research,52000,AUTOML-2024,CA,100
+SUP009,2024-06-10,Network Infrastructure Upgrade,Cisco Systems,6400-Research,48000,RTAE-2024,TX,75
+SUP010,2024-01-25,AI Development Software Licenses,JetBrains,6430-Software,18500,NOVA-LLM-2024,PA,100
+SUP011,2024-04-15,Document Scanner Array,Canon USA,6400-Research,22000,CVDP-2024,NY,100
+SUP012,2024-02-28,Memory Expansion - Research Servers,Samsung,6400-Research,31000,NOVA-LLM-2024,PA,100
+SUP013,2024-05-20,Security Testing Hardware,Palo Alto Networks,6410-Testing,27500,QSEC-2024,NY,95
+SUP014,2024-03-15,Quantum Computing Simulator Access,IBM Quantum,6420-Cloud,55000,QSEC-2024,NY,100
+SUP015,2024-07-01,Edge Computing Devices,Intel Corporation,6400-Research,19000,RTAE-2024,TX,85
+SUP016,2024-04-20,Data Annotation Platform,Labelbox,6440-Data,24000,CVDP-2024,CA,100
+SUP017,2024-06-15,ML Experiment Tracking Platform,Weights & Biases,6430-Software,15000,AUTOML-2024,PA,100
+SUP018,2024-02-10,High-Bandwidth Network Cards,Mellanox,6400-Research,28000,RTAE-2024,PA,100
+SUP019,2024-08-01,Research Reference Materials,O'Reilly Media,6450-Reference,8500,NOVA-LLM-2024,PA,100
+SUP020,2024-05-05,Prototype Components,Digi-Key Electronics,6400-Research,12500,QSEC-2024,PA,90

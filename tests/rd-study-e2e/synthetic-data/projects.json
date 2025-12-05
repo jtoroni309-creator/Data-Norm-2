@@ -1,0 +1,109 @@
+{
+  "projects": [
+    {
+      "id": "PRJ001",
+      "name": "NovaMind AI Language Model",
+      "code": "NOVA-LLM-2024",
+      "department": "AI/ML",
+      "description": "Development of a proprietary large language model optimized for enterprise document analysis and summarization. The project involves novel transformer architectures, custom attention mechanisms, and efficient training methodologies for domain-specific knowledge.",
+      "start_date": "2023-06-01",
+      "end_date": null,
+      "is_ongoing": true,
+      "business_component": "Enterprise AI Platform",
+      "qualification_rationale": {
+        "permitted_purpose": "Development of new computational methodologies for natural language understanding that significantly improve processing efficiency and accuracy over existing solutions.",
+        "technological_nature": "Applies principles of machine learning, neural network architecture, and computational linguistics to develop novel attention mechanisms and model compression techniques.",
+        "uncertainty": "Significant uncertainty existed regarding: (1) optimal architecture for enterprise-specific terminology, (2) balance between model size and inference speed, (3) techniques for maintaining accuracy with quantization.",
+        "experimentation": "Multiple systematic experiments conducted including: A/B testing of 15+ architecture variants, ablation studies on attention mechanisms, hyperparameter optimization across 200+ configurations."
+      },
+      "estimated_qualified_wages": 2850000,
+      "estimated_qualified_supplies": 125000,
+      "estimated_qualified_contract": 450000,
+      "state_allocation": {"PA": 0.40, "NY": 0.35, "CA": 0.25}
+    },
+    {
+      "id": "PRJ002",
+      "name": "Quantum-Safe Encryption Protocol",
+      "code": "QSEC-2024",
+      "department": "Security",
+      "description": "Research and development of post-quantum cryptographic protocols for enterprise data protection. Implements lattice-based cryptography with novel key exchange mechanisms designed to resist quantum computer attacks.",
+      "start_date": "2024-01-15",
+      "end_date": null,
+      "is_ongoing": true,
+      "business_component": "Security Infrastructure",
+      "qualification_rationale": {
+        "permitted_purpose": "Create new cryptographic functionality that provides quantum-resistant security while maintaining practical performance for enterprise deployment.",
+        "technological_nature": "Relies on advanced mathematics including lattice theory, number theory, and cryptographic protocol design to develop novel security solutions.",
+        "uncertainty": "Key uncertainties: (1) practical implementation of theoretical lattice constructions, (2) performance optimization without security compromise, (3) backward compatibility with existing systems.",
+        "experimentation": "Conducted formal security proofs, performance benchmarking against 8 alternative approaches, and iterative protocol refinement based on cryptanalysis results."
+      },
+      "estimated_qualified_wages": 1650000,
+      "estimated_qualified_supplies": 85000,
+      "estimated_qualified_contract": 320000,
+      "state_allocation": {"PA": 0.30, "NY": 0.45, "CA": 0.25}
+    },
+    {
+      "id": "PRJ003",
+      "name": "AutoML Pipeline Optimization",
+      "code": "AUTOML-2024",
+      "department": "AI/ML",
+      "description": "Development of an automated machine learning platform that uses neural architecture search and meta-learning to automatically design, train, and deploy optimal ML models for various enterprise use cases.",
+      "start_date": "2023-09-01",
+      "end_date": null,
+      "is_ongoing": true,
+      "business_component": "ML Platform",
+      "qualification_rationale": {
+        "permitted_purpose": "Develop new automated capabilities for machine learning model selection and optimization that eliminate or significantly reduce manual ML engineering requirements.",
+        "technological_nature": "Applies principles of meta-learning, evolutionary algorithms, and neural architecture search to create novel automated ML systems.",
+        "uncertainty": "Uncertainties included: (1) generalization of meta-learned policies across domains, (2) computational efficiency of search processes, (3) stability of automated hyperparameter selection.",
+        "experimentation": "Systematic evaluation of 12 search algorithms, 50+ benchmark datasets, comparative analysis with manual ML engineering baselines."
+      },
+      "estimated_qualified_wages": 1980000,
+      "estimated_qualified_supplies": 95000,
+      "estimated_qualified_contract": 280000,
+      "state_allocation": {"PA": 0.35, "NY": 0.30, "CA": 0.35}
+    },
+    {
+      "id": "PRJ004",
+      "name": "Real-Time Analytics Engine",
+      "code": "RTAE-2024",
+      "department": "Engineering",
+      "description": "Development of a high-performance stream processing engine capable of sub-millisecond analytics on enterprise data streams. Implements novel distributed computing techniques for horizontal scalability.",
+      "start_date": "2024-02-01",
+      "end_date": null,
+      "is_ongoing": true,
+      "business_component": "Data Platform",
+      "qualification_rationale": {
+        "permitted_purpose": "Create new real-time data processing capabilities that achieve order-of-magnitude improvements in latency and throughput over existing solutions.",
+        "technological_nature": "Relies on distributed systems theory, parallel computing algorithms, and database internals to develop novel streaming architecture.",
+        "uncertainty": "Technical challenges: (1) achieving exactly-once semantics at scale, (2) minimizing state management overhead, (3) dynamic resource allocation algorithms.",
+        "experimentation": "Tested 6 consistency protocols, 4 partitioning strategies, and conducted extensive performance testing under various failure scenarios."
+      },
+      "estimated_qualified_wages": 1420000,
+      "estimated_qualified_supplies": 72000,
+      "estimated_qualified_contract": 180000,
+      "state_allocation": {"PA": 0.45, "NY": 0.25, "TX": 0.30}
+    },
+    {
+      "id": "PRJ005",
+      "name": "Computer Vision Document Processing",
+      "code": "CVDP-2024",
+      "department": "AI/ML",
+      "description": "Advanced document understanding system using computer vision and NLP to automatically extract, classify, and validate information from complex enterprise documents including contracts, invoices, and technical specifications.",
+      "start_date": "2023-11-01",
+      "end_date": null,
+      "is_ongoing": true,
+      "business_component": "Document Intelligence",
+      "qualification_rationale": {
+        "permitted_purpose": "Develop new document analysis capabilities that can handle complex layouts, handwritten annotations, and multi-format documents with high accuracy.",
+        "technological_nature": "Integrates computer vision, optical character recognition, and natural language processing with novel layout analysis algorithms.",
+        "uncertainty": "Challenges addressed: (1) handling degraded document quality, (2) extracting tabular data from varied formats, (3) entity resolution across document types.",
+        "experimentation": "Iterative testing across 10,000+ document samples, A/B testing of OCR preprocessing techniques, validation against manual extraction baselines."
+      },
+      "estimated_qualified_wages": 1750000,
+      "estimated_qualified_supplies": 68000,
+      "estimated_qualified_contract": 220000,
+      "state_allocation": {"NY": 0.50, "CA": 0.35, "NJ": 0.15}
+    }
+  ]
+}

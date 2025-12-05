@@ -1,0 +1,81 @@
+{
+  "company": {
+    "name": "TechNova Solutions Inc.",
+    "ein": "12-3456789",
+    "entity_type": "c_corp",
+    "fiscal_year_start": "2024-01-01",
+    "fiscal_year_end": "2024-12-31",
+    "tax_year": 2024,
+    "address": {
+      "street": "500 Innovation Drive",
+      "city": "Pittsburgh",
+      "state": "PA",
+      "zip": "15219"
+    },
+    "contact": {
+      "name": "Sarah Chen",
+      "title": "VP of Finance",
+      "email": "schen@technova.example.com",
+      "phone": "412-555-0100"
+    },
+    "industry": "Software Development & AI/ML Solutions",
+    "naics_code": "541511",
+    "gross_receipts": {
+      "2024": 85000000,
+      "2023": 72000000,
+      "2022": 58000000,
+      "2021": 45000000
+    },
+    "is_controlled_group": true,
+    "controlled_group_name": "TechNova Holdings LLC",
+    "states_with_nexus": ["PA", "NY", "CA", "TX", "NJ"]
+  },
+  "state_allocation": {
+    "PA": {
+      "percentage": 0.35,
+      "employees": 142,
+      "payroll": 12500000,
+      "property": 8500000,
+      "sales": 28000000
+    },
+    "NY": {
+      "percentage": 0.30,
+      "employees": 98,
+      "payroll": 11200000,
+      "property": 6200000,
+      "sales": 25000000
+    },
+    "CA": {
+      "percentage": 0.20,
+      "employees": 65,
+      "payroll": 9800000,
+      "property": 4100000,
+      "sales": 17000000
+    },
+    "TX": {
+      "percentage": 0.10,
+      "employees": 35,
+      "payroll": 4200000,
+      "property": 2500000,
+      "sales": 10000000
+    },
+    "NJ": {
+      "percentage": 0.05,
+      "employees": 20,
+      "payroll": 2100000,
+      "property": 1200000,
+      "sales": 5000000
+    }
+  },
+  "historical_data": {
+    "prior_year_qre": {
+      "2023": 8500000,
+      "2022": 7200000,
+      "2021": 5800000
+    },
+    "fixed_base_percentage": 0.085,
+    "average_gross_receipts_4_years": 65000000
+  },
+  "section_280c_election": true,
+  "qsb_eligible": false
+}
