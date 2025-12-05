@@ -57,6 +57,10 @@ ROUTE_MAP = {
     "/identity": "identity",
     "/users": "identity",
     "/invitations": "identity",
+    "/admin": "identity",
+    "/organizations": "identity",
+    "/clients": "identity",
+    "/rd-study": "identity",
 
     "/ingestion": "ingestion",
     "/edgar": "ingestion",
