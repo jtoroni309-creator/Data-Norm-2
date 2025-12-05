@@ -1179,10 +1179,15 @@ async def create_user_admin(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create a new user (Admin endpoint - no auth required for now)
+    Create a new user (Admin endpoint)
 
-    Note: In production, this should require admin/super-admin role
+    Validates:
+    - Email uniqueness
+    - Firm user limit enforcement
+    - Password requirements
     """
+    from sqlalchemy import func
+
     # Check if email already exists
     result = await db.execute(
         select(User).where(User.email == user_data.email)
@@ -1194,6 +1199,45 @@ async def create_user_admin(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+
+    # Enforce firm user limit if organization is specified
+    if user_data.organization_id:
+        # Get the organization and check user limit
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == user_data.organization_id)
+        )
+        organization = org_result.scalar_one_or_none()
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Organization not found"
+            )
+
+        if not organization.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Organization is not active"
+            )
+
+        # Count current users in the organization
+        user_count_result = await db.execute(
+            select(func.count(User.id)).where(
+                and_(
+                    User.organization_id == user_data.organization_id,
+                    User.is_active == True
+                )
+            )
+        )
+        current_user_count = user_count_result.scalar() or 0
+
+        # Check against max_users limit
+        max_users = organization.max_users or 10
+        if current_user_count >= max_users:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Organization has reached its user limit ({max_users} users). Please upgrade the subscription or deactivate existing users."
+            )
 
     # Hash password
     hashed_password = hash_password(user_data.password)
@@ -1459,11 +1503,12 @@ async def admin_invite_user_to_organization(
     logger.info(f"Admin invitation created for {email} to {organization.firm_name}")
 
     # Send invitation email
+    email_result = {"success": False, "message": "Email not requested"}
     if send_email:
         try:
             from app.email_service import get_email_service
             email_service = get_email_service()
-            email_sent = await email_service.send_invitation_email(
+            email_result = await email_service.send_invitation_email(
                 to_email=email,
                 to_name=email.split('@')[0],
                 invitation_token=token,
@@ -1472,23 +1517,29 @@ async def admin_invite_user_to_organization(
                 role=role_value
             )
 
-            if email_sent:
+            if email_result.get("success"):
                 logger.info(f"Invitation email sent successfully to {email}")
             else:
-                logger.warning(f"Failed to send invitation email to {email}")
+                logger.warning(f"Failed to send invitation email to {email}: {email_result.get('message')}")
 
         except Exception as e:
             logger.error(f"Error sending invitation email: {e}")
+            email_result = {"success": False, "message": str(e)}
+
+    # Generate invitation link using environment-based URL
+    invitation_link = f"{settings.CPA_APP_URL}/accept-invitation?token={token}"
 
     return {
-        "message": f"Invitation sent to {email}",
+        "message": f"Invitation created for {email}" + (" - email sent" if email_result.get("success") else " - please share the link manually"),
         "invitation_id": str(invitation_id),
         "organization_name": organization.firm_name,
         "email": email,
         "role": role_value,
         "expires_at": expires_at.isoformat(),
-        "invitation_link": f"https://auraai.toroniandcompany.com/accept-invitation?token={token}",
-        "email_sent": send_email
+        "invitation_link": invitation_link,
+        "email_sent": email_result.get("success", False),
+        "email_status": email_result.get("message", ""),
+        "action": "new_invitation"
     }
 
 

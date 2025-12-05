@@ -52,7 +52,13 @@ const FirmManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [inviteData, setInviteData] = useState<InviteUserData>({ email: '', role: 'staff' });
-  const [inviteResult, setInviteResult] = useState<{ message: string; invitation_link?: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{
+    message: string;
+    invitation_link?: string;
+    email_sent?: boolean;
+    email_status?: string;
+    action?: string;
+  } | null>(null);
   const [newFirm, setNewFirm] = useState<CreateTenantRequest>({
     firm_name: '',
     legal_name: '',
@@ -432,9 +438,24 @@ const FirmManagement: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-900">
-                      <Users className="w-4 h-4 text-gray-400" />
+                    <div className={`flex items-center gap-2 text-sm ${
+                      firm.max_users !== -1 && firm.userCount >= firm.max_users
+                        ? 'text-red-600 font-medium'
+                        : firm.max_users !== -1 && firm.userCount >= firm.max_users * 0.8
+                        ? 'text-amber-600'
+                        : 'text-gray-900'
+                    }`}>
+                      <Users className={`w-4 h-4 ${
+                        firm.max_users !== -1 && firm.userCount >= firm.max_users
+                          ? 'text-red-500'
+                          : firm.max_users !== -1 && firm.userCount >= firm.max_users * 0.8
+                          ? 'text-amber-500'
+                          : 'text-gray-400'
+                      }`} />
                       {firm.userCount} / {firm.max_users === -1 ? '∞' : firm.max_users}
+                      {firm.max_users !== -1 && firm.userCount >= firm.max_users && (
+                        <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Full</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -851,28 +872,43 @@ const FirmManagement: React.FC = () => {
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 text-green-800 mb-2">
                     <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">{inviteResult.message}</span>
+                    <span className="font-medium">Invitation Created Successfully</span>
                   </div>
+                  <p className="text-sm text-gray-700 mb-3">{inviteResult.message}</p>
+
+                  {/* Email Status */}
+                  <div className={`flex items-center gap-2 text-sm mb-3 ${inviteResult.email_sent ? 'text-green-700' : 'text-amber-700'}`}>
+                    <Mail className="w-4 h-4" />
+                    <span>
+                      {inviteResult.email_sent
+                        ? 'Invitation email sent successfully'
+                        : 'Email could not be sent - please share the link manually'}
+                    </span>
+                  </div>
+
                   {inviteResult.invitation_link && (
                     <div className="mt-3">
-                      <p className="text-sm text-gray-600 mb-1">Invitation Link:</p>
+                      <p className="text-sm font-medium text-gray-700 mb-1">Invitation Link:</p>
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={inviteResult.invitation_link}
                           readOnly
-                          className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm font-mono"
+                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded text-sm font-mono"
                         />
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(inviteResult.invitation_link || '');
                             setSuccessMessage('Link copied to clipboard!');
                           }}
-                          className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
+                          className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm whitespace-nowrap"
                         >
-                          Copy
+                          Copy Link
                         </button>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        This link expires in 7 days. The user will be asked to set their password when they click the link.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -929,6 +965,27 @@ const FirmManagement: React.FC = () => {
                     <option value="qc_reviewer">QC Reviewer</option>
                   </select>
                 </div>
+
+                {/* User Limit Warning */}
+                {selectedFirm.max_users !== -1 && selectedFirm.userCount >= selectedFirm.max_users && (
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg text-sm text-red-800">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="font-medium">User Limit Reached</span>
+                    </div>
+                    <p className="mt-1">This firm has reached its user limit ({selectedFirm.max_users} users). You can still create an invitation, but the user won't be able to join until the limit is increased or existing users are deactivated.</p>
+                  </div>
+                )}
+
+                {selectedFirm.max_users !== -1 && selectedFirm.userCount >= selectedFirm.max_users * 0.8 && selectedFirm.userCount < selectedFirm.max_users && (
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-sm text-amber-800">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="font-medium">Approaching User Limit</span>
+                    </div>
+                    <p className="mt-1">This firm is at {selectedFirm.userCount} of {selectedFirm.max_users} users. Consider upgrading the subscription tier for more capacity.</p>
+                  </div>
+                )}
 
                 <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
                   <p>An invitation email will be sent to this address with a link to create their account and access the platform.</p>

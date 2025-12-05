@@ -77,7 +77,7 @@ class EmailService:
         invited_by: str,
         organization_name: str,
         role: str
-    ) -> bool:
+    ) -> dict:
         """
         Send user invitation email
 
@@ -90,11 +90,11 @@ class EmailService:
             role: User role
 
         Returns:
-            True if email sent successfully, False otherwise
+            Dict with success status, message, and invitation URL
         """
-        # Generate invitation URL
-        app_url = os.getenv("APP_URL", "http://localhost:3000")
-        invitation_url = f"{app_url}/accept-invitation?token={invitation_token}"
+        # Generate invitation URL using CPA portal URL
+        cpa_app_url = os.getenv("CPA_APP_URL", os.getenv("APP_URL", "https://cpa.auraai.toroniandcompany.com"))
+        invitation_url = f"{cpa_app_url}/accept-invitation?token={invitation_token}"
 
         # Email subject
         subject = f"You've been invited to join {organization_name} on Aura Audit AI"
@@ -126,12 +126,18 @@ Best regards,
 Aura Audit AI Team
 """
 
-        return await self.send_email(
+        email_sent = await self.send_email(
             to_email=to_email,
             subject=subject,
             html_body=html_body,
             text_body=text_body
         )
+
+        return {
+            "success": email_sent,
+            "invitation_url": invitation_url,
+            "message": "Invitation email sent successfully" if email_sent else "Failed to send invitation email - invitation link still valid"
+        }
 
     async def send_email(
         self,

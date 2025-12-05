@@ -115,6 +115,22 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Application URLs (for invitation links)
+    APP_URL: str = "https://auraai.toroniandcompany.com"
+    CPA_APP_URL: str = "https://cpa.auraai.toroniandcompany.com"
+    ADMIN_APP_URL: str = "https://admin.auraai.toroniandcompany.com"
+    RD_CLIENT_APP_URL: str = "https://rdclient.auraai.toroniandcompany.com"
+
+    # Email Configuration
+    EMAIL_PROVIDER: str = "smtp"
+    EMAIL_FROM: str = "noreply@auraai.toroniandcompany.com"
+    EMAIL_FROM_NAME: str = "Aura Audit AI"
+    SMTP_HOST: str = "smtp.office365.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_PER_MINUTE: int = 60
