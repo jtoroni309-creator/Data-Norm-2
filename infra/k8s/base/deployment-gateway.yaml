@@ -26,6 +26,7 @@ spec:
       containers:
       - name: gateway
         image: ${ACR_NAME}.azurecr.io/aura/gateway:${IMAGE_TAG}
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
         env:
@@ -35,7 +36,7 @@ spec:
               name: aura-redis-connection
               key: connection-string
         - name: CORS_ORIGINS
-          value: "https://cpa.auraai.toroniandcompany.com,https://portal.auraai.toroniandcompany.com,https://admin.auraai.toroniandcompany.com,https://cpa.auraa.toroniandcompany.com"
+          value: "https://cpa.auraai.toroniandcompany.com,https://portal.auraai.toroniandcompany.com,https://admin.auraai.toroniandcompany.com,https://rdclient.auraai.toroniandcompany.com,https://auraai.toroniandcompany.com"
         envFrom:
         - configMapRef:
             name: aura-config

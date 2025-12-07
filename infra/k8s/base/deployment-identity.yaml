@@ -33,7 +33,7 @@ spec:
       containers:
       - name: identity
         image: ${ACR_NAME}.azurecr.io/aura/identity:${IMAGE_TAG}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 8000
@@ -86,6 +86,12 @@ spec:
           value: "Aura Audit AI"
         - name: APP_URL
           value: "https://auraai.toroniandcompany.com"
+        - name: CPA_APP_URL
+          value: "https://cpa.auraai.toroniandcompany.com"
+        - name: ADMIN_APP_URL
+          value: "https://admin.auraai.toroniandcompany.com"
+        - name: RD_CLIENT_APP_URL
+          value: "https://rdclient.auraai.toroniandcompany.com"
         resources:
           requests:
             cpu: 250m
