@@ -1,0 +1,87 @@
+Account_Number,Account_Name,Account_Type,Debit_2025,Credit_2025,Debit_2024,Credit_2024,Notes
+1000,Cash and Cash Equivalents,Asset,45250000.00,,38750000.00,,"Operating cash + money market"
+1010,Restricted Cash,Asset,2500000.00,,2500000.00,,"Debt covenant requirement"
+1100,Accounts Receivable - Trade,Asset,67500000.00,,58200000.00,,"Net of allowance"
+1110,Allowance for Doubtful Accounts,Contra Asset,,3375000.00,,2910000.00,"5% of gross AR"
+1120,Accounts Receivable - Intercompany Sub A,Asset,12500000.00,,10800000.00,,"Management fee receivable"
+1121,Accounts Receivable - Intercompany Sub B,Asset,8750000.00,,7200000.00,,"Royalty receivable"
+1122,Accounts Receivable - Intercompany Sub C,Asset,5600000.00,,4800000.00,,"License fee receivable"
+1200,Inventory - Raw Materials,Asset,0.00,,0.00,,"Parent is holding company"
+1210,Inventory - Work in Process,Asset,0.00,,0.00,,
+1220,Inventory - Finished Goods,Asset,0.00,,0.00,,
+1300,Prepaid Expenses,Asset,4200000.00,,3800000.00,,"Insurance, subscriptions"
+1310,Prepaid Insurance,Asset,1850000.00,,1650000.00,,
+1320,Other Prepaid Assets,Asset,750000.00,,680000.00,,
+1400,Investment in Sub A,Asset,125000000.00,,125000000.00,,"100% ownership at cost"
+1410,Investment in Sub B,Asset,85000000.00,,85000000.00,,"80% ownership at cost"
+1420,Investment in Sub C,Asset,62000000.00,,62000000.00,,"60% ownership at cost"
+1500,Property Plant & Equipment - Land,Asset,15000000.00,,15000000.00,,"Corporate HQ"
+1510,Property Plant & Equipment - Buildings,Asset,45000000.00,,45000000.00,,"Corporate HQ building"
+1511,Accumulated Depreciation - Buildings,Contra Asset,,13500000.00,,12375000.00,"30yr SL"
+1520,Property Plant & Equipment - Furniture & Fixtures,Asset,8500000.00,,7800000.00,,
+1521,Accumulated Depreciation - F&F,Contra Asset,,5100000.00,,4420000.00,"7yr SL"
+1530,Property Plant & Equipment - Computer Equipment,Asset,6200000.00,,5400000.00,,
+1531,Accumulated Depreciation - Computer,Contra Asset,,4340000.00,,3780000.00,"3yr SL"
+1600,ROU Asset - Operating Leases,Asset,18500000.00,,21000000.00,,"ASC 842"
+1610,ROU Asset - Finance Leases,Asset,4200000.00,,4800000.00,,"ASC 842"
+1611,Accumulated Amortization - Finance Lease,Contra Asset,,1260000.00,,960000.00,,
+1700,Intangible Assets - Patents,Asset,12000000.00,,14000000.00,,"Amortizing 10yr"
+1710,Intangible Assets - Trademarks,Asset,8500000.00,,8500000.00,,"Indefinite lived"
+1720,Accumulated Amortization - Intangibles,Contra Asset,,4800000.00,,4200000.00,,
+1800,Goodwill,Asset,45000000.00,,45000000.00,,"Sub B & Sub C acquisitions"
+1900,Deferred Tax Asset,Asset,8200000.00,,7500000.00,,"NOL carryforward + timing"
+2000,Accounts Payable - Trade,Liability,,28500000.00,,24200000.00,"Vendors"
+2010,Accounts Payable - Intercompany Sub A,Liability,,6200000.00,,5400000.00,"Services payable"
+2011,Accounts Payable - Intercompany Sub B,Liability,,3100000.00,,2800000.00,"Product purchases"
+2012,Accounts Payable - Intercompany Sub C,Liability,,2400000.00,,2100000.00,"Tech services"
+2100,Accrued Liabilities,Liability,,15800000.00,,13500000.00,,"Wages, benefits, other"
+2110,Accrued Compensation,Liability,,12500000.00,,10800000.00,,
+2120,Accrued Interest,Liability,,2850000.00,,2600000.00,,
+2130,Accrued Taxes - Other,Liability,,1850000.00,,1650000.00,,
+2200,Income Taxes Payable,Liability,,8500000.00,,7200000.00,,
+2300,Current Portion of Long-Term Debt,Liability,,15000000.00,,12500000.00,,
+2310,Current Portion of Lease Liability - Operating,Liability,,4200000.00,,3800000.00,,
+2320,Current Portion of Lease Liability - Finance,Liability,,850000.00,,800000.00,,
+2400,Deferred Revenue,Liability,,6500000.00,,5800000.00,,"Prepaid services"
+2500,Long-Term Debt - Senior Notes,Liability,,125000000.00,,140000000.00,,"5.25% due 2030"
+2510,Long-Term Debt - Term Loan,Liability,,45000000.00,,50000000.00,,"SOFR+2.5%"
+2520,Long-Term Debt - Intercompany Loan from Sub A,Liability,,8000000.00,,8000000.00,,"5% interest"
+2600,Lease Liability - Operating (Non-current),Liability,,14800000.00,,17600000.00,,
+2610,Lease Liability - Finance (Non-current),Liability,,2600000.00,,3450000.00,,
+2700,Deferred Tax Liability,Liability,,12500000.00,,11200000.00,,"Depreciation timing"
+2800,Other Long-Term Liabilities,Liability,,4500000.00,,4200000.00,,"Pension, other"
+3000,Common Stock,Equity,,5000000.00,,5000000.00,,"50M shares at $0.10 par"
+3100,Additional Paid-In Capital,Equity,,185000000.00,,185000000.00,,
+3200,Retained Earnings,Equity,,98500000.00,,82000000.00,,
+3300,Accumulated Other Comprehensive Income,Equity,,8500000.00,,6200000.00,,"FX translation"
+3400,Treasury Stock,Equity,25000000.00,,25000000.00,,"Repurchased shares"
+4000,Revenue - Management Fees,Revenue,,85000000.00,,72000000.00,,"From subsidiaries"
+4010,Revenue - Royalties,Revenue,,42000000.00,,38000000.00,,"IP licensing"
+4020,Revenue - Intercompany Management Fees,Revenue,,26850000.00,,22800000.00,,"Eliminated in consol"
+4100,Dividend Income - Sub A,Revenue,,15000000.00,,12000000.00,,"Eliminated in consol"
+4110,Dividend Income - Sub B,Revenue,,8000000.00,,6500000.00,,"80% eliminated"
+4120,Dividend Income - Sub C,Revenue,,6000000.00,,5000000.00,,"60% eliminated"
+5000,Cost of Services,Expense,42000000.00,,36000000.00,,"Direct costs"
+5100,Salaries and Wages,Expense,35000000.00,,32000000.00,,"Corporate staff"
+5110,Employee Benefits,Expense,8750000.00,,8000000.00,,"Health, 401k, etc."
+5120,Stock-Based Compensation,Expense,6500000.00,,5800000.00,,
+5200,Depreciation Expense,Expense,2865000.00,,2680000.00,,"Per fixed asset register"
+5210,Amortization Expense,Expense,2600000.00,,2400000.00,,"Intangibles + ROU"
+5300,Professional Fees,Expense,8500000.00,,7200000.00,,"Legal, audit, consulting"
+5310,Audit Fees,Expense,2200000.00,,2000000.00,,
+5400,Rent Expense - Operating Leases,Expense,4800000.00,,4400000.00,,"ASC 842 straight-line"
+5410,Interest Expense - Finance Leases,Expense,280000.00,,320000.00,,
+5500,Insurance Expense,Expense,3200000.00,,2900000.00,,
+5600,Travel and Entertainment,Expense,4500000.00,,3800000.00,,
+5700,Technology and Software,Expense,12000000.00,,10500000.00,,
+5800,Marketing and Advertising,Expense,8500000.00,,7200000.00,,
+5900,Other Operating Expenses,Expense,6800000.00,,6200000.00,,
+6000,Interest Expense,Expense,12500000.00,,14200000.00,,"On debt"
+6010,Interest Income,Revenue,,1850000.00,,1400000.00,,"Cash investments"
+6020,Interest Expense - Intercompany,Expense,400000.00,,400000.00,,"On IC loan from Sub A"
+6100,Foreign Exchange Gain/Loss,Expense,1200000.00,,850000.00,,"Net FX"
+7000,Income Tax Expense - Current,Expense,18500000.00,,15200000.00,,
+7010,Income Tax Expense - Deferred,Expense,1300000.00,,1100000.00,,
+9000,Eliminations - Intercompany Revenue,Contra Revenue,26850000.00,,22800000.00,,"Consol elimination"
+9010,Eliminations - Intercompany Dividends,Contra Revenue,29000000.00,,23500000.00,,"Consol elimination"
+9020,Eliminations - Intercompany AR/AP,Contra Asset,26850000.00,,22800000.00,,"Consol elimination"

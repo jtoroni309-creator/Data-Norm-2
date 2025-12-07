@@ -117,20 +117,37 @@ class SubserviceTreatment(str, enum.Enum):
 # ============================================================================
 
 class User(Base):
+    """User model - reads from atlas.users (shared identity schema)"""
     __tablename__ = "users"
-    __table_args__ = {"schema": "soc_copilot"}
+    __table_args__ = {"schema": "atlas"}
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    cpa_firm_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    client_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), nullable=False, index=True)
-    firm_name: Mapped[str] = mapped_column(String(255), default="Fred J. Toroni & Company Certified Public Accountants")
-    cpa_license_number: Mapped[Optional[str]] = mapped_column(String(50))
+    first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    @property
+    def full_name(self) -> str:
+        """Computed full name property"""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.first_name or self.last_name or self.email
+
+    @property
+    def role(self) -> UserRole:
+        """Default role for all authenticated users - CPA users get AUDIT_MANAGER access"""
+        # Users with cpa_firm_id are CPA staff, give them manager access
+        # Client users (with client_id) get CLIENT_MANAGEMENT access
+        if self.cpa_firm_id:
+            return UserRole.AUDIT_MANAGER
+        elif self.client_id:
+            return UserRole.CLIENT_MANAGEMENT
+        return UserRole.READ_ONLY
 
 
 # ============================================================================
@@ -144,9 +161,9 @@ class SOCEngagement(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     client_name: Mapped[str] = mapped_column(String(500), nullable=False)
     service_description: Mapped[str] = mapped_column(Text, nullable=False)
-    engagement_type: Mapped[EngagementType] = mapped_column(SQLEnum(EngagementType), nullable=False)
-    report_type: Mapped[ReportType] = mapped_column(SQLEnum(ReportType), nullable=False)
-    status: Mapped[EngagementStatus] = mapped_column(SQLEnum(EngagementStatus), default=EngagementStatus.DRAFT, index=True)
+    engagement_type: Mapped[EngagementType] = mapped_column(SQLEnum(EngagementType, name='engagementtype', create_type=False), nullable=False)
+    report_type: Mapped[ReportType] = mapped_column(SQLEnum(ReportType, name='reporttype', create_type=False), nullable=False)
+    status: Mapped[EngagementStatus] = mapped_column(SQLEnum(EngagementStatus, name='engagementstatus', create_type=False), default=EngagementStatus.DRAFT, index=True)
 
     # SOC 2 specific
     tsc_categories: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String))
@@ -157,16 +174,16 @@ class SOCEngagement(Base):
     point_in_time_date: Mapped[Optional[date]] = mapped_column(Date)
 
     # Team
-    partner_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), nullable=False, index=True)
-    manager_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), nullable=False, index=True)
-    created_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), nullable=False)
+    partner_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False, index=True)
+    manager_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False, index=True)
+    created_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False)
 
     # Metadata
     fiscal_year_end: Mapped[Optional[date]] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     locked_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
-    locked_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    locked_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
 
     # Relationships
     team_members: Mapped[List["EngagementTeam"]] = relationship(back_populates="engagement", cascade="all, delete-orphan")
@@ -180,9 +197,9 @@ class EngagementTeam(Base):
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     engagement_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.soc_engagements.id", ondelete="CASCADE"), index=True)
-    user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), index=True)
-    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), nullable=False)
-    assigned_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), index=True)
+    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole, name='userrole', create_type=False), nullable=False)
+    assigned_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     assigned_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     removed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
@@ -225,7 +242,7 @@ class SubserviceOrg(Base):
     engagement_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.soc_engagements.id", ondelete="CASCADE"), index=True)
     org_name: Mapped[str] = mapped_column(String(255), nullable=False)
     service_description: Mapped[str] = mapped_column(Text, nullable=False)
-    treatment: Mapped[SubserviceTreatment] = mapped_column(SQLEnum(SubserviceTreatment), nullable=False)
+    treatment: Mapped[SubserviceTreatment] = mapped_column(SQLEnum(SubserviceTreatment, name='subservicetreatment', create_type=False), nullable=False)
     has_soc_report: Mapped[bool] = mapped_column(Boolean, default=False)
     soc_report_period_start: Mapped[Optional[date]] = mapped_column(Date)
     soc_report_period_end: Mapped[Optional[date]] = mapped_column(Date)
@@ -256,7 +273,7 @@ class ControlObjective(Base):
     icfr_assertion: Mapped[Optional[str]] = mapped_column(String(100))
 
     # SOC 2: TSC mapping
-    tsc_category: Mapped[Optional[TSCCategory]] = mapped_column(SQLEnum(TSCCategory))
+    tsc_category: Mapped[Optional[TSCCategory]] = mapped_column(SQLEnum(TSCCategory, name='tsccategory', create_type=False))
     tsc_criteria: Mapped[Optional[str]] = mapped_column(String(50))
     points_of_focus_2022: Mapped[Optional[List[str]]] = mapped_column(ARRAY(Text))
 
@@ -283,7 +300,7 @@ class Control(Base):
     control_code: Mapped[str] = mapped_column(String(50), nullable=False)
     control_name: Mapped[str] = mapped_column(String(500), nullable=False)
     control_description: Mapped[str] = mapped_column(Text, nullable=False)
-    control_type: Mapped[ControlType] = mapped_column(SQLEnum(ControlType), nullable=False)
+    control_type: Mapped[ControlType] = mapped_column(SQLEnum(ControlType, name='controltype', create_type=False), nullable=False)
     control_owner: Mapped[Optional[str]] = mapped_column(String(255))
     frequency: Mapped[Optional[str]] = mapped_column(String(100))
     automation_level: Mapped[Optional[str]] = mapped_column(String(50))
@@ -351,7 +368,7 @@ class TestPlan(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     engagement_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.soc_engagements.id", ondelete="CASCADE"), index=True)
     control_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.controls.id", ondelete="CASCADE"), index=True)
-    test_type: Mapped[TestType] = mapped_column(SQLEnum(TestType), nullable=False)
+    test_type: Mapped[TestType] = mapped_column(SQLEnum(TestType, name='testtype', create_type=False), nullable=False)
     test_objective: Mapped[str] = mapped_column(Text, nullable=False)
     test_procedures: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -368,7 +385,7 @@ class TestPlan(Base):
     ai_confidence_score: Mapped[Optional[float]] = mapped_column(DECIMAL(3, 2))
     ai_rationale: Mapped[Optional[str]] = mapped_column(Text)
 
-    approved_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    approved_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     approved_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -390,7 +407,7 @@ class EvidenceSource(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     engagement_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.soc_engagements.id", ondelete="CASCADE"), index=True)
     source_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_type: Mapped[EvidenceSourceType] = mapped_column(SQLEnum(EvidenceSourceType), nullable=False)
+    source_type: Mapped[EvidenceSourceType] = mapped_column(SQLEnum(EvidenceSourceType, name='evidencesourcetype', create_type=False), nullable=False)
     connection_config: Mapped[Optional[dict]] = mapped_column(SQLJSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_sync_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
@@ -418,7 +435,7 @@ class Evidence(Base):
     # Chain of custody
     sha256_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True, unique=True)
     collected_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
-    collected_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    collected_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
 
     # Classification
     evidence_type: Mapped[Optional[str]] = mapped_column(String(100))
@@ -454,9 +471,9 @@ class TestResult(Base):
     test_plan_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.test_plans.id", ondelete="CASCADE"), index=True)
     evidence_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.evidence.id"))
 
-    test_status: Mapped[TestStatus] = mapped_column(SQLEnum(TestStatus), nullable=False, default=TestStatus.PLANNED, index=True)
+    test_status: Mapped[TestStatus] = mapped_column(SQLEnum(TestStatus, name='teststatus', create_type=False), nullable=False, default=TestStatus.PLANNED, index=True)
     test_date: Mapped[date] = mapped_column(Date, nullable=False)
-    tested_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), nullable=False)
+    tested_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False)
 
     # Results
     passed: Mapped[Optional[bool]] = mapped_column(Boolean)
@@ -467,7 +484,7 @@ class TestResult(Base):
     sample_item_identifier: Mapped[Optional[str]] = mapped_column(String(255))
     sample_selection_method: Mapped[Optional[str]] = mapped_column(String(100))
 
-    reviewed_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    reviewed_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -493,7 +510,7 @@ class Deviation(Base):
 
     deviation_description: Mapped[str] = mapped_column(Text, nullable=False)
     root_cause: Mapped[Optional[str]] = mapped_column(Text)
-    severity: Mapped[DeviationSeverity] = mapped_column(SQLEnum(DeviationSeverity), nullable=False, index=True)
+    severity: Mapped[DeviationSeverity] = mapped_column(SQLEnum(DeviationSeverity, name='deviationseverity', create_type=False), nullable=False, index=True)
 
     # Impact assessment
     impact_on_objective: Mapped[Optional[str]] = mapped_column(Text)
@@ -501,7 +518,7 @@ class Deviation(Base):
 
     # Remediation
     remediation_plan: Mapped[Optional[str]] = mapped_column(Text)
-    remediation_owner: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    remediation_owner: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     remediation_deadline: Mapped[Optional[date]] = mapped_column(Date)
     remediation_completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
@@ -510,7 +527,7 @@ class Deviation(Base):
     retest_plan_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.test_plans.id"))
     retest_passed: Mapped[Optional[bool]] = mapped_column(Boolean)
 
-    identified_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    identified_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     identified_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -574,9 +591,9 @@ class SystemDescription(Base):
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     ai_confidence_score: Mapped[Optional[float]] = mapped_column(DECIMAL(3, 2))
 
-    drafted_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    drafted_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     drafted_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
-    approved_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    approved_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     approved_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -621,7 +638,7 @@ class Report(Base):
     pdf_path: Mapped[Optional[str]] = mapped_column(Text)
     docx_path: Mapped[Optional[str]] = mapped_column(Text)
 
-    drafted_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    drafted_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     drafted_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -639,8 +656,8 @@ class Signature(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     report_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.reports.id", ondelete="CASCADE"), index=True)
 
-    signer_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), nullable=False, index=True)
-    signer_role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), nullable=False)
+    signer_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False, index=True)
+    signer_role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole, name='userrole', create_type=False), nullable=False)
 
     signature_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     signature_image: Mapped[Optional[str]] = mapped_column(Text)
@@ -673,8 +690,8 @@ class WorkflowTask(Base):
     task_description: Mapped[Optional[str]] = mapped_column(Text)
     task_type: Mapped[Optional[str]] = mapped_column(String(100))
 
-    assigned_to: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), index=True)
-    assigned_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"))
+    assigned_to: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), index=True)
+    assigned_by: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"))
     assigned_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
     due_date: Mapped[Optional[date]] = mapped_column(Date)
@@ -701,8 +718,8 @@ class Approval(Base):
     approval_type: Mapped[str] = mapped_column(String(100), nullable=False)
     approval_level: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    approver_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), nullable=False, index=True)
-    approval_status: Mapped[ApprovalStatus] = mapped_column(SQLEnum(ApprovalStatus), default=ApprovalStatus.PENDING, index=True)
+    approver_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), nullable=False, index=True)
+    approval_status: Mapped[ApprovalStatus] = mapped_column(SQLEnum(ApprovalStatus, name='approvalstatus', create_type=False), default=ApprovalStatus.PENDING, index=True)
 
     comments: Mapped[Optional[str]] = mapped_column(Text)
 
@@ -733,7 +750,7 @@ class AuditTrail(Base):
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     entity_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
 
-    actor_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("soc_copilot.users.id"), index=True)
+    actor_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("atlas.users.id"), index=True)
     actor_ip_address: Mapped[Optional[str]] = mapped_column(INET)
 
     action: Mapped[str] = mapped_column(String(100), nullable=False)

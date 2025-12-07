@@ -1,0 +1,71 @@
+Account_Number,Account_Name,Account_Type,Debit_2025,Credit_2025,Debit_2024,Credit_2024,Notes
+1000,Cash and Cash Equivalents,Asset,28500000.00,,24200000.00,,"Operating accounts"
+1100,Accounts Receivable - Trade,Asset,42500000.00,,38200000.00,,"Net of allowance"
+1110,Allowance for Doubtful Accounts,Contra Asset,,2125000.00,,1910000.00,"5% of gross AR"
+1120,Accounts Receivable - Intercompany Parent,Asset,6200000.00,,5400000.00,,"Services receivable"
+1130,Accounts Receivable - Intercompany Sub B,Asset,4500000.00,,3800000.00,,"Parts sold"
+1140,Accounts Receivable - Intercompany Sub C,Asset,2200000.00,,1900000.00,,"Components"
+1200,Inventory - Raw Materials,Asset,18500000.00,,16200000.00,,"Steel, components"
+1210,Inventory - Work in Process,Asset,12800000.00,,11500000.00,,"Production floor"
+1220,Inventory - Finished Goods,Asset,24500000.00,,22100000.00,,"Warehouse"
+1230,Inventory Reserve,Contra Asset,,2800000.00,,2490000.00,"Obsolescence"
+1300,Prepaid Expenses,Asset,2850000.00,,2500000.00,,
+1400,Note Receivable - Parent,Asset,8000000.00,,8000000.00,,"5% intercompany loan"
+1500,Property Plant & Equipment - Land,Asset,8500000.00,,8500000.00,,"Manufacturing facility"
+1510,Property Plant & Equipment - Buildings,Asset,65000000.00,,62000000.00,,"Factory + warehouse"
+1511,Accumulated Depreciation - Buildings,Contra Asset,,19500000.00,,17360000.00,"39yr SL"
+1520,Property Plant & Equipment - Machinery,Asset,85000000.00,,78000000.00,,"Production equipment"
+1521,Accumulated Depreciation - Machinery,Contra Asset,,42500000.00,,35100000.00,"7-10yr SL/MACRS"
+1530,Property Plant & Equipment - Vehicles,Asset,4200000.00,,3800000.00,,"Delivery fleet"
+1531,Accumulated Depreciation - Vehicles,Contra Asset,,2520000.00,,2280000.00,"5yr"
+1540,Property Plant & Equipment - Computer Equipment,Asset,3500000.00,,3200000.00,,
+1541,Accumulated Depreciation - Computer,Contra Asset,,2450000.00,,2240000.00,"3yr"
+1550,Construction in Progress,Asset,12500000.00,,8500000.00,,"New production line"
+1600,ROU Asset - Operating Leases,Asset,8500000.00,,10200000.00,,"Equipment leases"
+1610,ROU Asset - Finance Leases,Asset,6800000.00,,7500000.00,,"Forklift fleet"
+1611,Accumulated Amortization - Finance Lease,Contra Asset,,2040000.00,,1500000.00,,
+2000,Accounts Payable - Trade,Liability,,35200000.00,,31500000.00,,"Suppliers"
+2010,Accounts Payable - Intercompany Parent,Liability,,12500000.00,,10800000.00,,"Management fees"
+2020,Accounts Payable - Intercompany Sub B,Liability,,3200000.00,,2800000.00,,"EU parts"
+2100,Accrued Liabilities,Liability,,18500000.00,,16200000.00,,
+2110,Accrued Compensation,Liability,,8500000.00,,7600000.00,,
+2120,Accrued Utilities,Liability,,1850000.00,,1650000.00,,
+2130,Accrued Property Taxes,Liability,,2200000.00,,2000000.00,,
+2200,Income Taxes Payable,Liability,,5200000.00,,4500000.00,,
+2300,Current Portion of Long-Term Debt,Liability,,8500000.00,,8000000.00,,
+2310,Current Portion of Lease Liability - Operating,Liability,,2100000.00,,1950000.00,,
+2320,Current Portion of Lease Liability - Finance,Liability,,1200000.00,,1100000.00,,
+2400,Deferred Revenue,Liability,,2800000.00,,2400000.00,,"Prepaid orders"
+2500,Long-Term Debt - Equipment Financing,Liability,,42000000.00,,48000000.00,,"Machinery loans"
+2510,Long-Term Debt - Mortgage,Liability,,28000000.00,,30000000.00,,"Facility mortgage"
+2600,Lease Liability - Operating (Non-current),Liability,,6800000.00,,8600000.00,,
+2610,Lease Liability - Finance (Non-current),Liability,,4200000.00,,5300000.00,,
+2700,Deferred Tax Liability,Liability,,8500000.00,,7800000.00,,
+3000,Common Stock,Equity,,1000000.00,,1000000.00,,"Held by Parent 100%"
+3100,Additional Paid-In Capital,Equity,,124000000.00,,124000000.00,,
+3200,Retained Earnings,Equity,,45800000.00,,38200000.00,,
+4000,Revenue - Product Sales,Revenue,,285000000.00,,248000000.00,,"Industrial equipment"
+4010,Revenue - Service and Maintenance,Revenue,,28500000.00,,24800000.00,,"Warranties, repairs"
+4020,Revenue - Intercompany Sales to Sub B,Revenue,,18500000.00,,16200000.00,,"Eliminated in consol"
+4030,Revenue - Intercompany Sales to Sub C,Revenue,,8500000.00,,7400000.00,,"Eliminated in consol"
+4100,Interest Income - Intercompany Loan,Revenue,,400000.00,,400000.00,,"From Parent"
+5000,Cost of Goods Sold - Materials,Expense,142500000.00,,124000000.00,,
+5010,Cost of Goods Sold - Labor,Expense,48500000.00,,42200000.00,,
+5020,Cost of Goods Sold - Overhead,Expense,32000000.00,,28500000.00,,
+5030,Cost of Goods Sold - Intercompany Purchases,Expense,12500000.00,,10800000.00,,"From Sub B"
+5100,Salaries and Wages - SG&A,Expense,22000000.00,,19800000.00,,
+5110,Employee Benefits,Expense,8800000.00,,7920000.00,,
+5200,Depreciation Expense,Expense,12910000.00,,11580000.00,,
+5210,Amortization Expense,Expense,2240000.00,,1850000.00,,
+5300,Professional Fees,Expense,2500000.00,,2200000.00,,
+5400,Rent Expense - Operating Leases,Expense,2400000.00,,2200000.00,,
+5410,Interest Expense - Finance Leases,Expense,420000.00,,475000.00,,
+5500,Insurance Expense,Expense,4200000.00,,3800000.00,,
+5600,Utilities Expense,Expense,6500000.00,,5900000.00,,
+5700,Repairs and Maintenance,Expense,5800000.00,,5200000.00,,
+5800,Shipping and Freight,Expense,8500000.00,,7600000.00,,
+5900,Other Operating Expenses,Expense,4200000.00,,3800000.00,,
+6000,Interest Expense,Expense,5850000.00,,6400000.00,,"On debt"
+7000,Income Tax Expense - Current,Expense,8200000.00,,7100000.00,,
+7010,Income Tax Expense - Deferred,Expense,700000.00,,600000.00,,
+8000,Dividends Declared,Equity,15000000.00,,12000000.00,,"To Parent"

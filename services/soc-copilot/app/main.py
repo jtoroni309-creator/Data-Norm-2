@@ -2,6 +2,8 @@
 SOC Copilot - Main FastAPI Application
 Production-grade SOC 1 & SOC 2 audit platform
 """
+import hashlib
+import json
 import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -151,6 +153,22 @@ def require_role(*allowed_roles: UserRole):
             )
         return current_user
     return role_checker
+
+
+def generate_event_hash(event_type: str, entity_type: str, entity_id: UUID, action: str,
+                        before_state: dict = None, after_state: dict = None,
+                        previous_hash: str = None) -> str:
+    """Generate SHA-256 hash for audit trail event"""
+    data = {
+        "event_type": event_type,
+        "entity_type": entity_type,
+        "entity_id": str(entity_id),
+        "action": action,
+        "before_state": before_state,
+        "after_state": after_state,
+        "previous_hash": previous_hash or ""
+    }
+    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
 
 
 # ============================================================================
@@ -344,6 +362,18 @@ async def create_engagement(
     await db.refresh(new_engagement)
 
     # Log to audit trail
+    after_state = {
+        "client_name": new_engagement.client_name,
+        "engagement_type": new_engagement.engagement_type.value,
+        "report_type": new_engagement.report_type.value
+    }
+    event_hash = generate_event_hash(
+        event_type="ENGAGEMENT_CREATED",
+        entity_type="SOCEngagement",
+        entity_id=new_engagement.id,
+        action="CREATE",
+        after_state=after_state
+    )
     audit_entry = AuditTrail(
         engagement_id=new_engagement.id,
         event_type="ENGAGEMENT_CREATED",
@@ -351,11 +381,8 @@ async def create_engagement(
         entity_id=new_engagement.id,
         actor_id=current_user.id,
         action="CREATE",
-        after_state={
-            "client_name": new_engagement.client_name,
-            "engagement_type": new_engagement.engagement_type.value,
-            "report_type": new_engagement.report_type.value
-        }
+        after_state=after_state,
+        event_hash=event_hash
     )
     db.add(audit_entry)
     await db.commit()
@@ -497,6 +524,16 @@ async def transition_engagement_status(
     await db.commit()
 
     # Audit trail
+    before_state = {"status": old_status.value}
+    after_state = {"status": new_status.value}
+    event_hash = generate_event_hash(
+        event_type="STATUS_TRANSITION",
+        entity_type="SOCEngagement",
+        entity_id=engagement_id,
+        action="UPDATE",
+        before_state=before_state,
+        after_state=after_state
+    )
     audit_entry = AuditTrail(
         engagement_id=engagement_id,
         event_type="STATUS_TRANSITION",
@@ -504,8 +541,9 @@ async def transition_engagement_status(
         entity_id=engagement_id,
         actor_id=current_user.id,
         action="UPDATE",
-        before_state={"status": old_status.value},
-        after_state={"status": new_status.value}
+        before_state=before_state,
+        after_state=after_state,
+        event_hash=event_hash
     )
     db.add(audit_entry)
     await db.commit()

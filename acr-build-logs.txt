@@ -1,0 +1,117 @@
+﻿2025/11/26 22:38:46 Downloading source code...
+
+2025/11/26 22:38:46 Finished downloading source code
+
+2025/11/26 22:38:47 Using acb_vol_2584f20e-98c6-4248-be07-849f486b4870 as the home volume
+2025/11/26 22:38:47 Setting up Docker configuration...
+2025/11/26 22:38:47 Successfully set up Docker configuration
+2025/11/26 22:38:47 Logging in to registry: auraauditaiprodacr.azurecr.io
+2025/11/26 22:38:48 Successfully logged into auraauditaiprodacr.azurecr.io
+2025/11/26 22:38:48 Executing step ID: build. Timeout(sec): 28800, Working directory: '', Network: ''
+2025/11/26 22:38:48 Scanning for dependencies...
+2025/11/26 22:38:48 Successfully scanned dependencies
+2025/11/26 22:38:48 Launching container with name: build
+Sending build context to Docker daemon  836.1kB
+
+
+
+Step 1/11 : FROM node:18-alpine AS builder
+18-alpine: Pulling from library/node
+f18232174bc9: Pulling fs layer
+dd71dde834b5: Pulling fs layer
+1e5a4c89cee5: Pulling fs layer
+25ff2da83641: Pulling fs layer
+25ff2da83641: Waiting
+1e5a4c89cee5: Verifying Checksum
+1e5a4c89cee5: Download complete
+f18232174bc9: Verifying Checksum
+f18232174bc9: Download complete
+f18232174bc9: Pull complete
+
+25ff2da83641: Verifying Checksum
+25ff2da83641: Download complete
+dd71dde834b5: Verifying Checksum
+dd71dde834b5: Download complete
+dd71dde834b5: Pull complete
+1e5a4c89cee5: Pull complete
+
+25ff2da83641: Pull complete
+Digest: sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
+Status: Downloaded newer image for node:18-alpine
+ ---> ee77c6cd7c18
+Step 2/11 : WORKDIR /app
+ ---> Running in 1cc5023e6f94
+Removing intermediate container 1cc5023e6f94
+ ---> 1bb41fb5e03e
+Step 3/11 : COPY package*.json ./
+ ---> a9158b11ee24
+Step 4/11 : RUN npm ci
+ ---> Running in aaf6fd37f7e6
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+
+added 353 packages, and audited 354 packages in 7s
+
+76 packages are looking for funding
+  run `npm fund` for details
+
+4 vulnerabilities (3 moderate, 1 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.6.4
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.4
+npm notice To update run: npm install -g npm@11.6.4
+npm notice
+az : ERROR: The command failed with an unexpected error. Here is the traceback:
+At C:\Users\jtoroni\Data Norm\Data-Norm-2\scripts\get-acr-logs.ps1:9 char:13
++     $logs = az acr task logs -r auraauditaiprodacr --run-id $runId -- ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: The comm... the traceback::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ERROR: 'charmap' codec can't encode character '\u2713' in position 230: character maps to <undefined>
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\knack/cli.py", line 233, in invoke
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", 
+line 666, in execute
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", 
+line 734, in _run_jobs_serially
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", 
+line 703, in _run_job
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", 
+line 336, in __call__
+  File 
+"D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/command_operation.py", 
+line 120, in handler
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/acr/task.py", 
+line 1126, in acr_task_logs
+  File 
+"D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/acr/_stream_utils.py", 
+line 56, in stream_logs
+  File 
+"D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/acr/_stream_utils.py", 
+line 126, in _stream_logs
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\colorama/ansitowin32.py", line 47, in 
+write
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\colorama/ansitowin32.py", line 177, in 
+write
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\colorama/ansitowin32.py", line 205, in 
+write_and_convert
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\colorama/ansitowin32.py", line 210, in 
+write_plain_text
+  File "encodings\cp1252.py", line 19, in encode
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 230: character maps to <undefined>
+To check existing issues, please visit: https://github.com/Azure/azure-cli/issues

@@ -1,0 +1,59 @@
+Category,Account_Type,Sub_B_EUR_Amount,Translation_Rate,Rate_Type,Sub_B_USD_Amount,Notes
+ASSETS,,,,,,"Sub B - Functional Currency EUR"
+Cash and Cash Equivalents,Monetary,18500000.00,1.08,Closing,19980000.00,"Year-end rate"
+Accounts Receivable - Trade,Monetary,30875000.00,1.08,Closing,33345000.00,"Year-end rate (net of allowance)"
+Accounts Receivable - Intercompany,Monetary,8100000.00,1.08,Closing,8748000.00,"Year-end rate"
+Inventory,Non-Monetary,25875000.00,1.08,Closing,27945000.00,"Year-end rate (FIFO)"
+Prepaid Expenses,Non-Monetary,2200000.00,1.08,Closing,2376000.00,"Year-end rate"
+VAT Receivable,Monetary,3500000.00,1.08,Closing,3780000.00,"Year-end rate"
+Property Plant & Equipment (Net),Non-Monetary,35371000.00,1.08,Closing,38200555.00,"Year-end rate"
+ROU Assets - Operating,Non-Monetary,4500000.00,1.08,Closing,4860000.00,"Year-end rate"
+ROU Assets - Finance (Net),Non-Monetary,1960000.00,1.08,Closing,2116800.00,"Year-end rate"
+TOTAL ASSETS,TOTAL,130881000.00,,MIXED,141351355.00,
+,,,,,,,
+LIABILITIES,,,,,,,
+Accounts Payable - Trade,Monetary,24500000.00,1.08,Closing,26460000.00,"Year-end rate"
+Accounts Payable - Intercompany,Monetary,13250000.00,1.08,Closing,14310000.00,"Year-end rate"
+Accrued Liabilities,Monetary,8500000.00,1.08,Closing,9180000.00,"Year-end rate"
+Income Taxes Payable,Monetary,3200000.00,1.08,Closing,3456000.00,"Year-end rate"
+Current Portion Long-Term Debt,Monetary,4500000.00,1.08,Closing,4860000.00,"Year-end rate"
+Current Portion Lease Liability,Monetary,1470000.00,1.08,Closing,1587600.00,"Year-end rate"
+Deferred Revenue,Monetary,1800000.00,1.08,Closing,1944000.00,"Year-end rate"
+Long-Term Debt,Monetary,22000000.00,1.08,Closing,23760000.00,"Year-end rate"
+Lease Liability - Non-current,Monetary,5400000.00,1.08,Closing,5832000.00,"Year-end rate"
+Deferred Tax Liability,Monetary,4200000.00,1.08,Closing,4536000.00,"Year-end rate"
+TOTAL LIABILITIES,TOTAL,88820000.00,,MIXED,95925600.00,
+,,,,,,,
+EQUITY,,,,,,,
+Common Stock,Equity,10000000.00,1.08,Historical,10800000.00,"Historical rate at acquisition"
+Additional Paid-In Capital,Equity,75000000.00,1.08,Historical,81000000.00,"Historical rate at acquisition"
+Retained Earnings - Beginning,Equity,22800000.00,Various,Historical,24624000.00,"Rolling calculation"
+Current Year Net Income,Equity,353000.00,1.085,Average,383005.00,"Average rate for P&L"
+Dividends Declared,Equity,-10000000.00,1.085,Average,-10850000.00,"Average rate when declared"
+Retained Earnings - Ending,Equity,13153000.00,Various,Mixed,14157005.00,
+Cumulative Translation Adjustment,Equity,0.00,N/A,Plug,3078000.00,"Balancing entry to AOCI"
+TOTAL EQUITY,TOTAL,42061000.00,,MIXED,45425600.00,
+,,,,,,,
+TOTAL LIABILITIES & EQUITY,TOTAL,130881000.00,,MIXED,141351200.00,
+,,,,,,,
+INCOME STATEMENT,,,,,,,
+Revenue - External,P&L,203500000.00,1.085,Average,220797500.00,"Avg rate 1.085"
+Revenue - Intercompany,P&L,7000000.00,1.08,Mixed,7560000.00,"Various rates"
+Total Revenue,P&L,210500000.00,MIXED,MIXED,228357500.00,
+COGS - Products,P&L,118500000.00,1.085,Average,128572500.00,
+COGS - Intercompany,P&L,15500000.00,1.08,Mixed,16740000.00,
+COGS - Freight,P&L,8500000.00,1.085,Average,9222500.00,
+Total COGS,P&L,142500000.00,MIXED,MIXED,154535000.00,
+Operating Expenses,P&L,60310000.00,1.085,Average,65436350.00,
+Interest Expense,P&L,1850000.00,1.085,Average,2007250.00,
+FX Gain/Loss,P&L,850000.00,1.085,Average,922250.00,
+Income Tax Expense,P&L,4500000.00,1.085,Average,4882500.00,
+Total Expenses,P&L,210010000.00,MIXED,MIXED,227783350.00,
+Net Income,P&L,490000.00,1.085,Average,574150.00,"Pre-rounding adj"
+,,,,,,,
+TRANSLATION RATES,,,,,,,
+Closing Rate (12/31/2025),,,1.08,,"EUR to USD year-end"
+Average Rate (2025),,,1.085,,"EUR to USD weighted average"
+Closing Rate (12/31/2024),,,1.10,,"EUR to USD prior year-end"
+Average Rate (2024),,,1.095,,"EUR to USD prior year weighted avg"
+Historical Rate (Acquisition),,,1.08,,"EUR to USD at acquisition date"

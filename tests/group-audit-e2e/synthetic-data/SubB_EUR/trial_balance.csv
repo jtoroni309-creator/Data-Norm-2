@@ -1,0 +1,64 @@
+Account_Number,Account_Name,Account_Type,Debit_2025_EUR,Credit_2025_EUR,Debit_2024_EUR,Credit_2024_EUR,USD_Rate_2025,USD_Rate_2024,Notes
+1000,Cash and Cash Equivalents,Asset,18500000.00,,15200000.00,,1.08,1.10,"Operating accounts"
+1100,Accounts Receivable - Trade,Asset,32500000.00,,28500000.00,,1.08,1.10,"Net of allowance"
+1110,Allowance for Doubtful Accounts,Contra Asset,,1625000.00,,1425000.00,1.08,1.10,"5% of gross AR"
+1120,Accounts Receivable - Intercompany Parent,Asset,3100000.00,,2800000.00,,1.08,1.10,"Royalty receivable"
+1130,Accounts Receivable - Intercompany Sub A,Asset,3200000.00,,2800000.00,,1.08,1.10,"Parts purchased"
+1140,Accounts Receivable - Intercompany Sub C,Asset,1800000.00,,1500000.00,,1.08,1.10,"Tech services"
+1200,Inventory - Finished Goods,Asset,22500000.00,,19800000.00,,1.08,1.10,"Distribution inventory"
+1210,Inventory - Goods in Transit,Asset,4500000.00,,3800000.00,,1.08,1.10,"Shipping from Sub A"
+1220,Inventory Reserve,Contra Asset,,1125000.00,,990000.00,1.08,1.10,"5% obsolescence"
+1300,Prepaid Expenses,Asset,2200000.00,,1950000.00,,1.08,1.10,
+1400,VAT Receivable,Asset,3500000.00,,3100000.00,,1.08,1.10,"EU VAT"
+1500,Property Plant & Equipment - Land,Asset,5500000.00,,5500000.00,,1.08,1.10,"Distribution center"
+1510,Property Plant & Equipment - Buildings,Asset,28000000.00,,28000000.00,,1.08,1.10,"Warehouse"
+1511,Accumulated Depreciation - Buildings,Contra Asset,,5600000.00,,4900000.00,1.08,1.10,"40yr SL"
+1520,Property Plant & Equipment - Equipment,Asset,12500000.00,,11200000.00,,1.08,1.10,"Warehouse equipment"
+1521,Accumulated Depreciation - Equipment,Contra Asset,,6250000.00,,5040000.00,1.08,1.10,"10yr"
+1530,Property Plant & Equipment - Vehicles,Asset,8500000.00,,7800000.00,,1.08,1.10,"Delivery fleet"
+1531,Accumulated Depreciation - Vehicles,Contra Asset,,5100000.00,,4680000.00,1.08,1.10,"5yr"
+1600,ROU Asset - Operating Leases,Asset,4500000.00,,5200000.00,,1.08,1.10,"Office leases"
+1610,ROU Asset - Finance Leases,Asset,2800000.00,,3200000.00,,1.08,1.10,"Vehicle leases"
+1611,Accumulated Amortization - Finance Lease,Contra Asset,,840000.00,,640000.00,1.08,1.10,
+2000,Accounts Payable - Trade,Liability,,24500000.00,,21500000.00,1.08,1.10,"Suppliers"
+2010,Accounts Payable - Intercompany Parent,Liability,,8750000.00,,7200000.00,1.08,1.10,"Royalties"
+2020,Accounts Payable - Intercompany Sub A,Liability,,4500000.00,,3800000.00,1.08,1.10,"Product purchases"
+2100,Accrued Liabilities,Liability,,8500000.00,,7500000.00,1.08,1.10,
+2110,Accrued Compensation,Liability,,4200000.00,,3800000.00,1.08,1.10,
+2120,Accrued VAT,Liability,,2800000.00,,2500000.00,1.08,1.10,
+2200,Income Taxes Payable,Liability,,3200000.00,,2800000.00,1.08,1.10,
+2300,Current Portion of Long-Term Debt,Liability,,4500000.00,,4000000.00,1.08,1.10,
+2310,Current Portion of Lease Liability - Operating,Liability,,950000.00,,880000.00,1.08,1.10,
+2320,Current Portion of Lease Liability - Finance,Liability,,520000.00,,480000.00,1.08,1.10,
+2400,Deferred Revenue,Liability,,1800000.00,,1500000.00,1.08,1.10,"Service contracts"
+2500,Long-Term Debt - Bank Loan,Liability,,22000000.00,,26000000.00,1.08,1.10,"EUR denominated"
+2600,Lease Liability - Operating (Non-current),Liability,,3800000.00,,4600000.00,1.08,1.10,
+2610,Lease Liability - Finance (Non-current),Liability,,1600000.00,,2100000.00,1.08,1.10,
+2700,Deferred Tax Liability,Liability,,4200000.00,,3800000.00,1.08,1.10,
+3000,Common Stock,Equity,,10000000.00,,10000000.00,Historical,Historical,"80% Parent, 20% NCI"
+3100,Additional Paid-In Capital,Equity,,75000000.00,,75000000.00,Historical,Historical,
+3200,Retained Earnings,Equity,,28500000.00,,22800000.00,Avg Rate,Avg Rate,
+3300,Cumulative Translation Adjustment,Equity,,2850000.00,,1800000.00,N/A,N/A,"FX translation"
+4000,Revenue - Product Distribution,Revenue,,185000000.00,,162000000.00,1.085,1.095,"Avg rate"
+4010,Revenue - Installation Services,Revenue,,18500000.00,,16200000.00,1.085,1.095,
+4020,Revenue - Intercompany Sales to Parent,Revenue,,4200000.00,,3800000.00,1.085,1.095,"Eliminated"
+4030,Revenue - Intercompany Sales to Sub C,Revenue,,2800000.00,,2400000.00,1.085,1.095,"Eliminated"
+5000,Cost of Goods Sold - Products,Expense,118500000.00,,103500000.00,,1.085,1.095,
+5010,Cost of Goods Sold - Intercompany Purchases,Expense,15500000.00,,13500000.00,,1.085,1.095,"From Sub A"
+5020,Cost of Goods Sold - Freight,Expense,8500000.00,,7400000.00,,1.085,1.095,
+5100,Salaries and Wages,Expense,24500000.00,,21800000.00,,1.085,1.095,
+5110,Employee Benefits,Expense,7350000.00,,6540000.00,,1.085,1.095,
+5120,Social Charges,Expense,9800000.00,,8720000.00,,1.085,1.095,"EU social security"
+5200,Depreciation Expense,Expense,3530000.00,,3120000.00,,1.085,1.095,
+5210,Amortization Expense,Expense,900000.00,,820000.00,,1.085,1.095,
+5300,Professional Fees,Expense,1850000.00,,1650000.00,,1.085,1.095,
+5400,Rent Expense - Operating Leases,Expense,1200000.00,,1100000.00,,1.085,1.095,
+5410,Interest Expense - Finance Leases,Expense,180000.00,,210000.00,,1.085,1.095,
+5500,Insurance Expense,Expense,2200000.00,,1980000.00,,1.085,1.095,
+5600,Marketing and Sales,Expense,8500000.00,,7600000.00,,1.085,1.095,
+5700,Technology Expense,Expense,3500000.00,,3100000.00,,1.085,1.095,
+5900,Other Operating Expenses,Expense,4200000.00,,3800000.00,,1.085,1.095,
+6000,Interest Expense,Expense,1850000.00,,2200000.00,,1.085,1.095,
+6100,Foreign Exchange Gain/Loss,Expense,850000.00,,620000.00,,1.085,1.095,"EUR/USD"
+7000,Income Tax Expense,Expense,4500000.00,,3900000.00,,1.085,1.095,
+8000,Dividends Declared,Equity,10000000.00,,8125000.00,,1.085,1.095,"To Parent 80%"

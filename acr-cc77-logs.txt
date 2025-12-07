@@ -1,0 +1,71 @@
+2025/11/29 04:45:15 Downloading source code...
+2025/11/29 04:45:18 Finished downloading source code
+2025/11/29 04:45:19 Using acb_vol_15d323a1-5b9b-4b0f-a84d-423233d244cd as the home volume
+2025/11/29 04:45:19 Setting up Docker configuration...
+2025/11/29 04:45:19 Successfully set up Docker configuration
+2025/11/29 04:45:19 Logging in to registry: auraauditaiprodacr.azurecr.io
+2025/11/29 04:45:20 Successfully logged into auraauditaiprodacr.azurecr.io
+2025/11/29 04:45:20 Executing step ID: build. Timeout(sec): 28800, Working directory: '', Network: ''
+2025/11/29 04:45:20 Scanning for dependencies...
+2025/11/29 04:45:20 Successfully scanned dependencies
+2025/11/29 04:45:20 Launching container with name: build
+Sending build context to Docker daemon  193.8MB
+Step 1/11 : FROM node:18-alpine AS builder
+18-alpine: Pulling from library/node
+f18232174bc9: Pulling fs layer
+dd71dde834b5: Pulling fs layer
+1e5a4c89cee5: Pulling fs layer
+25ff2da83641: Pulling fs layer
+25ff2da83641: Waiting
+1e5a4c89cee5: Verifying Checksum
+1e5a4c89cee5: Download complete
+f18232174bc9: Verifying Checksum
+f18232174bc9: Download complete
+f18232174bc9: Pull complete
+25ff2da83641: Verifying Checksum
+25ff2da83641: Download complete
+dd71dde834b5: Verifying Checksum
+dd71dde834b5: Download complete
+dd71dde834b5: Pull complete
+1e5a4c89cee5: Pull complete
+25ff2da83641: Pull complete
+Digest: sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
+Status: Downloaded newer image for node:18-alpine
+ ---> ee77c6cd7c18
+Step 2/11 : WORKDIR /app
+ ---> Running in 58030be7040f
+Removing intermediate container 58030be7040f
+ ---> a43b48bcbcba
+Step 3/11 : COPY package*.json ./
+ ---> 1ce40f09d36f
+Step 4/11 : RUN npm ci
+ ---> Running in 079def10103e
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 362 packages, and audited 363 packages in 7s
+
+76 packages are looking for funding
+  run `npm fund` for details
+
+5 vulnerabilities (3 moderate, 2 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.6.4
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.4
+npm notice To update run: npm install -g npm@11.6.4
+npm notice

@@ -1,0 +1,29 @@
+Related_Party_Name,Relationship,Nature_of_Relationship,Type_of_Transactions,2025_Revenue,2025_Expense,AR_Balance_EOY,AP_Balance_EOY,Terms,Arms_Length_Basis
+Sub A Manufacturing LLC,Subsidiary,100% owned by Parent,Management fees - Parent to Sub A,0.00,12500000.00,0.00,12500000.00,Net 30,Transfer pricing study 2024
+Sub A Manufacturing LLC,Subsidiary,100% owned by Parent,Intercompany loan - Sub A to Parent,400000.00,0.00,8000000.00,0.00,5% annual interest,Market rate per debt comp
+Sub A Manufacturing LLC,Subsidiary,100% owned by Parent,Product sales - Sub A to Sub B,18500000.00,0.00,4500000.00,0.00,Net 45,Cost plus 15%
+Sub A Manufacturing LLC,Subsidiary,100% owned by Parent,Product sales - Sub A to Sub C,8500000.00,0.00,2200000.00,0.00,Net 45,Cost plus 15%
+Sub A Manufacturing LLC,Subsidiary,100% owned by Parent,Dividends - Sub A to Parent,15000000.00,0.00,0.00,0.00,As declared,Board approval
+Sub B Distribution GmbH,Subsidiary,80% owned by Parent (20% NCI),Management fees - Parent to Sub B,0.00,8750000.00,0.00,8750000.00,Net 30,Transfer pricing study 2024
+Sub B Distribution GmbH,Subsidiary,80% owned by Parent (20% NCI),Royalties - Parent to Sub B,0.00,4200000.00,0.00,4200000.00,Quarterly,4% of sales using IP
+Sub B Distribution GmbH,Subsidiary,80% owned by Parent (20% NCI),Product purchases - Sub B from Sub A,0.00,15500000.00,0.00,3200000.00,Net 45,Cost plus 15%
+Sub B Distribution GmbH,Subsidiary,80% owned by Parent (20% NCI),Tech services - Sub B from Sub C,0.00,2800000.00,0.00,1800000.00,Net 30,Market rate
+Sub B Distribution GmbH,Subsidiary,80% owned by Parent (20% NCI),Dividends - Sub B to Parent (80%),8000000.00,0.00,0.00,0.00,As declared,Board approval
+Sub C SaaS Pte Ltd,Subsidiary,60% owned by Parent (40% NCI),Management fees - Parent to Sub C,0.00,5600000.00,0.00,5600000.00,Net 30,Transfer pricing study 2024
+Sub C SaaS Pte Ltd,Subsidiary,60% owned by Parent (40% NCI),License fees - Parent to Sub C,0.00,3600000.00,0.00,3600000.00,Quarterly,Technology licensing
+Sub C SaaS Pte Ltd,Subsidiary,60% owned by Parent (40% NCI),Component sales - Sub A to Sub C,0.00,8500000.00,0.00,2200000.00,Net 45,Cost plus 12%
+Sub C SaaS Pte Ltd,Subsidiary,60% owned by Parent (40% NCI),Dividends - Sub C to Parent (60%),6000000.00,0.00,0.00,0.00,As declared,Board approval
+Jon Toroni,Key Management,CEO - Founder,Compensation,0.00,2850000.00,0.00,0.00,Per employment agreement,Comp committee approval
+Sarah Williams,Key Management,CFO,Compensation,0.00,1250000.00,0.00,0.00,Per employment agreement,Comp committee approval
+Dr. Michael Chen,Key Management,CTO,Compensation,0.00,1150000.00,0.00,0.00,Per employment agreement,Comp committee approval
+David Park,Key Management,COO,Compensation,0.00,950000.00,0.00,0.00,Per employment agreement,Comp committee approval
+Toroni Family Trust,Beneficial Owner,>5% shareholder (Jon Toroni),Dividends received,0.00,0.00,0.00,0.00,Same as all shareholders,Pro rata
+Board of Directors (7),Governance,Non-employee directors,Board fees and equity,0.00,1400000.00,0.00,0.00,Per director compensation policy,Peer benchmarking
+NCI Shareholders - Sub B,Minority Interest,20% ownership in Sub B,Dividend allocation,0.00,2000000.00,0.00,0.00,Pro rata,Per articles
+NCI Shareholders - Sub C,Minority Interest,40% ownership in Sub C,Dividend allocation,0.00,4000000.00,0.00,0.00,Pro rata,Per articles
+SUMMARY,,,,,,,,,
+Total Intercompany Revenue,,,All entities,70610000.00,,,,,"Eliminated in consolidation"
+Total Intercompany Expense,,,All entities,,70610000.00,,,,"Eliminated in consolidation"
+Total IC AR,,,All entities,,,52098000.00,,,"Eliminated in consolidation"
+Total IC AP,,,All entities,,,,52098000.00,,"Eliminated in consolidation"
+Key Management Compensation,,,All executives,,6200000.00,,,,"Disclosed in notes"

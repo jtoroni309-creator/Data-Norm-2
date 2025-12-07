@@ -1,0 +1,34 @@
+Entity,Location,Count_Date,Item_Number,Item_Description,Category,Unit_of_Measure,Book_Quantity,Count_Quantity,Variance,Variance_Pct,Unit_Cost,Extended_Book_Value,Extended_Count_Value,Variance_Value,Cutoff_Test_Status,Last_Movement_Date,Obsolescence_Flag
+SubA,Ohio-Main,2025-12-31,RM-001,Steel Plate - Grade A,Raw Materials,Tons,450,448,-2,-0.44%,8500.00,3825000.00,3808000.00,-17000.00,Pass,2025-12-28,No
+SubA,Ohio-Main,2025-12-31,RM-002,Aluminum Sheets,Raw Materials,Sheets,12500,12485,-15,-0.12%,125.00,1562500.00,1560625.00,-1875.00,Pass,2025-12-30,No
+SubA,Ohio-Main,2025-12-31,RM-003,Copper Wire Coils,Raw Materials,Coils,2800,2798,-2,-0.07%,450.00,1260000.00,1259100.00,-900.00,Pass,2025-12-29,No
+SubA,Ohio-Main,2025-12-31,RM-004,Electronic Components,Raw Materials,Units,85000,84920,-80,-0.09%,45.00,3825000.00,3821400.00,-3600.00,Pass,2025-12-30,No
+SubA,Ohio-Main,2025-12-31,RM-005,Hydraulic Fittings,Raw Materials,Units,18500,18480,-20,-0.11%,85.00,1572500.00,1570800.00,-1700.00,Pass,2025-12-27,No
+SubA,Ohio-Main,2025-12-31,WIP-001,Assembly Line 1 - In Process,Work in Process,Units,125,125,0,0.00%,28500.00,3562500.00,3562500.00,0.00,Pass,2025-12-31,No
+SubA,Ohio-Main,2025-12-31,WIP-002,Assembly Line 2 - In Process,Work in Process,Units,85,85,0,0.00%,32000.00,2720000.00,2720000.00,0.00,Pass,2025-12-31,No
+SubA,Ohio-Main,2025-12-31,WIP-003,Machining Center - In Process,Work in Process,Units,45,44,-1,-2.22%,45000.00,2025000.00,1980000.00,-45000.00,Review,2025-12-31,No
+SubA,Ohio-Main,2025-12-31,WIP-004,Paint/Finish Line,Work in Process,Units,38,38,0,0.00%,52000.00,1976000.00,1976000.00,0.00,Pass,2025-12-31,No
+SubA,Ohio-Main,2025-12-31,WIP-005,Quality Testing,Work in Process,Units,28,28,0,0.00%,55000.00,1540000.00,1540000.00,0.00,Pass,2025-12-31,No
+SubA,Ohio-Warehouse,2025-12-31,FG-001,Industrial Pump Model A,Finished Goods,Units,185,185,0,0.00%,42000.00,7770000.00,7770000.00,0.00,Pass,2025-12-28,No
+SubA,Ohio-Warehouse,2025-12-31,FG-002,Industrial Pump Model B,Finished Goods,Units,142,141,-1,-0.70%,48000.00,6816000.00,6768000.00,-48000.00,Pass,2025-12-30,No
+SubA,Ohio-Warehouse,2025-12-31,FG-003,Control Valve Assembly,Finished Goods,Units,320,318,-2,-0.63%,12500.00,4000000.00,3975000.00,-25000.00,Pass,2025-12-29,No
+SubA,Ohio-Warehouse,2025-12-31,FG-004,Hydraulic Cylinder Unit,Finished Goods,Units,225,225,0,0.00%,18500.00,4162500.00,4162500.00,0.00,Pass,2025-12-30,No
+SubA,Ohio-Warehouse,2025-12-31,FG-005,Motor Drive Assembly,Finished Goods,Units,95,94,-1,-1.05%,28000.00,2660000.00,2632000.00,-28000.00,Pass,2025-12-27,No
+SubA,Ohio-Warehouse,2025-12-31,FG-006,Obsolete Model X (2019),Finished Goods,Units,12,12,0,0.00%,35000.00,420000.00,420000.00,0.00,Pass,2022-08-15,Yes
+SubB,Frankfurt,2025-12-31,DIST-001,Product Line A - EU Config,Finished Goods,Units,485,483,-2,-0.41%,8500.00,4122500.00,4105500.00,-17000.00,Pass,2025-12-30,No
+SubB,Frankfurt,2025-12-31,DIST-002,Product Line B - EU Config,Finished Goods,Units,620,618,-2,-0.32%,6800.00,4216000.00,4202400.00,-13600.00,Pass,2025-12-29,No
+SubB,Frankfurt,2025-12-31,DIST-003,Spare Parts Inventory,Finished Goods,Kits,1250,1248,-2,-0.16%,2500.00,3125000.00,3120000.00,-5000.00,Pass,2025-12-28,No
+SubB,Frankfurt,2025-12-31,DIST-004,Service Equipment,Finished Goods,Units,85,85,0,0.00%,12000.00,1020000.00,1020000.00,0.00,Pass,2025-12-30,No
+SubB,In-Transit,2025-12-31,TRANSIT-001,Shipment from Sub A #TR-4521,Goods in Transit,Container,1,1,0,0.00%,2850000.00,2850000.00,2850000.00,0.00,Pass,2025-12-28,No
+SubB,In-Transit,2025-12-31,TRANSIT-002,Shipment from Sub A #TR-4532,Goods in Transit,Container,1,1,0,0.00%,1650000.00,1650000.00,1650000.00,0.00,Pass,2025-12-29,No
+SUMMARY,,,,,,,,,,,,,,,,
+SubA,Raw Materials,,,,,TOTAL,,,,,18045000.00,18020025.00,-24975.00,Pass,,
+SubA,Work in Process,,,,,TOTAL,,,,,11823500.00,11778500.00,-45000.00,Review,,
+SubA,Finished Goods,,,,,TOTAL,,,,,25828500.00,25727500.00,-101000.00,Pass,,
+SubA,TOTAL,,,,,,,,,,,55697000.00,55526025.00,-170975.00,,,
+SubB,Finished Goods,,,,,TOTAL,,,,,12483500.00,12447900.00,-35600.00,Pass,,
+SubB,Goods in Transit,,,,,TOTAL,,,,,4500000.00,4500000.00,0.00,Pass,,
+SubB,TOTAL,,,,,,,,,,,16983500.00,16947900.00,-35600.00,,,
+CONSOLIDATED,ALL,,,,,TOTAL,,,,,72680500.00,72473925.00,-206575.00,,,
+VARIANCE_ANALYSIS,Count variance within 0.5% threshold - ACCEPTABLE,,,,,,,,,,,,,,,
+OBSOLESCENCE_RESERVE,5% applied to slow-moving items,,,,,,,,,,,2800000.00,,,

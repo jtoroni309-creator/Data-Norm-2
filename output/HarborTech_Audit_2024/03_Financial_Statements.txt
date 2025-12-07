@@ -1,0 +1,147 @@
+                     HARBORTECH MANUFACTURING, INC.
+                            BALANCE SHEET
+                      As of December 31, 2024
+
+
+                                 ASSETS
+
+CURRENT ASSETS:
+    Cash and cash equivalents                             $    980,000
+    Accounts receivable, net                                 2,420,000
+    Inventory                                                3,100,000
+    Prepaid expenses                                           180,000
+                                                          ------------
+        Total current assets                                 6,680,000
+
+PROPERTY, PLANT AND EQUIPMENT:
+    Property, plant and equipment, net                       4,350,000
+    Intangible assets                                          420,000
+    Other assets                                               250,000
+                                                          ------------
+        Total non-current assets                             5,020,000
+                                                          ------------
+TOTAL ASSETS                                              $ 11,700,000
+                                                          ============
+
+
+              LIABILITIES AND STOCKHOLDERS' EQUITY
+
+CURRENT LIABILITIES:
+    Accounts payable                                      $  1,650,000
+    Accrued expenses                                           820,000
+    Current portion of long-term debt                          350,000
+                                                          ------------
+        Total current liabilities                            2,820,000
+
+LONG-TERM LIABILITIES:
+    Long-term debt                                           3,180,000
+    Deferred income taxes                                      500,000
+                                                          ------------
+        Total liabilities                                    6,500,000
+
+STOCKHOLDERS' EQUITY:
+    Common stock                                             1,000,000
+    Retained earnings                                        4,200,000
+                                                          ------------
+        Total stockholders' equity                           5,200,000
+                                                          ------------
+TOTAL LIABILITIES AND STOCKHOLDERS' EQUITY                $ 11,700,000
+                                                          ============
+
+
+See accompanying notes to financial statements.
+
+
+================================================================================
+
+
+                     HARBORTECH MANUFACTURING, INC.
+                        STATEMENT OF INCOME
+              For the Year Ended December 31, 2024
+
+
+Net sales                                                 $ 18,000,000
+
+Cost of goods sold                                          12,600,000
+                                                          ------------
+    Gross profit                                             5,400,000
+
+Operating expenses                                           4,200,000
+                                                          ------------
+    Operating income                                         1,200,000
+
+Interest expense                                               280,000
+                                                          ------------
+    Income before income taxes                                 920,000
+
+Income tax expense                                             220,000
+                                                          ------------
+NET INCOME                                                $    700,000
+                                                          ============
+
+
+See accompanying notes to financial statements.
+
+
+================================================================================
+
+
+                     HARBORTECH MANUFACTURING, INC.
+                      STATEMENT OF CASH FLOWS
+              For the Year Ended December 31, 2024
+
+
+CASH FLOWS FROM OPERATING ACTIVITIES:
+    Net income                                            $    700,000
+    Adjustments to reconcile net income to net cash:
+        Depreciation and amortization                          580,000
+        Changes in working capital                            (125,000)
+                                                          ------------
+            Net cash from operating activities               1,155,000
+
+CASH FLOWS FROM INVESTING ACTIVITIES:
+    Capital expenditures                                      (850,000)
+                                                          ------------
+            Net cash from investing activities                (850,000)
+
+CASH FLOWS FROM FINANCING ACTIVITIES:
+    Payments on long-term debt                                (320,000)
+    Dividends paid                                            (150,000)
+                                                          ------------
+            Net cash from financing activities                (470,000)
+                                                          ------------
+
+Net change in cash                                            (165,000)
+Cash at beginning of year                                    1,145,000
+                                                          ------------
+CASH AT END OF YEAR                                       $    980,000
+                                                          ============
+
+
+See accompanying notes to financial statements.
+
+
+================================================================================
+
+
+                     HARBORTECH MANUFACTURING, INC.
+               STATEMENT OF STOCKHOLDERS' EQUITY
+              For the Year Ended December 31, 2024
+
+
+                                    Common        Retained        Total
+                                     Stock        Earnings       Equity
+                                  ----------    ----------    ----------
+
+Balance, January 1, 2024          $1,000,000    $3,650,000    $4,650,000
+
+Net income                                 -       700,000       700,000
+
+Dividends paid                             -      (150,000)     (150,000)
+                                  ----------    ----------    ----------
+
+Balance, December 31, 2024        $1,000,000    $4,200,000    $5,200,000
+                                  ==========    ==========    ==========
+
+
+See accompanying notes to financial statements.

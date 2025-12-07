@@ -1,0 +1,212 @@
+                     HARBORTECH MANUFACTURING, INC.
+                   NOTES TO FINANCIAL STATEMENTS
+                         December 31, 2024
+
+
+NOTE 1 - SUMMARY OF SIGNIFICANT ACCOUNTING POLICIES
+
+Nature of Business
+
+HarborTech Manufacturing, Inc. (the "Company") is a manufacturing company
+engaged in the production and distribution of industrial equipment and
+components. The Company serves customers throughout the United States and
+internationally.
+
+
+Basis of Presentation
+
+The accompanying financial statements have been prepared in accordance with
+accounting principles generally accepted in the United States of America (GAAP).
+
+
+Use of Estimates
+
+The preparation of financial statements in conformity with GAAP requires
+management to make estimates and assumptions that affect the reported amounts
+of assets and liabilities and disclosure of contingent assets and liabilities
+at the date of the financial statements and the reported amounts of revenues
+and expenses during the reporting period. Actual results could differ from
+those estimates.
+
+
+Revenue Recognition
+
+The Company recognizes revenue in accordance with ASC 606, Revenue from
+Contracts with Customers. Revenue is recognized when control of the promised
+goods or services is transferred to customers, in an amount that reflects the
+consideration the Company expects to be entitled to in exchange for those goods
+or services.
+
+
+Cash and Cash Equivalents
+
+Cash and cash equivalents include all highly liquid investments with original
+maturities of three months or less.
+
+
+Accounts Receivable
+
+Accounts receivable are stated at the amount management expects to collect from
+outstanding balances. Management provides for probable uncollectible amounts
+through a charge to earnings and a credit to an allowance for doubtful accounts
+based on its assessment of the current status of individual accounts.
+
+
+Inventory
+
+Inventory is stated at the lower of cost or net realizable value. Cost is
+determined using the first-in, first-out (FIFO) method.
+
+
+Property, Plant and Equipment
+
+Property, plant and equipment are stated at cost, less accumulated depreciation.
+Depreciation is computed using the straight-line method over the estimated
+useful lives of the assets, which range from 3 to 40 years. Maintenance and
+repairs are charged to expense as incurred.
+
+
+================================================================================
+
+
+NOTE 2 - ACCOUNTS RECEIVABLE
+
+Accounts receivable consist of the following at December 31, 2024:
+
+    Trade receivables                                     $  2,500,000
+    Less: Allowance for doubtful accounts                      (80,000)
+                                                          ------------
+    Net accounts receivable                               $  2,420,000
+                                                          ============
+
+The Company performs ongoing credit evaluations of its customers and generally
+does not require collateral. Accounts receivable are recorded at the invoiced
+amount and do not bear interest.
+
+Aging of accounts receivable at December 31, 2024:
+
+    Current (0-30 days)                                   $  1,800,000
+    31-60 days                                                 350,000
+    61-90 days                                                 125,000
+    Over 90 days                                               225,000
+                                                          ------------
+    Total trade receivables                               $  2,500,000
+                                                          ============
+
+
+================================================================================
+
+
+NOTE 3 - INVENTORY
+
+Inventory consists of the following at December 31, 2024:
+
+    Raw materials                                         $    850,000
+    Work in process                                            625,000
+    Finished goods                                           1,625,000
+                                                          ------------
+    Total inventory                                       $  3,100,000
+                                                          ============
+
+
+================================================================================
+
+
+NOTE 4 - PROPERTY, PLANT AND EQUIPMENT
+
+Property, plant and equipment consist of the following at December 31, 2024:
+
+    Land                                                  $    500,000
+    Buildings and improvements                               3,200,000
+    Machinery and equipment                                  2,100,000
+                                                          ------------
+    Total                                                    5,800,000
+    Less: Accumulated depreciation                          (1,450,000)
+                                                          ------------
+    Net property, plant and equipment                     $  4,350,000
+                                                          ============
+
+Depreciation expense for the year ended December 31, 2024 was $580,000.
+
+
+================================================================================
+
+
+NOTE 5 - LONG-TERM DEBT
+
+Long-term debt consists of the following at December 31, 2024:
+
+Term loan payable to bank, interest at prime plus 1.5% (currently 9.0%),
+due in monthly installments of $35,000 including interest through December
+2029, secured by substantially all assets of the Company.
+
+    Total long-term debt                                  $  3,530,000
+    Less: Current portion                                     (350,000)
+                                                          ------------
+    Long-term portion                                     $  3,180,000
+                                                          ============
+
+Future maturities of long-term debt are as follows:
+
+    2025                                                  $    350,000
+    2026                                                       380,000
+    2027                                                       420,000
+    2028                                                       460,000
+    2029                                                       500,000
+    Thereafter                                               1,420,000
+                                                          ------------
+    Total                                                 $  3,530,000
+                                                          ============
+
+
+================================================================================
+
+
+NOTE 6 - INCOME TAXES
+
+The Company accounts for income taxes under ASC 740. Deferred income taxes
+reflect the net tax effects of temporary differences between the carrying
+amounts of assets and liabilities for financial reporting purposes and the
+amounts used for income tax purposes.
+
+The provision for income taxes consists of the following:
+
+    Current                                               $    180,000
+    Deferred                                                    40,000
+                                                          ------------
+    Total income tax expense                              $    220,000
+                                                          ============
+
+The Company's effective tax rate was approximately 24% for the year ended
+December 31, 2024.
+
+
+================================================================================
+
+
+NOTE 7 - COMMITMENTS AND CONTINGENCIES
+
+Operating Leases
+
+The Company leases certain facilities and equipment under non-cancelable
+operating leases. Future minimum lease payments under these leases at
+December 31, 2024 are not material to the financial statements.
+
+
+Litigation
+
+The Company is subject to legal proceedings and claims which arise in the
+ordinary course of business. In the opinion of management, the amount of
+ultimate liability with respect to such matters will not materially affect
+the financial position or results of operations of the Company.
+
+
+================================================================================
+
+
+NOTE 8 - SUBSEQUENT EVENTS
+
+The Company has evaluated subsequent events through November 30, 2025, the
+date the financial statements were available to be issued. There were no
+subsequent events that require recognition or disclosure in these financial
+statements.

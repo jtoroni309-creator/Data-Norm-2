@@ -1,0 +1,20 @@
+Asset_ID,Asset_Description,Asset_Class,Location,In_Service_Date,Original_Cost,Salvage_Value,Useful_Life_Years,Depreciation_Method,Accum_Depr_BOY_2025,Additions_2025,Disposals_2025,Depr_Expense_2025,Accum_Depr_EOY_2025,NBV_EOY_2025,Status
+P-LAND-001,Corporate Headquarters Land - NYC,Land,New York,2018-03-15,15000000.00,15000000.00,N/A,None,0.00,0.00,0.00,0.00,0.00,15000000.00,Active
+P-BLDG-001,Corporate Headquarters Building,Buildings,New York,2018-03-15,45000000.00,0.00,30,Straight-Line,10500000.00,0.00,0.00,1500000.00,12000000.00,33000000.00,Active
+P-BLDG-002,Data Center Building Shell,Buildings,Virginia,2021-06-01,0.00,0.00,30,Straight-Line,1875000.00,0.00,0.00,375000.00,2250000.00,0.00,Disposed
+P-BLDG-002-NEW,Data Center Building (Leased),Buildings,Virginia,N/A,0.00,0.00,N/A,N/A,0.00,0.00,0.00,0.00,0.00,0.00,Lease
+P-FF-001,Executive Office Furniture - Floor 40,Furniture & Fixtures,New York,2019-01-15,1200000.00,0.00,7,Straight-Line,857143.00,0.00,0.00,171429.00,1028572.00,171428.00,Active
+P-FF-002,Executive Office Furniture - Floor 41,Furniture & Fixtures,New York,2019-01-15,1100000.00,0.00,7,Straight-Line,785714.00,0.00,0.00,157143.00,942857.00,157143.00,Active
+P-FF-003,Conference Room Furniture - All Floors,Furniture & Fixtures,New York,2020-03-01,850000.00,0.00,7,Straight-Line,485714.00,0.00,0.00,121429.00,607143.00,242857.00,Active
+P-FF-004,Employee Workstations - Phase 1,Furniture & Fixtures,New York,2021-01-10,2200000.00,0.00,7,Straight-Line,1257143.00,0.00,0.00,314286.00,1571429.00,628571.00,Active
+P-FF-005,Employee Workstations - Phase 2,Furniture & Fixtures,New York,2022-06-15,1500000.00,0.00,7,Straight-Line,535714.00,0.00,0.00,214286.00,750000.00,750000.00,Active
+P-FF-006,Executive Lounge Renovation,Furniture & Fixtures,New York,2024-09-01,650000.00,0.00,7,Straight-Line,30952.00,0.00,0.00,92857.00,123809.00,526191.00,Active
+P-FF-007,Board Room AV Equipment,Furniture & Fixtures,New York,2025-03-01,700000.00,0.00,7,Straight-Line,0.00,700000.00,0.00,75000.00,75000.00,625000.00,Active
+P-COMP-001,Server Infrastructure - Primary DC,Computer Equipment,Virginia,2022-01-15,2800000.00,0.00,3,Straight-Line,2800000.00,0.00,0.00,0.00,2800000.00,0.00,Fully Depreciated
+P-COMP-002,Server Infrastructure - Backup DC,Computer Equipment,New Jersey,2023-04-01,1800000.00,0.00,3,Straight-Line,1050000.00,0.00,0.00,600000.00,1650000.00,150000.00,Active
+P-COMP-003,Network Equipment - HQ,Computer Equipment,New York,2023-07-01,600000.00,0.00,3,Straight-Line,300000.00,0.00,0.00,200000.00,500000.00,100000.00,Active
+P-COMP-004,Employee Laptops - 2024 Refresh,Computer Equipment,Various,2024-01-15,1200000.00,0.00,3,Straight-Line,400000.00,0.00,0.00,400000.00,800000.00,400000.00,Active
+P-COMP-005,Employee Laptops - 2025 Refresh,Computer Equipment,Various,2025-07-01,800000.00,0.00,3,Straight-Line,0.00,800000.00,0.00,133333.00,133333.00,666667.00,Active
+P-COMP-006,Cloud Migration Hardware,Computer Equipment,Virginia,2025-01-15,600000.00,0.00,3,Straight-Line,0.00,600000.00,0.00,183333.00,183333.00,416667.00,Active
+P-COMP-007,Security Infrastructure,Computer Equipment,Various,2024-06-01,400000.00,0.00,3,Straight-Line,77778.00,0.00,0.00,133333.00,211111.00,188889.00,Active
+TOTALS,,,,,75400000.00,,,,20955158.00,2100000.00,0.00,4672429.00,25627587.00,53772413.00,

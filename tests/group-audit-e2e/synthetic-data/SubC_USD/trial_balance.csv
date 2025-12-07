@@ -1,0 +1,62 @@
+Account_Number,Account_Name,Account_Type,Debit_2025,Credit_2025,Debit_2024,Credit_2024,Notes
+1000,Cash and Cash Equivalents,Asset,22500000.00,,18500000.00,,"Operating accounts + investments"
+1010,Short-Term Investments,Asset,8500000.00,,6200000.00,,"Money market"
+1100,Accounts Receivable - Trade,Asset,28500000.00,,24200000.00,,"SaaS customers"
+1110,Allowance for Doubtful Accounts,Contra Asset,,1425000.00,,1210000.00,"5% of gross AR"
+1120,Unbilled Receivables,Asset,4500000.00,,3800000.00,,"Revenue recognized, not invoiced"
+1130,Accounts Receivable - Intercompany Parent,Asset,2400000.00,,2100000.00,,"License fees"
+1140,Accounts Receivable - Intercompany Sub B,Asset,1200000.00,,1050000.00,,"Tech services"
+1200,Prepaid Expenses,Asset,3200000.00,,2800000.00,,
+1210,Prepaid Hosting Costs,Asset,5500000.00,,4800000.00,,"Cloud infrastructure"
+1300,Deferred Commission Costs,Asset,6500000.00,,5600000.00,,"ASC 340-40"
+1500,Property Plant & Equipment - Leasehold Improvements,Asset,4500000.00,,4200000.00,,"Office buildout"
+1501,Accumulated Depreciation - LHI,Contra Asset,,2700000.00,,2100000.00,"Lease term"
+1510,Property Plant & Equipment - Furniture,Asset,2200000.00,,2000000.00,,
+1511,Accumulated Depreciation - Furniture,Contra Asset,,1320000.00,,1000000.00,"5yr"
+1520,Property Plant & Equipment - Computer Equipment,Asset,8500000.00,,7200000.00,,"Servers, equipment"
+1521,Accumulated Depreciation - Computer,Contra Asset,,5950000.00,,5040000.00,"3yr"
+1600,ROU Asset - Operating Leases,Asset,12500000.00,,14200000.00,,"Office leases APAC"
+1700,Intangible Assets - Developed Software,Asset,45000000.00,,38000000.00,,"Capitalized dev costs"
+1710,Accumulated Amortization - Software,Contra Asset,,22500000.00,,15200000.00,"3yr"
+1720,Intangible Assets - Customer Relationships,Asset,18000000.00,,18000000.00,,"Acquisition"
+1721,Accumulated Amortization - Customer Rel,Contra Asset,,7200000.00,,5400000.00,"10yr"
+1800,Goodwill,Asset,25000000.00,,25000000.00,,"Acquisition"
+2000,Accounts Payable - Trade,Liability,,12500000.00,,10800000.00,,"Vendors"
+2010,Accounts Payable - Intercompany Parent,Liability,,5600000.00,,4800000.00,,"License fees"
+2020,Accounts Payable - Intercompany Sub A,Liability,,2200000.00,,1900000.00,,"Equipment"
+2030,Accounts Payable - Intercompany Sub B,Liability,,1800000.00,,1500000.00,,"Distribution"
+2100,Accrued Liabilities,Liability,,8500000.00,,7200000.00,,
+2110,Accrued Compensation,Liability,,12500000.00,,10800000.00,,"High tech salaries"
+2120,Accrued Hosting Costs,Liability,,4200000.00,,3600000.00,,
+2200,Income Taxes Payable,Liability,,4800000.00,,4100000.00,,
+2300,Current Portion of Lease Liability,Liability,,2800000.00,,2600000.00,,
+2400,Deferred Revenue - Current,Liability,,42000000.00,,36000000.00,,"SaaS subscriptions"
+2410,Customer Deposits,Liability,,3500000.00,,3000000.00,,
+2500,Lease Liability (Non-current),Liability,,10200000.00,,12100000.00,,
+2600,Deferred Revenue - Non-current,Liability,,18500000.00,,15800000.00,,"Multi-year contracts"
+2700,Deferred Tax Liability,Liability,,6500000.00,,5800000.00,,
+3000,Common Stock,Equity,,1000000.00,,1000000.00,,"60% Parent, 40% NCI"
+3100,Additional Paid-In Capital,Equity,,61000000.00,,61000000.00,,
+3200,Retained Earnings,Equity,,32500000.00,,25200000.00,,
+4000,Revenue - SaaS Subscriptions,Revenue,,125000000.00,,108000000.00,,"Recurring revenue"
+4010,Revenue - Professional Services,Revenue,,22000000.00,,18500000.00,,"Implementation"
+4020,Revenue - Support and Maintenance,Revenue,,18500000.00,,15800000.00,,
+4030,Revenue - Intercompany License Fees,Revenue,,9200000.00,,7900000.00,,"Eliminated"
+5000,Cost of Revenue - Hosting,Expense,28500000.00,,24200000.00,,"AWS, Azure"
+5010,Cost of Revenue - Personnel,Expense,18500000.00,,15800000.00,,"Customer success"
+5020,Cost of Revenue - Third Party,Expense,8500000.00,,7200000.00,,"APIs, integrations"
+5100,Research and Development,Expense,35000000.00,,30000000.00,,"Engineering"
+5110,R&D - Stock Compensation,Expense,8500000.00,,7200000.00,,
+5200,Sales and Marketing,Expense,28500000.00,,24500000.00,,
+5210,S&M - Commissions,Expense,12500000.00,,10800000.00,,
+5220,S&M - Stock Compensation,Expense,4500000.00,,3800000.00,,
+5300,General and Administrative,Expense,15000000.00,,12800000.00,,
+5310,G&A - Stock Compensation,Expense,3500000.00,,2900000.00,,
+5400,Depreciation Expense,Expense,3830000.00,,3340000.00,,
+5410,Amortization Expense - Software,Expense,7300000.00,,5100000.00,,
+5420,Amortization Expense - Intangibles,Expense,1800000.00,,1800000.00,,
+5500,Rent Expense - Operating Leases,Expense,3200000.00,,2900000.00,,
+6000,Interest Income,Revenue,,450000.00,,320000.00,,"Cash investments"
+6010,Interest Expense,Expense,850000.00,,920000.00,,"Lease interest"
+7000,Income Tax Expense,Expense,6200000.00,,5300000.00,,
+8000,Dividends Declared,Equity,10000000.00,,8333333.00,,"To Parent 60%, NCI 40%"

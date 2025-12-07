@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+  <defs>
+    <style>
+      .text-main { font-family: 'Times New Roman', serif; font-size: 24px; font-weight: bold; fill: #1B5E20; }
+      .text-sub { font-family: 'Arial', sans-serif; font-size: 10px; letter-spacing: 2px; fill: #1B5E20; }
+      .icon-fill { fill: #1B5E20; }
+    </style>
+  </defs>
+  <!-- Logo Icon - Column Design -->
+  <rect x="10" y="10" width="60" height="80" rx="3" class="icon-fill"/>
+  <rect x="18" y="20" width="6" height="60" fill="white"/>
+  <rect x="28" y="20" width="6" height="60" fill="white"/>
+  <rect x="38" y="20" width="6" height="60" fill="white"/>
+  <rect x="48" y="20" width="6" height="60" fill="white"/>
+  <rect x="56" y="20" width="6" height="60" fill="white"/>
+  <rect x="15" y="15" width="50" height="5" fill="white"/>
+  <rect x="15" y="80" width="50" height="5" fill="white"/>
+  <!-- Text -->
+  <text x="85" y="45" class="text-main">Fred J. Toroni &amp; Company</text>
+  <line x1="85" y1="55" x2="395" y2="55" stroke="#1B5E20" stroke-width="1"/>
+  <text x="85" y="75" class="text-sub">CERTIFIED PUBLIC ACCOUNTANTS</text>
+</svg>

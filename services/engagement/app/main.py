@@ -1354,10 +1354,33 @@ async def detect_anomalies(
     Returns anomalies with confidence scores and explanations.
     """
     try:
-        result = aura_ml_engine.detect_anomalies(
-            transactions=request.transactions,
-            methods=request.methods
-        )
+        # Extract amounts from transactions
+        data = [float(t.get('amount', 0)) for t in request.transactions]
+        method = request.methods[0] if request.methods else "ensemble"
+
+        anomaly_results = aura_ml_engine.detect_anomalies(data, method=method)
+
+        # Build response with transaction context
+        anomalies = []
+        for anomaly in anomaly_results:
+            anomalies.append({
+                "is_anomaly": anomaly.is_anomaly,
+                "anomaly_score": anomaly.anomaly_score,
+                "anomaly_type": anomaly.anomaly_type.value,
+                "confidence": anomaly.confidence,
+                "explanation": anomaly.explanation,
+                "affected_fields": anomaly.affected_fields,
+                "recommended_actions": anomaly.recommended_actions
+            })
+
+        result = {
+            "summary": {
+                "total_transactions": len(request.transactions),
+                "total_anomalies": len(anomalies),
+                "detection_method": method
+            },
+            "anomalies": anomalies
+        }
 
         logger.info(
             f"Anomaly detection completed: {result['summary']['total_anomalies']} anomalies "
@@ -1393,10 +1416,17 @@ async def analyze_benfords_law(
     - Suspicious digits highlighted
     """
     try:
-        result = aura_ml_engine.analyze_benfords_law(
+        result = aura_ml_engine.analyze_benford(
             values=request.values,
             analysis_type=request.analysis_type
         )
+
+        # Add chi-square test summary for API response compatibility
+        result["chi_square_test"] = {
+            "statistic": result.get("statistics", {}).get("chi_square", 0),
+            "passes_test": not result.get("statistics", {}).get("chi_square_significant", True)
+        }
+        result["conformity_level"] = result.get("conformity", "unknown")
 
         logger.info(
             f"Benford analysis completed: conformity={result['conformity_level']}, "
@@ -1432,10 +1462,15 @@ async def perform_reconciliation(
     """
     try:
         result = aura_ml_engine.reconcile_transactions(
-            source_transactions=request.source_transactions,
-            target_transactions=request.target_transactions,
-            match_fields=request.match_fields
+            source=request.source_transactions,
+            target=request.target_transactions
         )
+
+        # Add match_rate for API compatibility
+        total_source = result['summary'].get('source_count', 0)
+        result['summary']['match_rate'] = result['summary']['matched_count'] / max(total_source, 1)
+        result['summary']['unmatched_source'] = result['summary'].get('unmatched_source_count', 0)
+        result['summary']['unmatched_target'] = result['summary'].get('unmatched_target_count', 0)
 
         logger.info(
             f"Reconciliation completed: {result['summary']['matched_count']} matched, "
@@ -1474,11 +1509,15 @@ async def detect_fraud(
     Returns risk scores and specific fraud indicators with evidence.
     """
     try:
-        result = aura_ml_engine.detect_fraud(
-            transactions=request.transactions,
-            entity_data=request.entity_data,
-            analysis_period=request.analysis_period
+        # Analyze fraud risk using journal entries (transactions) and financial data
+        result = aura_ml_engine.analyze_fraud_risk(
+            journal_entries=request.transactions,
+            statements=request.entity_data or {}
         )
+
+        # Add API-compatible fields
+        result["overall_risk_score"] = result.get("fraud_risk_score", 0)
+        result["risk_level"] = result.get("fraud_risk_level", "low")
 
         logger.info(
             f"Fraud detection completed: overall_risk={result['overall_risk_score']:.2f}, "

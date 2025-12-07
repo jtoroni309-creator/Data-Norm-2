@@ -84,8 +84,9 @@ async def set_rls_context(db: AsyncSession, user_id: UUID):
         await set_rls_context(db, current_user_id)
     """
     if settings.ENABLE_RLS:
+        # Use set_config() function instead of SET command for asyncpg compatibility
         await db.execute(
-            text("SET app.current_user_id = :user_id"),
+            text("SELECT set_config('app.current_user_id', :user_id, false)"),
             {"user_id": str(user_id)}
         )
 

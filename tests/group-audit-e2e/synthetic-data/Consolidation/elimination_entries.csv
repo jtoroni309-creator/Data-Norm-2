@@ -1,0 +1,27 @@
+Entry_No,Entry_Type,Description,Debit_Account,Debit_Amount,Credit_Account,Credit_Amount,Reference
+E-001,Investment Elimination,Eliminate Parent investment in Sub A,Common Stock - Sub A,1000000.00,Investment in Sub A,125000000.00,100% owned
+E-001,Investment Elimination,Eliminate Parent investment in Sub A,APIC - Sub A,124000000.00,,,
+E-002,Investment Elimination,Eliminate Parent investment in Sub B (80%),Common Stock - Sub B (80%),8640000.00,Investment in Sub B,85000000.00,80% owned
+E-002,Investment Elimination,Eliminate Parent investment in Sub B (80%),APIC - Sub B (80%),64800000.00,,,
+E-002,Investment Elimination,Recognize NCI in Sub B equity (20%),Goodwill Adjustment,11560000.00,Non-Controlling Interest - Sub B,11560000.00,20% NCI
+E-003,Investment Elimination,Eliminate Parent investment in Sub C (60%),Common Stock - Sub C (60%),600000.00,Investment in Sub C,62000000.00,60% owned
+E-003,Investment Elimination,Eliminate Parent investment in Sub C (60%),APIC - Sub C (60%),36600000.00,,,
+E-003,Investment Elimination,Recognize NCI in Sub C equity (40%),Goodwill Adjustment,24800000.00,Non-Controlling Interest - Sub C,24800000.00,40% NCI
+E-004,Intercompany Revenue - Parent to Subs,Eliminate management fee revenue,Intercompany Revenue - Parent,26850000.00,Intercompany Expense - Subs,26850000.00,Management fees
+E-005,Intercompany Revenue - Sub A to Subs,Eliminate product sales to Sub B/C,Intercompany Revenue - Sub A,27000000.00,COGS - Sub B/C,27000000.00,Product sales
+E-006,Intercompany Revenue - Sub B to Parent/C,Eliminate distribution sales,Intercompany Revenue - Sub B,7560000.00,Purchases - Parent/Sub C,7560000.00,Distribution
+E-007,Intercompany Revenue - Sub C,Eliminate license fees,Intercompany Revenue - Sub C,9200000.00,License Expense - Others,9200000.00,License fees
+E-008,Intercompany AR/AP Elimination,Eliminate Parent IC receivables,Accounts Payable - IC (Subs),26850000.00,Accounts Receivable - IC (Parent),26850000.00,AR/AP net
+E-009,Intercompany AR/AP Elimination,Eliminate Sub A IC receivables,Accounts Payable - IC (Others),12900000.00,Accounts Receivable - IC (Sub A),12900000.00,AR/AP net
+E-010,Intercompany AR/AP Elimination,Eliminate Sub B IC receivables,Accounts Payable - IC (Others),8748000.00,Accounts Receivable - IC (Sub B),8748000.00,AR/AP net (translated)
+E-011,Intercompany AR/AP Elimination,Eliminate Sub C IC receivables,Accounts Payable - IC (Others),3600000.00,Accounts Receivable - IC (Sub C),3600000.00,AR/AP net
+E-012,Intercompany Loan Elimination,Eliminate IC note receivable/payable,Long-Term Debt - IC (Parent),8000000.00,Note Receivable - IC (Sub A),8000000.00,IC loan
+E-013,Intercompany Interest Elimination,Eliminate IC interest income/expense,Interest Income - IC (Sub A),400000.00,Interest Expense - IC (Parent),400000.00,IC interest
+E-014,Intercompany Dividend Elimination,Eliminate Sub A dividends to Parent,Dividend Income (Parent),15000000.00,Dividends Declared (Sub A),15000000.00,100% eliminated
+E-015,Intercompany Dividend Elimination,Eliminate Sub B dividends to Parent (80%),Dividend Income (Parent),8000000.00,Dividends Declared (Sub B),8000000.00,80% eliminated
+E-016,Intercompany Dividend Elimination,Eliminate Sub C dividends to Parent (60%),Dividend Income (Parent),6000000.00,Dividends Declared (Sub C),6000000.00,60% eliminated
+E-017,Unrealized Profit - Inventory,Eliminate unrealized profit in Sub B inventory,Cost of Goods Sold,1850000.00,Inventory (Sub B),1850000.00,From Sub A sales
+E-018,NCI Share of Net Income - Sub B,Allocate 20% of Sub B net income to NCI,Net Income Attributable to NCI,70600.00,Non-Controlling Interest,70600.00,20% of 353000 EUR
+E-019,NCI Share of Net Income - Sub C,Allocate 40% of Sub C net loss to NCI,Non-Controlling Interest,1572000.00,Net Income Attributable to NCI,1572000.00,40% of (3930000)
+E-020,FX Translation - Sub B,Record CTA for Sub B translation,CTA - AOCI,1500000.00,PPE and Other Assets,1500000.00,EUR to USD
+TOTALS,,,All Elimination Entries,501380600.00,,501380600.00,"Balanced"

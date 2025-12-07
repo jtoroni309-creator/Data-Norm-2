@@ -1,0 +1,26 @@
+Entity,NCI_Percentage,Description,Beginning_Balance_2025,Share_of_Net_Income,Share_of_OCI_CTA,Dividends_to_NCI,Other_Changes,Ending_Balance_2025
+Sub B - EU Distribution,20%,Non-controlling interest in 80% owned subsidiary,9200000.00,70600.00,615600.00,-2000000.00,0.00,7886200.00
+Sub C - APAC SaaS,40%,Non-controlling interest in 60% owned subsidiary,11500000.00,-1572000.00,0.00,-4000000.00,0.00,5928000.00
+TOTAL,N/A,Combined NCI,20700000.00,-1501400.00,615600.00,-6000000.00,0.00,13814200.00
+,,,,,,,,,
+DETAILED CALCULATION - SUB B,,,,,,,,,
+,Description,EUR Amount,Translation Rate,USD Amount,,,,,
+Beginning NCI Balance (1/1/2025),20% of Sub B equity at BOY,8363636.00,1.10,9200000.00,,,,,
+Share of Net Income,20% of Sub B 2025 net income,65000.00,1.085,70600.00,,,,,
+Share of OCI/CTA,20% of FX translation adjustment,570000.00,1.08,615600.00,,,,,
+Dividends Declared to NCI,20% of €10M dividend,1851852.00,1.08,-2000000.00,,,,,
+Ending NCI Balance (12/31/2025),20% of Sub B equity at EOY,7305556.00,1.08,7886200.00,,,,,
+,,,,,,,,,
+DETAILED CALCULATION - SUB C,,,,,,,,,
+,Description,,,USD Amount,,,,,
+Beginning NCI Balance (1/1/2025),40% of Sub C equity at BOY,,,11500000.00,,,,,
+Share of Net Income,40% of Sub C 2025 net income,,,-1572000.00,,,,,
+Share of OCI/CTA,40% of FX translation (none - USD functional),,,0.00,,,,,
+Dividends Declared to NCI,40% of $10M dividend,,,-4000000.00,,,,,
+Ending NCI Balance (12/31/2025),40% of Sub C equity at EOY,,,5928000.00,,,,,
+,,,,,,,,,
+OWNERSHIP STRUCTURE,,,,,,,,,
+Parent Company,Entity,Ownership %,Voting %,Consolidation Method,Acquisition Date,Acquisition Cost,Goodwill Recorded,,
+Aura Holdings Inc,Sub A - US Manufacturing,100%,100%,Full Consolidation,June 1 2015,125000000.00,0.00,,
+Aura Holdings Inc,Sub B - EU Distribution,80%,80%,Full Consolidation with NCI,March 15 2018,85000000.00,25000000.00,,
+Aura Holdings Inc,Sub C - APAC SaaS,60%,60%,Full Consolidation with NCI,September 1 2019,62000000.00,45000000.00,,

@@ -1,0 +1,19 @@
+Asset_ID,Asset_Description,Asset_Class,Location,In_Service_Date,Original_Cost_EUR,Salvage_Value_EUR,Useful_Life_Years,Depreciation_Method,Accum_Depr_BOY_2025_EUR,Additions_2025_EUR,Disposals_2025_EUR,Depr_Expense_2025_EUR,Accum_Depr_EOY_2025_EUR,NBV_EOY_2025_EUR,Status,USD_Rate
+B-LAND-001,Distribution Center Land - Frankfurt,Land,Germany,2018-09-01,5500000.00,5500000.00,N/A,None,0.00,0.00,0.00,0.00,0.00,5500000.00,Active,1.08
+B-BLDG-001,Distribution Center Building,Buildings,Germany,2018-09-01,28000000.00,0.00,40,Straight-Line,4200000.00,0.00,0.00,700000.00,4900000.00,23100000.00,Active,1.08
+B-EQUIP-001,Automated Warehouse Racking System,Equipment,Germany,2019-03-15,4500000.00,450000.00,10,Straight-Line,2430000.00,0.00,0.00,405000.00,2835000.00,1665000.00,Active,1.08
+B-EQUIP-002,Conveyor System - Main Floor,Equipment,Germany,2019-03-15,2800000.00,280000.00,10,Straight-Line,1512000.00,0.00,0.00,252000.00,1764000.00,1036000.00,Active,1.08
+B-EQUIP-003,Packaging Equipment,Equipment,Germany,2020-06-01,1800000.00,180000.00,10,Straight-Line,810000.00,0.00,0.00,162000.00,972000.00,828000.00,Active,1.08
+B-EQUIP-004,Climate Control System,Equipment,Germany,2021-01-15,1200000.00,120000.00,10,Straight-Line,432000.00,0.00,0.00,108000.00,540000.00,660000.00,Active,1.08
+B-EQUIP-005,Loading Dock Equipment,Equipment,Germany,2022-03-01,800000.00,80000.00,10,Straight-Line,216000.00,0.00,0.00,72000.00,288000.00,512000.00,Active,1.08
+B-EQUIP-006,New Sorting System (2025),Equipment,Germany,2025-04-01,1400000.00,140000.00,10,Straight-Line,0.00,1400000.00,0.00,94500.00,94500.00,1305500.00,Active,1.08
+B-VEH-001,Delivery Vans - Fleet of 20,Vehicles,Germany,2020-06-01,1600000.00,160000.00,5,Straight-Line,1296000.00,0.00,0.00,288000.00,1440000.00,160000.00,Active,1.08
+B-VEH-002,Delivery Vans - Fleet of 15 (2022),Vehicles,Germany,2022-09-01,1350000.00,135000.00,5,Straight-Line,729000.00,0.00,0.00,243000.00,972000.00,378000.00,Active,1.08
+B-VEH-003,Heavy Trucks - Fleet of 8,Vehicles,Germany,2021-03-15,2400000.00,240000.00,5,Straight-Line,1728000.00,0.00,0.00,432000.00,2160000.00,240000.00,Active,1.08
+B-VEH-004,Electric Vans (2024),Vehicles,Germany,2024-01-15,1800000.00,180000.00,5,Straight-Line,324000.00,0.00,0.00,324000.00,648000.00,1152000.00,Active,1.08
+B-VEH-005,New Electric Fleet (2025),Vehicles,Germany,2025-06-01,1350000.00,135000.00,5,Straight-Line,0.00,1350000.00,0.00,121500.00,121500.00,1228500.00,Active,1.08
+B-COMP-001,Warehouse Management System,Computer Equipment,Germany,2022-01-15,850000.00,0.00,3,Straight-Line,850000.00,0.00,0.00,0.00,850000.00,0.00,Fully Depreciated,1.08
+B-COMP-002,Handheld Scanners and Tablets,Computer Equipment,Germany,2023-06-01,350000.00,0.00,3,Straight-Line,175000.00,0.00,0.00,116667.00,291667.00,58333.00,Active,1.08
+B-COMP-003,Server Infrastructure,Computer Equipment,Germany,2024-03-01,420000.00,0.00,3,Straight-Line,105000.00,0.00,0.00,140000.00,245000.00,175000.00,Active,1.08
+B-COMP-004,Network Upgrade (2025),Computer Equipment,Germany,2025-02-01,280000.00,0.00,3,Straight-Line,0.00,280000.00,0.00,77778.00,77778.00,202222.00,Active,1.08
+TOTALS,,,,,56400000.00,,,,14807000.00,3030000.00,0.00,3536445.00,18199445.00,38200555.00,,

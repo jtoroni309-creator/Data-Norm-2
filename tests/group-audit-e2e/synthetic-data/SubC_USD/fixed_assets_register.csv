@@ -1,0 +1,15 @@
+Asset_ID,Asset_Description,Asset_Class,Location,In_Service_Date,Original_Cost,Salvage_Value,Useful_Life_Years,Depreciation_Method,Accum_Depr_BOY_2025,Additions_2025,Disposals_2025,Depr_Expense_2025,Accum_Depr_EOY_2025,NBV_EOY_2025,Status
+C-LHI-001,Singapore Office Buildout,Leasehold Improvements,Singapore,2020-01-15,2800000.00,0.00,10,Straight-Line,1400000.00,0.00,0.00,280000.00,1680000.00,1120000.00,Active
+C-LHI-002,Tokyo Office Buildout,Leasehold Improvements,Japan,2021-06-01,1400000.00,0.00,7,Straight-Line,700000.00,0.00,0.00,200000.00,900000.00,500000.00,Active
+C-LHI-003,Sydney Office Buildout (2025),Leasehold Improvements,Australia,2025-03-01,300000.00,0.00,5,Straight-Line,0.00,300000.00,0.00,50000.00,50000.00,250000.00,Active
+C-FURN-001,Singapore Office Furniture,Furniture,Singapore,2020-01-15,800000.00,0.00,5,Straight-Line,800000.00,0.00,0.00,0.00,800000.00,0.00,Fully Depreciated
+C-FURN-002,Tokyo Office Furniture,Furniture,Japan,2021-06-01,500000.00,0.00,5,Straight-Line,350000.00,0.00,0.00,100000.00,450000.00,50000.00,Active
+C-FURN-003,Singapore Furniture Refresh,Furniture,Singapore,2024-06-01,600000.00,0.00,5,Straight-Line,60000.00,0.00,0.00,120000.00,180000.00,420000.00,Active
+C-FURN-004,Sydney Office Furniture (2025),Furniture,Australia,2025-03-01,300000.00,0.00,5,Straight-Line,0.00,300000.00,0.00,50000.00,50000.00,250000.00,Active
+C-COMP-001,Server Infrastructure - Singapore,Computer Equipment,Singapore,2021-06-01,2800000.00,0.00,3,Straight-Line,2800000.00,0.00,0.00,0.00,2800000.00,0.00,Fully Depreciated
+C-COMP-002,Server Upgrade (2023),Computer Equipment,Singapore,2023-01-15,1800000.00,0.00,3,Straight-Line,1200000.00,0.00,0.00,600000.00,1800000.00,0.00,Fully Depreciated
+C-COMP-003,Development Workstations,Computer Equipment,Various,2023-06-01,1200000.00,0.00,3,Straight-Line,600000.00,0.00,0.00,400000.00,1000000.00,200000.00,Active
+C-COMP-004,Production Hardware (2024),Computer Equipment,Singapore,2024-01-15,1500000.00,0.00,3,Straight-Line,500000.00,0.00,0.00,500000.00,1000000.00,500000.00,Active
+C-COMP-005,Edge Computing Nodes (2025),Computer Equipment,APAC,2025-02-01,800000.00,0.00,3,Straight-Line,0.00,800000.00,0.00,244444.00,244444.00,555556.00,Active
+C-COMP-006,Employee Laptops 2025 Refresh,Computer Equipment,Various,2025-07-01,700000.00,0.00,3,Straight-Line,0.00,700000.00,0.00,116667.00,116667.00,583333.00,Active
+TOTALS,,,,,15500000.00,,,,8410000.00,2100000.00,0.00,2661111.00,11071111.00,4428889.00,

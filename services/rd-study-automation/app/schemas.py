@@ -190,6 +190,14 @@ class StudyResponse(BaseSchema):
     finalized_at: Optional[datetime]
     locked_at: Optional[datetime]
 
+    @field_validator('ai_suggested_areas', mode='before')
+    @classmethod
+    def convert_list_to_dict(cls, v):
+        """Convert empty list to None for backwards compatibility with legacy data."""
+        if isinstance(v, list):
+            return {} if v else None
+        return v
+
 
 # =============================================================================
 # INTAKE/SCOPING SCHEMAS
