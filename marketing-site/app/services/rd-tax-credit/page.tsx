@@ -813,45 +813,45 @@ export default function RDTaxCreditPage() {
               <p className="text-slate-400">CPA firm licenses software and completes the study</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {/* Under $25K Credits */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
                 <div className="text-center mb-6">
                   <div className="text-sm text-slate-400 mb-2">Credits Under $25,000</div>
-                  <div className="inline-flex items-center justify-center px-4 py-2 bg-blue-500/20 rounded-full text-blue-400 text-sm font-medium mb-4">
-                    Small Business Studies
+                  <div className="inline-flex items-center justify-center px-3 py-1 bg-blue-500/20 rounded-full text-blue-400 text-xs font-medium mb-4">
+                    Small Business
                   </div>
                 </div>
 
-                <div className="space-y-4 mb-8">
-                  <div className="p-4 bg-white/5 rounded-xl">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-300">Federal Only</span>
-                      <span className="text-3xl font-bold text-white">$800</span>
+                <div className="space-y-3 mb-6">
+                  <div className="p-3 bg-white/5 rounded-xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-300 text-sm">Federal Only</span>
+                      <span className="text-2xl font-bold text-white">$800</span>
                     </div>
-                    <p className="text-sm text-slate-500">Flat fee per study</p>
+                    <p className="text-xs text-slate-500">Flat fee per study</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-300">Federal + State</span>
-                      <span className="text-3xl font-bold text-green-400">$1,250</span>
+                  <div className="p-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-300 text-sm">Federal + State</span>
+                      <span className="text-2xl font-bold text-green-400">$1,250</span>
                     </div>
-                    <p className="text-sm text-slate-500">Includes one state credit calculation</p>
+                    <p className="text-xs text-slate-500">Includes one state credit</p>
                   </div>
                 </div>
 
-                <ul className="space-y-3 mb-8">
+                <ul className="space-y-2 mb-6">
                   {[
                     'Full platform access',
                     'AI qualification analysis',
                     'Employee survey system',
-                    'Credit calculations (all methods)',
+                    'Credit calculations',
                     'IRS-ready documentation',
                     'Form 6765 preparation',
                     'Email support',
                   ].map((item, idx) => (
-                    <li key={idx} className="flex items-center text-slate-300 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-green-400 mr-2" />
+                    <li key={idx} className="flex items-center text-slate-300 text-xs">
+                      <CheckCircle2 className="w-3 h-3 text-green-400 mr-2 flex-shrink-0" />
                       {item}
                     </li>
                   ))}
@@ -859,46 +859,93 @@ export default function RDTaxCreditPage() {
               </div>
 
               {/* $25K - $125K Credits */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-green-500/30 relative">
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full text-sm font-bold">
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-green-500/30 relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full text-xs font-bold">
                   Most Popular
                 </div>
                 <div className="text-center mb-6">
-                  <div className="text-sm text-slate-400 mb-2">Credits $25,000 - $125,000</div>
-                  <div className="inline-flex items-center justify-center px-4 py-2 bg-purple-500/20 rounded-full text-purple-400 text-sm font-medium mb-4">
-                    Mid-Market Studies
+                  <div className="text-sm text-slate-400 mb-2">Credits $25K - $125K</div>
+                  <div className="inline-flex items-center justify-center px-3 py-1 bg-purple-500/20 rounded-full text-purple-400 text-xs font-medium mb-4">
+                    Mid-Market
                   </div>
                 </div>
 
-                <div className="space-y-4 mb-8">
-                  <div className="p-4 bg-white/5 rounded-xl">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-300">Federal Only</span>
-                      <span className="text-3xl font-bold text-white">$1,500</span>
+                <div className="space-y-3 mb-6">
+                  <div className="p-3 bg-white/5 rounded-xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-300 text-sm">Federal Only</span>
+                      <span className="text-2xl font-bold text-white">$1,500</span>
                     </div>
-                    <p className="text-sm text-slate-500">Flat fee per study</p>
+                    <p className="text-xs text-slate-500">Flat fee per study</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-300">Federal + 1 State</span>
-                      <span className="text-3xl font-bold text-green-400">$2,000</span>
+                  <div className="p-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-300 text-sm">Federal + 1 State</span>
+                      <span className="text-2xl font-bold text-green-400">$2,000</span>
                     </div>
-                    <p className="text-sm text-slate-500">Each additional state: <span className="text-green-400 font-bold">+$300</span></p>
+                    <p className="text-xs text-slate-500">Additional states: <span className="text-green-400 font-bold">+$300</span></p>
                   </div>
                 </div>
 
-                <ul className="space-y-3 mb-8">
+                <ul className="space-y-2 mb-6">
                   {[
-                    'Everything in Small Business, plus:',
-                    'Multi-state credit optimization',
-                    'Enhanced documentation package',
+                    'Everything in Small Business',
+                    'Multi-state optimization',
+                    'Enhanced documentation',
                     'ASC 740 impact analysis',
                     'Priority support',
                     'Audit defense materials',
                     'Calculation workpapers',
                   ].map((item, idx) => (
-                    <li key={idx} className="flex items-center text-slate-300 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-green-400 mr-2" />
+                    <li key={idx} className="flex items-center text-slate-300 text-xs">
+                      <CheckCircle2 className="w-3 h-3 text-green-400 mr-2 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Over $125K Credits - NEW TIER */}
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-amber-500/30 relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full text-xs font-bold text-white">
+                  Enterprise
+                </div>
+                <div className="text-center mb-6">
+                  <div className="text-sm text-slate-400 mb-2">Credits Over $125,000</div>
+                  <div className="inline-flex items-center justify-center px-3 py-1 bg-amber-500/20 rounded-full text-amber-400 text-xs font-medium mb-4">
+                    Large Studies
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="p-3 bg-white/5 rounded-xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-300 text-sm">Federal Only</span>
+                      <span className="text-2xl font-bold text-white">$2,500</span>
+                    </div>
+                    <p className="text-xs text-slate-500">Comprehensive federal study</p>
+                  </div>
+                  <div className="p-3 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl border border-amber-500/30">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-300 text-sm">Federal + States</span>
+                      <span className="text-2xl font-bold text-amber-400">$2,500+</span>
+                    </div>
+                    <p className="text-xs text-slate-500">Each state: <span className="text-amber-400 font-bold">+$500</span></p>
+                  </div>
+                </div>
+
+                <ul className="space-y-2 mb-6">
+                  {[
+                    'Everything in Mid-Market',
+                    'Dedicated study manager',
+                    'Custom report branding',
+                    'Multi-entity support',
+                    'Phone support',
+                    'Expert consultation',
+                    'White-glove onboarding',
+                  ].map((item, idx) => (
+                    <li key={idx} className="flex items-center text-slate-300 text-xs">
+                      <CheckCircle2 className="w-3 h-3 text-amber-400 mr-2 flex-shrink-0" />
                       {item}
                     </li>
                   ))}
