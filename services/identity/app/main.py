@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 
 from app.config import settings
@@ -62,7 +62,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Security
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 security = HTTPBearer()
 
@@ -105,13 +104,22 @@ async def ensure_database_schema():
 # ========================================
 
 def hash_password(password: str) -> str:
-    """Hash password using bcrypt"""
-    return pwd_context.hash(password)
+    """Hash password using bcrypt directly (avoids passlib compatibility issues)"""
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify password against hash using bcrypt directly"""
+    try:
+        password_bytes = plain_password.encode('utf-8')
+        hash_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hash_bytes)
+    except Exception as e:
+        logger.error(f"Password verification error: {e}")
+        return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -1010,13 +1018,13 @@ async def get_my_organization(
 async def update_organization(
     org_id: UUID,
     org_update: OrganizationUpdate,
-    current_user: User = Depends(require_role([RoleEnum.PARTNER])),
+    current_user: User = Depends(require_role([RoleEnum.PARTNER, RoleEnum.MANAGER])),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Update organization settings
 
-    Requires: Partner role
+    Requires: Partner or Manager role
     """
     if current_user.organization_id != org_id:
         raise HTTPException(

@@ -8,32 +8,45 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Microsoft Fluent Design System inspired palette
+        // Aura AI Brand Color Palette
         primary: {
-          50: '#e6f2ff',
-          100: '#cce5ff',
-          200: '#99cbff',
-          300: '#66b0ff',
-          400: '#3396ff',
-          500: '#0078d4', // Microsoft Blue
-          600: '#106ebe',
-          700: '#005a9e',
-          800: '#004578',
-          900: '#003152',
-          950: '#001d2b',
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5', // Brand primary
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
         },
         accent: {
-          50: '#fff3e6',
-          100: '#ffe7cc',
-          200: '#ffcf99',
-          300: '#ffb766',
-          400: '#ff9f33',
-          500: '#ff8c00', // Microsoft Orange
-          600: '#cc7000',
-          700: '#995400',
-          800: '#663800',
-          900: '#331c00',
-          950: '#1a0e00',
+          50: '#faf5ff',
+          100: '#f3e8ff',
+          200: '#e9d5ff',
+          300: '#d8b4fe',
+          400: '#c084fc',
+          500: '#a855f7',
+          600: '#9333ea',
+          700: '#7c3aed', // Brand accent
+          800: '#6b21a8',
+          900: '#581c87',
+          950: '#3b0764',
+        },
+        violet: {
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          200: '#ddd6fe',
+          300: '#c4b5fd',
+          400: '#a78bfa',
+          500: '#8b5cf6',
+          600: '#7c3aed',
+          700: '#6d28d9',
+          800: '#5b21b6',
+          900: '#4c1d95',
+          950: '#2e1065',
         },
         neutral: {
           50: '#fafafa',

@@ -1,27 +1,54 @@
 <svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background gradient -->
   <defs>
+    <!-- Aura AI Brand Gradient -->
     <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#d946ef;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="50%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#C084FC"/>
     </linearGradient>
   </defs>
 
   <!-- Background -->
   <rect width="1200" height="630" fill="url(#bgGradient)"/>
 
-  <!-- Pattern overlay -->
-  <circle cx="100" cy="100" r="150" fill="rgba(255,255,255,0.1)"/>
-  <circle cx="1100" cy="530" r="150" fill="rgba(255,255,255,0.1)"/>
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="180" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="1100" cy="530" r="200" fill="rgba(255,255,255,0.05)"/>
 
-  <!-- Logo -->
-  <rect x="520" y="150" width="160" height="160" rx="32" fill="white" opacity="0.2"/>
-  <text x="600" y="260" font-family="Arial, sans-serif" font-size="96" font-weight="bold" fill="white" text-anchor="middle">A</text>
+  <!-- Logo Mark -->
+  <g transform="translate(500, 100)">
+    <!-- Outer orbital ring -->
+    <ellipse cx="100" cy="100" rx="85" ry="85" stroke="rgba(255,255,255,0.3)" stroke-width="3" fill="none"/>
+    <!-- Tilted orbital ring -->
+    <ellipse cx="100" cy="100" rx="65" ry="28" stroke="rgba(255,255,255,0.45)" stroke-width="3" fill="none" transform="rotate(-25, 100, 100)"/>
+    <!-- Central A -->
+    <path d="M100 35 L145 165 L128 165 L118 132 L82 132 L72 165 L55 165 L100 35Z" fill="white"/>
+    <path d="M88 118 L112 118 L106 100 L94 100 Z" fill="url(#bgGradient)"/>
+    <!-- AI spark -->
+    <circle cx="155" cy="50" r="12" fill="url(#accentGradient)"/>
+  </g>
 
-  <!-- Main text -->
-  <text x="600" y="390" font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="white" text-anchor="middle">Aura Audit AI</text>
+  <!-- Brand Name -->
+  <text x="600" y="340" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="64" font-weight="700" fill="white" text-anchor="middle" letter-spacing="-2">
+    Aura AI
+  </text>
 
-  <!-- Subtitle -->
-  <text x="600" y="460" font-family="Arial, sans-serif" font-size="32" fill="rgba(255,255,255,0.9)" text-anchor="middle">AI-Powered Audit Automation</text>
+  <!-- Tagline -->
+  <text x="600" y="410" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="28" fill="rgba(255,255,255,0.9)" text-anchor="middle" font-weight="500">
+    Intelligent Audit Automation for CPA Firms
+  </text>
+
+  <!-- Features line -->
+  <text x="600" y="480" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="20" fill="rgba(255,255,255,0.7)" text-anchor="middle">
+    AI-Powered  |  30-50% Faster  |  PCAOB Compliant
+  </text>
+
+  <!-- Website -->
+  <text x="600" y="560" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="18" fill="rgba(255,255,255,0.6)" text-anchor="middle">
+    auraai.io
+  </text>
 </svg>

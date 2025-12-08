@@ -279,9 +279,15 @@ class QREEngine:
                 source = employee.get("qualified_time_source", "estimate")
 
             # Calculate qualified wages
-            qualified_wages = (base_qualified_wages * qualified_percentage / 100).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
+            # IRS Rule: If employee spends 80%+ of time on qualified R&D, 100% of wages are QRE
+            # This is known as the "substantially all" rule per IRC §41(b)(2)(B)
+            if qualified_percentage >= Decimal("80"):
+                qualified_wages = base_qualified_wages
+                source = source + " (80%+ rule applied)"
+            else:
+                qualified_wages = (base_qualified_wages * qualified_percentage / 100).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
 
             # Project-level allocation
             project_allocations = {}

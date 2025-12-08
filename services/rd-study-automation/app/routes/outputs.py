@@ -25,6 +25,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _get_enum_value(obj, default=""):
+    """Safely get value from enum or string."""
+    if obj is None:
+        return default
+    if hasattr(obj, 'value'):
+        return obj.value
+    return str(obj)
+
+
 async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
     """Get complete study data for output generation."""
     # Get study
@@ -80,9 +89,9 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
 
     # Calculate QRE breakdowns from employees and QREs
     qre_wages = sum(float(e.qualified_wages or 0) for e in employees)
-    qre_supplies = sum(float(q.qualified_amount or 0) for q in qres if q.category and q.category.value == "supplies")
-    qre_contract = sum(float(q.qualified_amount or 0) for q in qres if q.category and q.category.value == "contract_research")
-    qre_basic_research = sum(float(q.qualified_amount or 0) for q in qres if q.category and q.category.value == "basic_research")
+    qre_supplies = sum(float(q.qualified_amount or 0) for q in qres if _get_enum_value(q.category) == "supplies")
+    qre_contract = sum(float(q.qualified_amount or 0) for q in qres if _get_enum_value(q.category) == "contract_research")
+    qre_basic_research = sum(float(q.qualified_amount or 0) for q in qres if _get_enum_value(q.category) == "basic_research")
 
     calculation_result = {
         "total_qre": float(study.total_qre or 0),
@@ -95,7 +104,7 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
         "federal_credit_asc": float(study.federal_credit_asc or 0),
         "total_state_credits": float(study.total_state_credits or 0),
         "total_credits": float(study.total_credits or 0),
-        "selected_method": study.selected_method.value if study.selected_method else "asc",
+        "selected_method": _get_enum_value(study.selected_method, "asc"),
         "federal_regular": {
             "total_qre": float(study.total_qre or 0),
             "qre_wages": qre_wages,
@@ -125,6 +134,26 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
         "state_results": {}
     }
 
+    # Fetch firm data for branding
+    firm_data = {}
+    if study.firm_id:
+        from sqlalchemy import text
+        try:
+            firm_result = await db.execute(
+                text("SELECT firm_name, logo_url, primary_color, secondary_color FROM atlas.cpa_firms WHERE id = :firm_id"),
+                {"firm_id": str(study.firm_id)}
+            )
+            firm_row = firm_result.fetchone()
+            if firm_row:
+                firm_data = {
+                    "firm_name": firm_row.firm_name,
+                    "logo_url": firm_row.logo_url,
+                    "primary_color": firm_row.primary_color or "#1F4E79",
+                    "secondary_color": firm_row.secondary_color or "#2E7D32",
+                }
+        except Exception as e:
+            logger.warning(f"Failed to fetch firm data: {e}")
+
     # Build study data dict
     study_data = {
         "id": str(study.id),
@@ -132,14 +161,19 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
         "entity_name": study.entity_name,
         "tax_year": study.tax_year,
         "ein": study.ein,
-        "entity_type": study.entity_type.value if study.entity_type else "",
+        "entity_type": _get_enum_value(study.entity_type, ""),
         "fiscal_year_start": str(study.fiscal_year_start) if study.fiscal_year_start else "",
         "fiscal_year_end": str(study.fiscal_year_end) if study.fiscal_year_end else "",
-        "status": study.status.value if study.status else "draft",
+        "status": _get_enum_value(study.status, "draft"),
         "states": study.states or [],
         "is_controlled_group": study.is_controlled_group,
         "controlled_group_name": study.controlled_group_name,
         "cpa_approved": study.cpa_approved,
+        # Firm branding data
+        "firm_name": firm_data.get("firm_name", "Prepared by CPA Firm"),
+        "firm_logo_url": firm_data.get("logo_url"),
+        "firm_primary_color": firm_data.get("primary_color", "#1F4E79"),
+        "firm_secondary_color": firm_data.get("secondary_color", "#2E7D32"),
     }
 
     # Convert projects to dicts
@@ -151,7 +185,7 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
             "description": p.description,
             "department": p.department,
             "business_component": p.business_component,
-            "qualification_status": p.qualification_status.value if p.qualification_status else "pending",
+            "qualification_status": _get_enum_value(p.qualification_status, "pending"),
             "overall_score": float(p.overall_score or 0),
             "permitted_purpose_score": float(p.permitted_purpose_score or 0),
             "technological_nature_score": float(p.technological_nature_score or 0),
@@ -186,7 +220,7 @@ async def _get_study_data(db: AsyncSession, study_id: UUID) -> dict:
     qres_data = [
         {
             "id": str(q.id),
-            "category": q.category.value if q.category else "wages",
+            "category": _get_enum_value(q.category, "wages"),
             "description": q.supply_description or q.contractor_name or q.subcategory or "",
             "gross_amount": float(q.gross_amount or 0),
             "qualified_amount": float(q.qualified_amount or 0),

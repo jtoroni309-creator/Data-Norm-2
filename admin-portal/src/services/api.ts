@@ -409,9 +409,32 @@ export const userAPI = {
    * Update user
    */
   async update(userId: string, data: UpdateUserRequest): Promise<UserDetail> {
+    // Transform frontend schema to backend schema
+    const backendPayload: Record<string, any> = {};
+
+    // Combine firstName and lastName into full_name
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const firstName = data.firstName || '';
+      const lastName = data.lastName || '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      if (fullName) {
+        backendPayload.full_name = fullName;
+      }
+    }
+
+    // Map role (already snake_case compatible)
+    if (data.role !== undefined) {
+      backendPayload.role = data.role;
+    }
+
+    // Map isActive to is_active
+    if (data.isActive !== undefined) {
+      backendPayload.is_active = data.isActive;
+    }
+
     return fetchAPI<UserDetail>(`/admin/users/${userId}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendPayload),
     });
   },
 

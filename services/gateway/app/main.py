@@ -49,6 +49,7 @@ SERVICE_REGISTRY = {
     "training-data": {"url": "http://training-data:80", "health": "/health"},
     "eo-insurance": {"url": "http://eo-insurance-portal:80", "health": "/health"},
     "estimates": {"url": "http://estimates-evaluation:80", "health": "/health"},
+    "rd-study-automation": {"url": "http://rd-study-automation:8000", "health": "/health", "strip_prefix": "/rd-study"},
 }
 
 # Path routing rules (prefix -> service)
@@ -60,7 +61,7 @@ ROUTE_MAP = {
     "/admin": "identity",
     "/organizations": "identity",
     "/clients": "identity",
-    "/rd-study": "identity",
+    "/rd-study": "rd-study-automation",
 
     "/ingestion": "ingestion",
     "/edgar": "ingestion",
@@ -366,10 +367,16 @@ async def gateway(request: Request, path: str):
 
     # Proxy request to backend
     try:
+        # Build the forwarded path, stripping prefix if configured
+        forward_path = f"/{path}"
+        strip_prefix = service_config.get("strip_prefix")
+        if strip_prefix and forward_path.startswith(strip_prefix):
+            forward_path = forward_path[len(strip_prefix):] or "/"
+
         response = await proxy_request(
             request=request,
             service_url=service_config["url"],
-            path=f"/{path}",
+            path=forward_path,
             method=request.method
         )
 

@@ -812,6 +812,15 @@ class CalculationEngine:
         elif state_rules.base_method == "non_incremental":
             state_base = Decimal("0")
             base_description = "Non-incremental credit (no base)"
+        elif state_rules.base_method == "pa_specific":
+            # PA uses: Greater of (50% of current QRE) or (average of prior 4 years QRE)
+            # Since we don't have prior year data readily available, use 50% minimum base
+            minimum_base = (state_qre_total * Decimal("0.50")).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            # TODO: When prior year data is available, calculate avg and use greater of
+            state_base = minimum_base
+            base_description = "PA base: Greater of 50% current QRE or avg prior 4 years (using 50% minimum)"
         else:
             # State-specific calculation
             state_base = (state_qre_total * Decimal(str(state_rules.base_percentage))).quantize(
@@ -887,6 +896,37 @@ class CalculationEngine:
             irc_reference=state_rules.statute_citation
         ))
 
+        # Apply PA program proration if applicable
+        final_credit = credit_after_cap
+        state_adjustments = {}
+        if state_rules.base_method == "pa_specific" and state_rules.qre_modifications:
+            proration_rate = state_rules.qre_modifications.get("program_proration_rate", 1.0)
+            if proration_rate and proration_rate < 1.0:
+                step_num += 1
+                prorated_credit = (credit_after_cap * Decimal(str(proration_rate))).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+                steps.append(CalculationStep(
+                    step_number=step_num,
+                    description="Apply PA Program Proration",
+                    formula=f"Credit × {proration_rate * 100:.1f}% (program cap proration)",
+                    inputs={
+                        "credit_before_proration": str(credit_after_cap),
+                        "proration_rate": str(proration_rate),
+                        "program_cap": str(state_rules.qre_modifications.get("program_cap", "60000000")),
+                        "note": "PA program cap of $60M is prorated among all applicants"
+                    },
+                    result=prorated_credit,
+                    irc_reference=state_rules.statute_citation,
+                    notes="Estimated based on historical proration rate; actual award determined by PA DOR"
+                ))
+                final_credit = prorated_credit
+                state_adjustments["program_proration"] = {
+                    "rate": proration_rate,
+                    "tentative_credit": str(credit_after_cap),
+                    "prorated_credit": str(prorated_credit)
+                }
+
         return StateCreditResult(
             state_code=state_code,
             state_name=state_rules.state_name,
@@ -899,10 +939,10 @@ class CalculationEngine:
             credit_type=state_rules.credit_type,
             excess_qre=excess_qre,
             tentative_credit=tentative_credit,
-            state_adjustments={},
+            state_adjustments=state_adjustments,
             credit_cap=state_rules.credit_cap,
             credit_after_cap=credit_after_cap,
-            final_credit=credit_after_cap,
+            final_credit=final_credit,
             carryforward_years=state_rules.carryforward_years,
             prior_carryforward=Decimal("0"),
             current_year_used=Decimal("0"),

@@ -54,6 +54,15 @@ logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
 logger = logging.getLogger(__name__)
 
 
+def _get_enum_value(obj, default=""):
+    """Safely get value from enum or string."""
+    if obj is None:
+        return default
+    if hasattr(obj, 'value'):
+        return obj.value
+    return str(obj)
+
+
 # =============================================================================
 # APPLICATION LIFECYCLE
 # =============================================================================
@@ -164,9 +173,10 @@ async def get_current_user_id(
 
 
 async def get_current_user_firm_id(
-    credentials: HTTPAuthorizationCredentials = Security(security)
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: AsyncSession = Depends(get_db)
 ) -> tuple[UUID, UUID]:
-    """Extract user ID and firm ID from JWT token."""
+    """Extract user ID and firm ID from JWT token and verify R&D service access."""
     try:
         token = credentials.credentials
         payload = jwt.decode(
@@ -175,22 +185,41 @@ async def get_current_user_firm_id(
             algorithms=[settings.JWT_ALGORITHM]
         )
         user_id = payload.get("sub")
-        firm_id = payload.get("firm_id")
+        # Check both "firm_id" and "cpa_firm_id" claims (identity service uses cpa_firm_id)
+        firm_id = payload.get("firm_id") or payload.get("cpa_firm_id")
+
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        # If firm_id not in JWT, use a default firm_id from settings or generate from user_id
         if not firm_id:
-            # Use default firm ID from settings, or derive from user's org
-            default_firm_id = getattr(settings, 'DEFAULT_FIRM_ID', None)
-            if default_firm_id:
-                firm_id = default_firm_id
-            else:
-                # Use a deterministic UUID based on the deployment (same for all users in this deployment)
-                from uuid import uuid5, NAMESPACE_DNS
-                firm_id = str(uuid5(NAMESPACE_DNS, "aura-audit-ai.toroniandcompany.com"))
+            # SECURITY: firm_id is required for data isolation
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: No firm association. Please contact your administrator."
+            )
 
-        return UUID(user_id), UUID(firm_id) if firm_id else None
+        # Check if R&D service is enabled for this firm
+        from sqlalchemy import text
+        try:
+            result = await db.execute(
+                text(f"SELECT enabled_services FROM atlas.cpa_firms WHERE id = '{firm_id}'::uuid")
+            )
+            row = result.fetchone()
+            if row and row.enabled_services:
+                enabled_services = row.enabled_services
+                # Check if rd_study is explicitly disabled
+                if isinstance(enabled_services, dict) and enabled_services.get("rd_study") is False:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="R&D Tax Credit service is not enabled for your organization. Please contact your administrator."
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Failed to check enabled_services: {e}")
+            # Don't block access if check fails - log and continue
+
+        return UUID(user_id), UUID(firm_id)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -825,7 +854,14 @@ async def create_employee(
         raise HTTPException(status_code=404, detail="Study not found")
 
     # Calculate qualified wages based on percentage
-    qualified_wages = Decimal(str(employee_data.w2_wages)) * Decimal(str(employee_data.qualified_time_percentage)) / Decimal("100")
+    # IRS Rule: If employee spends 80%+ of time on qualified R&D, 100% of wages are QRE
+    # per IRC §41(b)(2)(B) "substantially all" rule
+    qualified_pct = Decimal(str(employee_data.qualified_time_percentage))
+    w2_wages = Decimal(str(employee_data.w2_wages))
+    if qualified_pct >= Decimal("80"):
+        qualified_wages = w2_wages  # 100% of wages when 80%+ time on R&D
+    else:
+        qualified_wages = w2_wages * qualified_pct / Decimal("100")
 
     employee = RDEmployee(
         study_id=study_id,
@@ -911,9 +947,12 @@ async def adjust_employee_time(
     employee.cpa_adjustment_reason = adjustment.reason
 
     # Recalculate qualified wages
-    employee.qualified_wages = (
-        employee.w2_wages * Decimal(str(adjustment.adjusted_percentage)) / 100
-    )
+    # IRS 80% rule: 80%+ time on R&D = 100% of wages as QRE
+    adjusted_pct = Decimal(str(adjustment.adjusted_percentage))
+    if adjusted_pct >= Decimal("80"):
+        employee.qualified_wages = employee.w2_wages
+    else:
+        employee.qualified_wages = employee.w2_wages * adjusted_pct / Decimal("100")
 
     await db.commit()
     await db.refresh(employee)
@@ -1008,13 +1047,14 @@ async def get_qre_summary(
     }
 
     for qre in qres:
-        if qre.category.value == "wages":
+        cat = _get_enum_value(qre.category)
+        if cat == "wages":
             summary["wages"] += qre.qualified_amount
-        elif qre.category.value == "supplies":
+        elif cat == "supplies":
             summary["supplies"] += qre.qualified_amount
-        elif qre.category.value == "contract_research":
+        elif cat == "contract_research":
             summary["contract_research"] += qre.qualified_amount
-        elif qre.category.value == "basic_research":
+        elif cat == "basic_research":
             summary["basic_research"] += qre.qualified_amount
 
     summary["total"] = sum(summary.values())
@@ -1053,10 +1093,10 @@ async def calculate_credits(
     qres = qre_result.scalars().all()
 
     qre_data = {
-        "wages": sum(q.qualified_amount for q in qres if q.category.value == "wages"),
-        "supplies": sum(q.qualified_amount for q in qres if q.category.value == "supplies"),
-        "contract_research": sum(q.qualified_amount for q in qres if q.category.value == "contract_research"),
-        "basic_research": sum(q.qualified_amount for q in qres if q.category.value == "basic_research"),
+        "wages": sum(q.qualified_amount for q in qres if _get_enum_value(q.category) == "wages"),
+        "supplies": sum(q.qualified_amount for q in qres if _get_enum_value(q.category) == "supplies"),
+        "contract_research": sum(q.qualified_amount for q in qres if _get_enum_value(q.category) == "contract_research"),
+        "basic_research": sum(q.qualified_amount for q in qres if _get_enum_value(q.category) == "basic_research"),
     }
     qre_data["total"] = sum(qre_data.values())
 
@@ -1701,8 +1741,8 @@ async def get_client_data(
     )
     qres = qre_result.scalars().all()
 
-    supplies = [q for q in qres if q.category.value == "supplies"]
-    contracts = [q for q in qres if q.category.value == "contract_research"]
+    supplies = [q for q in qres if _get_enum_value(q.category) == "supplies"]
+    contracts = [q for q in qres if _get_enum_value(q.category) == "contract_research"]
 
     return {
         "study_id": str(study_id),
@@ -1890,7 +1930,11 @@ async def submit_client_data(
             # New employee from client
             w2_wages = Decimal(str(emp_data.get("annual_wages", 0)))
             qualified_pct = Decimal(str(emp_data.get("qualified_time_percentage", 0)))
-            qualified_wages = w2_wages * qualified_pct / Decimal("100")
+            # IRS 80% rule: 80%+ time on R&D = 100% of wages as QRE
+            if qualified_pct >= Decimal("80"):
+                qualified_wages = w2_wages
+            else:
+                qualified_wages = w2_wages * qualified_pct / Decimal("100")
 
             employee = RDEmployee(
                 study_id=UUID(study_id),
@@ -2327,7 +2371,11 @@ async def bulk_import_employees(
             # Calculate qualified wages
             w2_wages = Decimal(str(emp_data.get("w2_wages", emp_data.get("total_wages", 0))))
             qualified_pct = Decimal(str(emp_data.get("qualified_time_percentage", 0)))
-            qualified_wages = w2_wages * qualified_pct / Decimal("100")
+            # IRS 80% rule: 80%+ time on R&D = 100% of wages as QRE
+            if qualified_pct >= Decimal("80"):
+                qualified_wages = w2_wages
+            else:
+                qualified_wages = w2_wages * qualified_pct / Decimal("100")
 
             employee = RDEmployee(
                 study_id=study_id,

@@ -454,15 +454,23 @@ STATE_RULES_2024: Dict[str, StateRules] = {
         state_name="Pennsylvania",
         has_rd_credit=True,
         credit_type="incremental",
-        credit_rate=0.10,  # 10%
-        small_business_rate=0.20,  # 20% for small businesses
-        base_method="federal",
-        credit_cap=Decimal("55000000"),  # Program cap
+        credit_rate=0.10,  # 10% for large businesses
+        small_business_rate=0.20,  # 20% for small businesses (assets < $5M)
+        base_method="pa_specific",  # PA uses: Greater of (50% current QRE) or (avg of prior 4 years)
+        base_percentage=0.50,  # 50% of current year QRE as minimum base
+        credit_cap=None,  # No individual cap - program cap of $60M is prorated
         carryforward_years=15,
         is_refundable=False,
-        small_business_threshold=Decimal("5000000"),
-        statute_citation="72 P.S. §8904-A et seq.",
-        state_form_number="REV-545"
+        small_business_threshold=Decimal("5000000"),  # Assets < $5M = small business
+        small_business_credit_cap=Decimal("12000000"),  # $12M of program cap for small biz
+        statute_citation="72 P.S. §8904-A et seq.; Act 7 of 1997",
+        state_form_number="REV-545",
+        qre_modifications={
+            "program_cap": Decimal("60000000"),  # Total program cap $60M
+            "program_proration_rate": 0.443,  # ~44.3% of tentative credits awarded (2024)
+            "application_deadline": "December 1",
+            "application_opens": "August 1"
+        }
     ),
     "GA": StateRules(
         version="2024.1",

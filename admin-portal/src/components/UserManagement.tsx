@@ -10,8 +10,11 @@ import {
   XCircle,
   X,
   Key,
+  Edit,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-import { userAPI, tenantAPI, type UserListItem, type Tenant, type CreateUserRequest } from '../services/api';
+import { userAPI, tenantAPI, type UserListItem, type Tenant, type CreateUserRequest, type UpdateUserRequest } from '../services/api';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<UserListItem[]>([]);
@@ -20,7 +23,9 @@ export const UserManagement: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Password reset modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -31,7 +36,7 @@ export const UserManagement: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  // Form state
+  // Form state for create
   const [formData, setFormData] = useState<CreateUserRequest>({
     email: '',
     firstName: '',
@@ -44,10 +49,37 @@ export const UserManagement: React.FC = () => {
     sendInvitation: true,
   });
 
+  // Form state for edit
+  const [editFormData, setEditFormData] = useState<UpdateUserRequest>({
+    firstName: '',
+    lastName: '',
+    role: '',
+    tenantId: '',
+    isActive: true,
+    cpaLicenseNumber: '',
+    cpaLicenseState: '',
+    professionalTitle: '',
+  });
+
   useEffect(() => {
     loadUsers();
     loadTenants();
   }, []);
+
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const loadUsers = async () => {
     try {
@@ -56,7 +88,8 @@ export const UserManagement: React.FC = () => {
       const data = await userAPI.list({ page: 1, pageSize: 100 });
       setUsers(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load users';
+      setError(typeof errorMsg === 'string' ? errorMsg : String(errorMsg));
     } finally {
       setIsLoading(false);
     }
@@ -71,16 +104,47 @@ export const UserManagement: React.FC = () => {
     }
   };
 
+  const generateStrongPassword = (): string => {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%^&*';
+
+    // Ensure at least one of each required character type
+    let password = '';
+    password += upper.charAt(Math.floor(Math.random() * upper.length));
+    password += lower.charAt(Math.floor(Math.random() * lower.length));
+    password += digits.charAt(Math.floor(Math.random() * digits.length));
+    password += special.charAt(Math.floor(Math.random() * special.length));
+
+    // Fill the rest with random characters
+    const allChars = upper + lower + digits + special;
+    for (let i = 0; i < 12; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+    }
+
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsLoading(true);
       setError(null);
 
-      await userAPI.create(formData);
+      // Generate a strong password that meets requirements
+      const tempPassword = generateStrongPassword();
+
+      await userAPI.create({
+        ...formData,
+        password: tempPassword,
+      });
 
       // Reload users
       await loadUsers();
+
+      setSuccessMessage(`User ${formData.email} created successfully!`);
 
       // Reset form and close modal
       setFormData({
@@ -96,7 +160,47 @@ export const UserManagement: React.FC = () => {
       });
       setShowCreateModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create user';
+      setError(typeof errorMsg === 'string' ? errorMsg : String(errorMsg));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenEdit = (user: UserListItem) => {
+    setSelectedUser(user);
+    setEditFormData({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      role: user.role,
+      tenantId: user.tenantId || '',
+      isActive: user.isActive,
+      cpaLicenseNumber: '',
+      cpaLicenseState: '',
+      professionalTitle: '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      await userAPI.update(selectedUser.id, editFormData);
+
+      // Reload users
+      await loadUsers();
+
+      setSuccessMessage(`User ${selectedUser.email} updated successfully!`);
+      setShowEditModal(false);
+      setSelectedUser(null);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update user';
+      setError(typeof errorMsg === 'string' ? errorMsg : String(errorMsg));
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +242,8 @@ export const UserManagement: React.FC = () => {
         setPasswordSuccess(false);
       }, 1500);
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to reset password');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to reset password';
+      setPasswordError(typeof errorMsg === 'string' ? errorMsg : String(errorMsg));
     } finally {
       setIsLoading(false);
     }
@@ -198,10 +303,25 @@ export const UserManagement: React.FC = () => {
         </button>
       </div>
 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <span>{successMessage}</span>
+          <button onClick={() => setSuccessMessage(null)} className="ml-auto text-green-600 hover:text-green-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="ml-auto text-red-600 hover:text-red-800">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -264,6 +384,7 @@ export const UserManagement: React.FC = () => {
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                     Loading users...
                   </td>
                 </tr>
@@ -342,14 +463,24 @@ export const UserManagement: React.FC = () => {
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleOpenPasswordReset(user)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
-                        title="Reset Password"
-                      >
-                        <Key className="w-4 h-4" />
-                        Reset Password
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEdit(user)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Edit User"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleOpenPasswordReset(user)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                          title="Reset Password"
+                        >
+                          <Key className="w-4 h-4" />
+                          Reset Password
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))
@@ -524,17 +655,211 @@ export const UserManagement: React.FC = () => {
                 </label>
               </div>
 
+              <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+                <p>A temporary password will be generated automatically. The user can set their own password when they first log in.</p>
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isLoading ? 'Creating...' : 'Create User'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Edit User</h2>
+                <p className="text-sm text-gray-500 mt-1">{selectedUser.email}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedUser(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.firstName}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, firstName: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.lastName}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, lastName: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Role
+                </label>
+                <select
+                  value={editFormData.role}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, role: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="firm_user">Firm User</option>
+                  <option value="firm_admin">Firm Admin</option>
+                  <option value="platform_admin">Platform Admin</option>
+                </select>
+              </div>
+
+              {editFormData.role !== 'platform_admin' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    CPA Firm
+                  </label>
+                  <select
+                    value={editFormData.tenantId}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, tenantId: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">No firm assigned</option>
+                    {tenants.map((tenant) => (
+                      <option key={tenant.id} value={tenant.id}>
+                        {tenant.firm_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    CPA License Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.cpaLicenseNumber}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, cpaLicenseNumber: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    License State
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.cpaLicenseState}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, cpaLicenseState: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Professional Title
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.professionalTitle}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, professionalTitle: e.target.value })
+                  }
+                  placeholder="e.g., Partner, CPA"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={editFormData.isActive}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, isActive: e.target.checked })
+                  }
+                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                />
+                <label htmlFor="isActive" className="text-sm text-gray-700">
+                  User is active
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedUser(null);
+                  }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
@@ -638,9 +963,16 @@ export const UserManagement: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      {isLoading ? 'Resetting...' : 'Reset Password'}
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Resetting...
+                        </>
+                      ) : (
+                        'Reset Password'
+                      )}
                     </button>
                     <button
                       type="button"

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Twitter, Linkedin, Github, Mail } from 'lucide-react'
+import { Twitter, Linkedin, Github, Mail, Youtube, Shield, FileText } from 'lucide-react'
 
 const Footer = () => {
   const currentYear = new Date().getFullYear()
@@ -7,16 +7,11 @@ const Footer = () => {
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-300">
       <div className="section-container py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12">
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-accent-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">A</span>
-              </div>
-              <span className="text-2xl font-display font-bold text-white">
-                Aura Audit AI
-              </span>
+              <img src="/logo.svg" alt="Aura AI" className="h-10 w-auto" />
             </div>
             <p className="text-gray-400 mb-6 max-w-sm">
               Enterprise-grade audit automation platform. Empowering CPA firms with AI-powered intelligence to deliver faster, more accurate audits.
@@ -41,6 +36,15 @@ const Footer = () => {
                 <Linkedin className="w-5 h-5" />
               </a>
               <a
+                href="https://www.youtube.com/@auraauditai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors"
+                aria-label="YouTube"
+              >
+                <Youtube className="w-5 h-5" />
+              </a>
+              <a
                 href="https://github.com/auraauditai"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -59,33 +63,33 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Product Column */}
+          {/* Services Column */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Product</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">Services</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="#features" className="hover:text-primary-400 transition-colors">
-                  Features
+                <Link href="/services/ai-audit" className="hover:text-primary-400 transition-colors">
+                  AI-Powered Audits
                 </Link>
               </li>
               <li>
-                <Link href="#pricing" className="hover:text-primary-400 transition-colors">
-                  Pricing
+                <Link href="/services/ai-agents" className="hover:text-primary-400 transition-colors">
+                  AI Agents
                 </Link>
               </li>
               <li>
-                <Link href="#how-it-works" className="hover:text-primary-400 transition-colors">
-                  How It Works
+                <Link href="/services/rd-tax-credit" className="hover:text-primary-400 transition-colors">
+                  R&D Tax Credits
                 </Link>
               </li>
               <li>
-                <Link href="/integrations" className="hover:text-primary-400 transition-colors">
-                  Integrations
+                <Link href="/services/soc-compliance" className="hover:text-primary-400 transition-colors">
+                  SOC Compliance
                 </Link>
               </li>
               <li>
-                <Link href="/security" className="hover:text-primary-400 transition-colors">
-                  Security
+                <Link href="/services/financial-analysis" className="hover:text-primary-400 transition-colors">
+                  Financial Analysis
                 </Link>
               </li>
             </ul>
@@ -106,18 +110,18 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/careers" className="hover:text-primary-400 transition-colors">
-                  Careers
-                </Link>
-              </li>
-              <li>
                 <Link href="/blog" className="hover:text-primary-400 transition-colors">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/press" className="hover:text-primary-400 transition-colors">
-                  Press
+                <Link href="/case-studies" className="hover:text-primary-400 transition-colors">
+                  Case Studies
+                </Link>
+              </li>
+              <li>
+                <Link href="/careers" className="hover:text-primary-400 transition-colors">
+                  Careers
                 </Link>
               </li>
             </ul>
@@ -128,13 +132,8 @@ const Footer = () => {
             <h3 className="text-white font-semibold text-lg mb-4">Resources</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/documentation" className="hover:text-primary-400 transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
                 <Link href="/api" className="hover:text-primary-400 transition-colors">
-                  API Reference
+                  API Documentation
                 </Link>
               </li>
               <li>
@@ -143,37 +142,108 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/case-studies" className="hover:text-primary-400 transition-colors">
-                  Case Studies
+                <Link href="/faq" className="hover:text-primary-400 transition-colors">
+                  FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/webinars" className="hover:text-primary-400 transition-colors">
-                  Webinars
+                <Link href="/security" className="hover:text-primary-400 transition-colors">
+                  Security
+                </Link>
+              </li>
+              <li>
+                <Link href="/#pricing" className="hover:text-primary-400 transition-colors">
+                  Pricing
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal & Compliance Column */}
+          <div>
+            <h3 className="text-white font-semibold text-lg mb-4">Legal</h3>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/privacy" className="hover:text-primary-400 transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="hover:text-primary-400 transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/sla" className="hover:text-primary-400 transition-colors">
+                  SLA
+                </Link>
+              </li>
+              <li>
+                <Link href="/gdpr" className="hover:text-primary-400 transition-colors">
+                  GDPR Compliance
+                </Link>
+              </li>
+              <li>
+                <Link href="/dpa" className="hover:text-primary-400 transition-colors">
+                  Data Processing
+                </Link>
+              </li>
+              <li>
+                <Link href="/cookies" className="hover:text-primary-400 transition-colors">
+                  Cookie Policy
                 </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
+        {/* Trust Badges */}
         <div className="mt-12 pt-8 border-t border-gray-800">
+          <div className="flex flex-wrap justify-center gap-6 mb-8">
+            <div className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 rounded-lg">
+              <Shield className="w-5 h-5 text-green-500" />
+              <span className="text-sm text-gray-400">SOC 2 Type II</span>
+            </div>
+            <div className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 rounded-lg">
+              <Shield className="w-5 h-5 text-blue-500" />
+              <span className="text-sm text-gray-400">GDPR Compliant</span>
+            </div>
+            <div className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 rounded-lg">
+              <FileText className="w-5 h-5 text-purple-500" />
+              <span className="text-sm text-gray-400">PCAOB Standards</span>
+            </div>
+            <div className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 rounded-lg">
+              <Shield className="w-5 h-5 text-cyan-500" />
+              <span className="text-sm text-gray-400">256-bit Encryption</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="pt-6 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-gray-500 text-sm">
-              &copy; {currentYear} Aura Audit AI. All rights reserved.
+              &copy; {currentYear} Aura AI. All rights reserved.
             </p>
-            <div className="flex flex-wrap justify-center gap-6 text-sm">
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <Link href="/sitemap.xml" className="text-gray-500 hover:text-primary-400 transition-colors">
+                Sitemap
+              </Link>
+              <span className="text-gray-700">|</span>
               <Link href="/privacy" className="text-gray-500 hover:text-primary-400 transition-colors">
-                Privacy Policy
+                Privacy
               </Link>
+              <span className="text-gray-700">|</span>
               <Link href="/terms" className="text-gray-500 hover:text-primary-400 transition-colors">
-                Terms of Service
+                Terms
               </Link>
-              <Link href="/cookies" className="text-gray-500 hover:text-primary-400 transition-colors">
-                Cookie Policy
+              <span className="text-gray-700">|</span>
+              <Link href="/sla" className="text-gray-500 hover:text-primary-400 transition-colors">
+                SLA
               </Link>
-              <Link href="/compliance" className="text-gray-500 hover:text-primary-400 transition-colors">
-                Compliance
+              <span className="text-gray-700">|</span>
+              <Link href="/gdpr" className="text-gray-500 hover:text-primary-400 transition-colors">
+                GDPR
               </Link>
             </div>
           </div>

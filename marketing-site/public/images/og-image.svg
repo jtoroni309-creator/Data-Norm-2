@@ -1,48 +1,73 @@
 <svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background gradient -->
   <defs>
+    <!-- Aura AI Brand Gradient -->
     <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#d946ef;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="50%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#A855F7"/>
     </linearGradient>
-    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#e0f2fe;stop-opacity:1" />
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#C084FC"/>
     </linearGradient>
+    <!-- Glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
   <!-- Background -->
   <rect width="1200" height="630" fill="url(#bgGradient)"/>
 
-  <!-- Pattern overlay -->
-  <circle cx="100" cy="100" r="150" fill="rgba(255,255,255,0.1)"/>
-  <circle cx="1100" cy="530" r="150" fill="rgba(255,255,255,0.1)"/>
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="200" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="1100" cy="530" r="250" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="600" cy="315" r="400" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <circle cx="600" cy="315" r="300" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
 
-  <!-- Logo -->
-  <rect x="80" y="80" width="80" height="80" rx="16" fill="white" opacity="0.2"/>
-  <text x="120" y="145" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">A</text>
+  <!-- Logo Mark -->
+  <g transform="translate(500, 120)">
+    <!-- Outer orbital ring -->
+    <ellipse cx="100" cy="100" rx="90" ry="90" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/>
+    <!-- Tilted orbital ring -->
+    <ellipse cx="100" cy="100" rx="70" ry="30" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="none" transform="rotate(-25, 100, 100)"/>
+    <!-- Central A -->
+    <path d="M100 40 L140 160 L125 160 L115 130 L85 130 L75 160 L60 160 L100 40Z" fill="white"/>
+    <path d="M90 115 L110 115 L105 100 L95 100 Z" fill="url(#bgGradient)"/>
+    <!-- AI spark -->
+    <circle cx="150" cy="55" r="10" fill="url(#accentGradient)" filter="url(#glow)"/>
+  </g>
 
-  <!-- Main text -->
-  <text x="600" y="250" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">Aura Audit AI</text>
-
-  <!-- Subtitle -->
-  <text x="600" y="330" font-family="Arial, sans-serif" font-size="36" fill="rgba(255,255,255,0.9)" text-anchor="middle">Intelligent Audit Automation</text>
+  <!-- Brand Name -->
+  <text x="600" y="330" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="72" font-weight="700" fill="white" text-anchor="middle" letter-spacing="-2">
+    Aura AI
+  </text>
 
   <!-- Tagline -->
-  <text x="600" y="400" font-family="Arial, sans-serif" font-size="28" fill="rgba(255,255,255,0.8)" text-anchor="middle">30-50% Faster Audits • AI-Powered • PCAOB Compliant</text>
+  <text x="600" y="390" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="32" fill="rgba(255,255,255,0.9)" text-anchor="middle" font-weight="500">
+    Intelligent Audit Automation
+  </text>
+
+  <!-- Features -->
+  <text x="600" y="450" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="22" fill="rgba(255,255,255,0.75)" text-anchor="middle">
+    30-50% Faster Audits  |  AI-Powered  |  PCAOB Compliant
+  </text>
 
   <!-- Stats -->
-  <g transform="translate(300, 480)">
-    <text x="0" y="0" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">500+</text>
-    <text x="0" y="35" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">CPA Firms</text>
+  <g transform="translate(250, 520)">
+    <text x="0" y="0" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="white">500+</text>
+    <text x="0" y="35" font-family="Inter, -apple-system, sans-serif" font-size="14" fill="rgba(255,255,255,0.7)">CPA Firms</text>
   </g>
-  <g transform="translate(550, 480)">
-    <text x="0" y="0" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">10K+</text>
-    <text x="0" y="35" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">Audits</text>
+  <g transform="translate(500, 520)">
+    <text x="0" y="0" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="white">10K+</text>
+    <text x="0" y="35" font-family="Inter, -apple-system, sans-serif" font-size="14" fill="rgba(255,255,255,0.7)">Audits Completed</text>
   </g>
-  <g transform="translate(750, 480)">
-    <text x="0" y="0" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">99.9%</text>
-    <text x="0" y="35" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">Accuracy</text>
+  <g transform="translate(750, 520)">
+    <text x="0" y="0" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="white">99.9%</text>
+    <text x="0" y="35" font-family="Inter, -apple-system, sans-serif" font-size="14" fill="rgba(255,255,255,0.7)">Accuracy Rate</text>
   </g>
 </svg>

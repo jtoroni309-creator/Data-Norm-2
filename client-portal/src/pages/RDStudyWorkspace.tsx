@@ -186,7 +186,20 @@ const RDStudyWorkspace: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'questionnaire' | 'employees' | 'data' | 'qre' | 'calculate' | 'export'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'questionnaire' | 'employees' | 'data' | 'qre' | 'calculate' | 'export' | 'clients'>('overview');
+
+  // Client invitation states
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [clientInvitations, setClientInvitations] = useState<Array<{
+    id: string;
+    email: string;
+    full_name: string;
+    status: 'pending' | 'accepted' | 'expired';
+    invited_at: string;
+    accepted_at?: string;
+  }>>([]);
+  const [inviteForm, setInviteForm] = useState({ email: '', full_name: '', company_name: '' });
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   // Modal states
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -659,6 +672,7 @@ const RDStudyWorkspace: React.FC = () => {
               { id: 'qre', label: 'QRE Summary', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
               { id: 'calculate', label: 'Calculate', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
               { id: 'export', label: 'Export', icon: 'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+              { id: 'clients', label: 'Client Portal', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1922,9 +1936,359 @@ const RDStudyWorkspace: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Client Portal Tab */}
+            {activeTab === 'clients' && (
+              <div className="space-y-6">
+                {/* Header with Invite Button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Client Portal Access
+                    </h3>
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Invite clients to provide R&D study documentation through the dedicated client portal
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-sm"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Invite Client
+                  </button>
+                </div>
+
+                {/* Portal URL Info */}
+                <div className={`${theme === 'dark' ? 'bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-blue-700' : 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200'} border rounded-xl p-5`}>
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${theme === 'dark' ? 'bg-blue-600' : 'bg-gradient-to-r from-blue-600 to-purple-600'}`}>
+                      <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        R&D Client Portal
+                      </h4>
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                        Clients will receive an email invitation to access the dedicated R&D documentation portal where they can:
+                      </p>
+                      <ul className={`text-sm mt-2 space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <li className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Complete the R&D eligibility questionnaire
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Add R&D projects with AI-assisted descriptions
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Upload tax returns from the prior 2 years
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Manage employees and supporting documentation
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Invite team members to collaborate
+                        </li>
+                      </ul>
+                      <div className={`mt-3 p-2 rounded-lg font-mono text-sm ${theme === 'dark' ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'}`}>
+                        {import.meta.env.VITE_RDCLIENT_PORTAL_URL || 'rdclient.auraai.toroniandcompany.com'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invitations List */}
+                <div>
+                  <h4 className={`font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Client Invitations ({clientInvitations.length})
+                  </h4>
+                  {clientInvitations.length === 0 ? (
+                    <div className={`text-center py-12 ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-xl`}>
+                      <svg className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>No client invitations yet</p>
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Invite clients to provide R&D study documentation
+                      </p>
+                      <button
+                        onClick={() => setShowInviteModal(true)}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Send First Invitation
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {clientInvitations.map((invitation) => (
+                        <div
+                          key={invitation.id}
+                          className={`flex items-center justify-between p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              invitation.status === 'accepted'
+                                ? 'bg-green-100 text-green-600'
+                                : invitation.status === 'expired'
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-yellow-100 text-yellow-600'
+                            }`}>
+                              {invitation.status === 'accepted' ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : invitation.status === 'expired' ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </div>
+                            <div>
+                              <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {invitation.full_name}
+                              </div>
+                              <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {invitation.email}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                invitation.status === 'accepted'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
+                                  : invitation.status === 'expired'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
+                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                              }`}>
+                                {invitation.status.charAt(0).toUpperCase() + invitation.status.slice(1)}
+                              </span>
+                              <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {invitation.status === 'accepted' && invitation.accepted_at
+                                  ? `Joined ${new Date(invitation.accepted_at).toLocaleDateString()}`
+                                  : `Invited ${new Date(invitation.invited_at).toLocaleDateString()}`}
+                              </div>
+                            </div>
+                            {invitation.status === 'pending' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const headers = getAuthHeaders();
+                                    await axios.post(
+                                      `${API_BASE_URL}/identity/rdclient/invitations/${invitation.id}/resend`,
+                                      {},
+                                      { headers }
+                                    );
+                                    setSuccessMessage('Invitation resent successfully');
+                                  } catch (err) {
+                                    setError('Failed to resend invitation');
+                                  }
+                                }}
+                                className={`p-2 rounded-lg ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                                title="Resend invitation"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Instructions */}
+                <div className={`${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-xl p-5`}>
+                  <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    How Client Invitations Work
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-sm shrink-0">
+                        1
+                      </div>
+                      <div>
+                        <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Send Invitation</div>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Enter the client's email and name to send a secure invitation link
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-sm shrink-0">
+                        2
+                      </div>
+                      <div>
+                        <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Client Registers</div>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Client creates their account and gains access to this study
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-sm shrink-0">
+                        3
+                      </div>
+                      <div>
+                        <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Submit Documentation</div>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Client provides project details, employees, and tax returns
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Client Invitation Modal */}
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => {
+          setShowInviteModal(false);
+          setInviteForm({ email: '', full_name: '', company_name: '' });
+        }}
+        title="Invite Client to R&D Portal"
+      >
+        <div className="space-y-4">
+          <div className={`${theme === 'dark' ? 'bg-blue-900/30 border-blue-700' : 'bg-blue-50 border-blue-200'} border rounded-lg p-3`}>
+            <p className={`text-sm ${theme === 'dark' ? 'text-blue-300' : 'text-blue-800'}`}>
+              The client will receive an email invitation to create an account on the R&D Client Portal. They will be automatically linked to this study: <strong>{study?.entity_name} - {study?.tax_year}</strong>
+            </p>
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Full Name *
+            </label>
+            <input
+              type="text"
+              value={inviteForm.full_name}
+              onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="John Smith"
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Email Address *
+            </label>
+            <input
+              type="email"
+              value={inviteForm.email}
+              onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="john@company.com"
+            />
+          </div>
+
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Company Name
+            </label>
+            <input
+              type="text"
+              value={inviteForm.company_name || study?.entity_name || ''}
+              onChange={(e) => setInviteForm({ ...inviteForm, company_name: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Company Inc."
+            />
+          </div>
+
+          <div className={`${theme === 'dark' ? 'bg-yellow-900/30 border-yellow-700' : 'bg-yellow-50 border-yellow-200'} border rounded-lg p-3`}>
+            <div className="flex items-start gap-2">
+              <svg className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className={`text-sm ${theme === 'dark' ? 'text-yellow-300' : 'text-yellow-800'}`}>
+                <strong>Primary Contact:</strong> This user will be set as the primary contact for this study. They can invite additional team members from within the client portal.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => {
+                setShowInviteModal(false);
+                setInviteForm({ email: '', full_name: '', company_name: '' });
+              }}
+              className={`px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                if (!inviteForm.email || !inviteForm.full_name) {
+                  setError('Please fill in all required fields');
+                  return;
+                }
+                setSendingInvite(true);
+                try {
+                  const headers = getAuthHeaders();
+                  const response = await axios.post(
+                    `${API_BASE_URL}/identity/rdclient/invite`,
+                    {
+                      email: inviteForm.email,
+                      full_name: inviteForm.full_name,
+                      company_name: inviteForm.company_name || study?.entity_name,
+                      study_id: studyId,
+                      firm_id: study?.firm_id,
+                      role: 'primary',
+                    },
+                    { headers }
+                  );
+                  setClientInvitations([...clientInvitations, {
+                    id: response.data.invitation_id,
+                    email: inviteForm.email,
+                    full_name: inviteForm.full_name,
+                    status: 'pending',
+                    invited_at: new Date().toISOString(),
+                  }]);
+                  setShowInviteModal(false);
+                  setInviteForm({ email: '', full_name: '', company_name: '' });
+                  setSuccessMessage(`Invitation sent to ${inviteForm.email}`);
+                } catch (err: any) {
+                  setError(err.response?.data?.detail || 'Failed to send invitation');
+                } finally {
+                  setSendingInvite(false);
+                }
+              }}
+              disabled={sendingInvite || !inviteForm.email || !inviteForm.full_name}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {sendingInvite ? 'Sending...' : 'Send Invitation'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Employee Modal */}
       <Modal

@@ -259,12 +259,36 @@ class PDFStudyGenerator:
         """Build professional cover page with branding and key metrics."""
         elements = []
 
+        # Use firm colors if available
+        firm_primary = study_data.get("firm_primary_color", "#1F4E79")
+        firm_secondary = study_data.get("firm_secondary_color", "#2E7D32")
+        primary_color = colors.HexColor(firm_primary) if firm_primary else self.PRIMARY_COLOR
+        secondary_color = colors.HexColor(firm_secondary) if firm_secondary else self.SECONDARY_COLOR
+
         # Header bar with decorative line
         header_drawing = Drawing(6.5 * inch, 0.1 * inch)
-        header_drawing.add(Line(0, 0, 6.5 * inch, 0, strokeColor=self.PRIMARY_COLOR, strokeWidth=3))
+        header_drawing.add(Line(0, 0, 6.5 * inch, 0, strokeColor=primary_color, strokeWidth=3))
         elements.append(header_drawing)
 
-        elements.append(Spacer(1, 0.75 * inch))
+        elements.append(Spacer(1, 0.5 * inch))
+
+        # Firm logo (if available)
+        firm_logo_url = study_data.get("firm_logo_url")
+        if firm_logo_url:
+            try:
+                import base64
+                import io as py_io
+                # Handle base64 encoded logo
+                if firm_logo_url.startswith("data:image"):
+                    # Extract base64 data
+                    header, data = firm_logo_url.split(",", 1)
+                    logo_data = base64.b64decode(data)
+                    logo_img = Image(py_io.BytesIO(logo_data), width=1.5*inch, height=1.5*inch)
+                    logo_img.hAlign = 'CENTER'
+                    elements.append(logo_img)
+                    elements.append(Spacer(1, 0.25 * inch))
+            except Exception as e:
+                logger.warning(f"Failed to add firm logo: {e}")
 
         # Prepared by section (top of cover)
         prepared_style = ParagraphStyle(
@@ -277,13 +301,13 @@ class PDFStudyGenerator:
         firm_name = study_data.get("firm_name", "Aura Audit AI")
         elements.append(Paragraph(f"Prepared by {firm_name}", prepared_style))
 
-        elements.append(Spacer(1, 1.25 * inch))
+        elements.append(Spacer(1, 1.0 * inch))
 
         # Main title with styled box
         title_box_style = ParagraphStyle(
             name='TitleBox',
             fontSize=28,
-            textColor=self.PRIMARY_COLOR,
+            textColor=primary_color,
             alignment=TA_CENTER,
             fontName='Helvetica-Bold',
             leading=36
@@ -309,7 +333,7 @@ class PDFStudyGenerator:
 
         # Decorative divider
         divider_drawing = Drawing(4 * inch, 0.05 * inch)
-        divider_drawing.add(Line(0, 0, 4 * inch, 0, strokeColor=self.SECONDARY_COLOR, strokeWidth=2))
+        divider_drawing.add(Line(0, 0, 4 * inch, 0, strokeColor=secondary_color, strokeWidth=2))
         elements.append(divider_drawing)
 
         elements.append(Spacer(1, 0.5 * inch))
@@ -318,7 +342,7 @@ class PDFStudyGenerator:
         entity_style = ParagraphStyle(
             name='EntityName',
             fontSize=20,
-            textColor=self.PRIMARY_COLOR,
+            textColor=primary_color,
             alignment=TA_CENTER,
             fontName='Helvetica-Bold'
         )
@@ -344,7 +368,7 @@ class PDFStudyGenerator:
         year_style = ParagraphStyle(
             name='TaxYear',
             fontSize=14,
-            textColor=self.PRIMARY_COLOR,
+            textColor=primary_color,
             alignment=TA_CENTER,
             fontName='Helvetica-Bold'
         )
@@ -378,7 +402,7 @@ class PDFStudyGenerator:
             textColor=colors.white,
             alignment=TA_CENTER,
             fontName='Helvetica-Bold',
-            backColor=self.SECONDARY_COLOR,
+            backColor=secondary_color,
             borderPadding=15
         )
         credit_amount_style = ParagraphStyle(

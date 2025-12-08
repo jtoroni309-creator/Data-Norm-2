@@ -51,23 +51,63 @@ class FirmService {
     );
   }
 
+  /**
+   * Transform backend organization response to frontend format
+   */
+  private transformOrganizationResponse(data: any): Organization {
+    return {
+      id: data.id,
+      name: data.firm_name || data.name || '',
+      tax_id: data.ein || data.tax_id || '',
+      industry_code: data.industry_code || '',
+      logo_url: data.logo_url || '',
+      primary_color: data.primary_color || '#2563eb',
+      secondary_color: data.secondary_color || '#7c3aed',
+      address: data.address || '',
+      phone: data.primary_contact_phone || data.phone || '',
+      website: data.website || '',
+      timezone: data.timezone || 'America/New_York',
+      date_format: data.date_format || 'MM/DD/YYYY',
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  }
+
+  /**
+   * Transform frontend organization update to backend format
+   */
+  private transformOrganizationUpdate(data: OrganizationUpdate): any {
+    const backendData: any = {};
+
+    if (data.name !== undefined) backendData.firm_name = data.name;
+    if (data.tax_id !== undefined) backendData.ein = data.tax_id;
+    if (data.logo_url !== undefined) backendData.logo_url = data.logo_url;
+    if (data.primary_color !== undefined) backendData.primary_color = data.primary_color;
+    if (data.secondary_color !== undefined) backendData.secondary_color = data.secondary_color;
+    if (data.phone !== undefined) backendData.primary_contact_phone = data.phone;
+    // Note: industry_code, address, website, timezone, date_format are stored locally only for now
+
+    return backendData;
+  }
+
   // ========================================
   // Organization Management
   // ========================================
 
   async getOrganization(orgId: string): Promise<Organization> {
-    const response = await this.api.get<Organization>(`/organizations/${orgId}`);
-    return response.data;
+    const response = await this.api.get(`/organizations/${orgId}`);
+    return this.transformOrganizationResponse(response.data);
   }
 
   async getMyOrganization(): Promise<Organization> {
-    const response = await this.api.get<Organization>('/organizations/me/details');
-    return response.data;
+    const response = await this.api.get('/organizations/me/details');
+    return this.transformOrganizationResponse(response.data);
   }
 
   async updateOrganization(orgId: string, data: OrganizationUpdate): Promise<Organization> {
-    const response = await this.api.patch<Organization>(`/organizations/${orgId}`, data);
-    return response.data;
+    const backendData = this.transformOrganizationUpdate(data);
+    const response = await this.api.patch(`/organizations/${orgId}`, backendData);
+    return this.transformOrganizationResponse(response.data);
   }
 
   // ========================================
