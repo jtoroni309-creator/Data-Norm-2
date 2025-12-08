@@ -43,20 +43,56 @@ class PDFStudyGenerator:
     - State Addenda
     - Assumptions & Limitations
     - Appendix with Citations
+
+    Branding:
+    - Default brand: Aura AI
+    - Supports custom firm branding through config
     """
 
-    # Color definitions
+    # Default Aura AI Branding
+    DEFAULT_BRANDING = {
+        "company_name": "Aura AI",
+        "tagline": "Intelligent Tax Credit Automation",
+        "primary_color": "#1F4E79",       # Professional blue
+        "secondary_color": "#6366F1",      # Aura AI accent (indigo)
+        "accent_color": "#10B981",         # Success green
+        "warning_color": "#E65100",        # Warning orange
+        "logo_path": None,                 # Path to logo file
+        "website": "www.aura-ai.com",
+        "footer_text": "Powered by Aura AI - Intelligent Tax Credit Automation"
+    }
+
+    # Color definitions (defaults, can be overridden by branding)
     PRIMARY_COLOR = colors.HexColor("#1F4E79")
-    SECONDARY_COLOR = colors.HexColor("#2E7D32")
+    SECONDARY_COLOR = colors.HexColor("#6366F1")  # Aura AI indigo
+    ACCENT_COLOR = colors.HexColor("#10B981")     # Success green
     WARNING_COLOR = colors.HexColor("#E65100")
     LIGHT_GRAY = colors.HexColor("#F5F5F5")
     BORDER_COLOR = colors.HexColor("#CCCCCC")
+    DARK_TEXT = colors.HexColor("#1E293B")
+    MUTED_TEXT = colors.HexColor("#64748B")
 
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
         self.include_watermark = self.config.get("include_watermark", True)
         self.watermark_text = "DRAFT - NOT FOR FILING"
+
+        # Initialize branding (merge custom branding with defaults)
+        self.branding = {**self.DEFAULT_BRANDING, **self.config.get("branding", {})}
+        self._apply_branding()
+
         self.styles = self._create_styles()
+
+    def _apply_branding(self):
+        """Apply custom branding colors if provided."""
+        if self.branding.get("primary_color"):
+            self.PRIMARY_COLOR = colors.HexColor(self.branding["primary_color"])
+        if self.branding.get("secondary_color"):
+            self.SECONDARY_COLOR = colors.HexColor(self.branding["secondary_color"])
+        if self.branding.get("accent_color"):
+            self.ACCENT_COLOR = colors.HexColor(self.branding["accent_color"])
+        if self.branding.get("warning_color"):
+            self.WARNING_COLOR = colors.HexColor(self.branding["warning_color"])
 
     def _create_styles(self) -> Dict:
         """Create custom paragraph styles."""
@@ -213,23 +249,45 @@ class PDFStudyGenerator:
         return buffer.getvalue()
 
     def _add_header_footer(self, canvas, doc):
-        """Add header and footer to each page."""
+        """Add header and footer to each page with Aura AI branding."""
         canvas.saveState()
 
-        # Header line
-        canvas.setStrokeColor(self.PRIMARY_COLOR)
-        canvas.setLineWidth(1)
-        canvas.line(0.75 * inch, 10.25 * inch, 7.75 * inch, 10.25 * inch)
+        # Header - Brand name and line
+        canvas.setFont('Helvetica-Bold', 9)
+        canvas.setFillColor(self.PRIMARY_COLOR)
+        canvas.drawString(0.75 * inch, 10.35 * inch, self.branding.get("company_name", "Aura AI"))
+
+        # Tagline
+        canvas.setFont('Helvetica-Oblique', 7)
+        canvas.setFillColor(self.MUTED_TEXT)
+        canvas.drawString(0.75 * inch, 10.2 * inch, self.branding.get("tagline", "Intelligent Tax Credit Automation"))
+
+        # Header line with gradient effect (solid line for PDF compatibility)
+        canvas.setStrokeColor(self.SECONDARY_COLOR)
+        canvas.setLineWidth(2)
+        canvas.line(0.75 * inch, 10.1 * inch, 7.75 * inch, 10.1 * inch)
 
         # Footer
         canvas.setFont('Helvetica', 8)
-        canvas.setFillColor(colors.gray)
-        canvas.drawString(0.75 * inch, 0.5 * inch, f"Generated: {datetime.now().strftime('%B %d, %Y')}")
-        canvas.drawRightString(7.75 * inch, 0.5 * inch, f"Page {doc.page}")
+        canvas.setFillColor(self.MUTED_TEXT)
+        canvas.drawString(0.75 * inch, 0.55 * inch, f"Generated: {datetime.now().strftime('%B %d, %Y')}")
+        canvas.drawRightString(7.75 * inch, 0.55 * inch, f"Page {doc.page}")
+
+        # Footer branding
+        canvas.setFont('Helvetica-Oblique', 7)
+        canvas.setFillColor(self.PRIMARY_COLOR)
+        footer_text = self.branding.get("footer_text", "Powered by Aura AI")
+        canvas.drawCentredString(4.25 * inch, 0.55 * inch, footer_text)
 
         # Confidential notice
-        canvas.setFont('Helvetica-Oblique', 7)
-        canvas.drawCentredString(4.25 * inch, 0.5 * inch, "CONFIDENTIAL - Prepared for client use only")
+        canvas.setFont('Helvetica', 6)
+        canvas.setFillColor(self.MUTED_TEXT)
+        canvas.drawCentredString(4.25 * inch, 0.35 * inch, "CONFIDENTIAL - Prepared for client use only")
+
+        # Footer line
+        canvas.setStrokeColor(self.BORDER_COLOR)
+        canvas.setLineWidth(0.5)
+        canvas.line(0.75 * inch, 0.7 * inch, 7.75 * inch, 0.7 * inch)
 
         canvas.restoreState()
 
@@ -290,16 +348,28 @@ class PDFStudyGenerator:
             except Exception as e:
                 logger.warning(f"Failed to add firm logo: {e}")
 
-        # Prepared by section (top of cover)
+        # Prepared by section (top of cover) - Use branding
         prepared_style = ParagraphStyle(
             name='PreparedBy',
             fontSize=10,
-            textColor=colors.gray,
+            textColor=self.MUTED_TEXT,
             alignment=TA_CENTER,
             fontName='Helvetica'
         )
-        firm_name = study_data.get("firm_name", "Aura Audit AI")
+        # Use firm name from study_data, or fall back to branding company name
+        firm_name = study_data.get("firm_name") or self.branding.get("company_name", "Aura AI")
         elements.append(Paragraph(f"Prepared by {firm_name}", prepared_style))
+
+        # Add tagline if using default Aura AI branding
+        if firm_name == "Aura AI" and self.branding.get("tagline"):
+            tagline_style = ParagraphStyle(
+                name='Tagline',
+                fontSize=9,
+                textColor=self.SECONDARY_COLOR,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Oblique'
+            )
+            elements.append(Paragraph(self.branding["tagline"], tagline_style))
 
         elements.append(Spacer(1, 1.0 * inch))
 
