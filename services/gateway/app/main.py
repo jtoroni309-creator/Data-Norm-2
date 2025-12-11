@@ -50,6 +50,8 @@ SERVICE_REGISTRY = {
     "eo-insurance": {"url": "http://eo-insurance-portal:80", "health": "/health"},
     "estimates": {"url": "http://estimates-evaluation:80", "health": "/health"},
     "rd-study-automation": {"url": "http://rd-study-automation:8000", "health": "/health", "strip_prefix": "/rd-study"},
+    "rd-ai-document-processor": {"url": "http://rd-ai-document-processor:8000", "health": "/health"},  # GPU-accelerated
+    "rd-study-automation-gpu": {"url": "http://rd-study-automation-gpu:8000", "health": "/health"},  # GPU-optimized R&D
 }
 
 # Path routing rules (prefix -> service)
@@ -61,7 +63,10 @@ ROUTE_MAP = {
     "/admin": "identity",
     "/organizations": "identity",
     "/clients": "identity",
+    "/rdclient": "identity",  # R&D Client Portal auth endpoints
     "/rd-study": "rd-study-automation",
+    "/rd-ai": "rd-ai-document-processor",  # GPU-accelerated document processing
+    "/rd-gpu": "rd-study-automation-gpu",  # GPU-optimized R&D study service
 
     "/ingestion": "ingestion",
     "/edgar": "ingestion",

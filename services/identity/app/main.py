@@ -25,7 +25,7 @@ from jose import JWTError, jwt
 
 from app.config import settings
 from app.database import get_db, init_db
-from app.models import User, Organization, LoginAuditLog, UserInvitation, UserPermission, Client, PasswordResetToken
+from app.models import User, Organization, LoginAuditLog, UserInvitation, UserPermission, Client, PasswordResetToken, RDClientUser, RDClientInvitation
 from app.schemas import (
     UserCreate,
     UserResponse,
@@ -51,7 +51,17 @@ from app.schemas import (
     PasswordResetConfirm,
     RDStudyClientInvitationCreate,
     RDStudyClientInvitationResponse,
-    RDStudyClientInvitationValidate
+    RDStudyClientInvitationValidate,
+    # R&D Client Portal schemas
+    RDClientInviteCreate,
+    RDClientInviteResponse,
+    RDClientInviteValidateResponse,
+    RDClientRegisterRequest,
+    RDClientLoginRequest,
+    RDClientUserResponse,
+    RDClientTokenResponse,
+    RDClientPasswordChangeRequest,
+    RDClientProfileUpdateRequest,
 )
 
 # Configure logging
@@ -2834,3 +2844,698 @@ async def resend_rd_study_client_invitation(
         logger.error(f"Error resending invitation: {e}")
 
     return {"message": "Invitation resent successfully", "new_expires_at": new_expires.isoformat()}
+
+
+# ========================================
+# R&D Client Portal Endpoints
+# ========================================
+
+async def get_current_rdclient_user(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: AsyncSession = Depends(get_db)
+) -> RDClientUser:
+    """
+    Dependency to get current authenticated R&D client user from JWT token
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+
+        user_id: str = payload.get("sub")
+        user_type: str = payload.get("user_type")
+
+        if user_id is None or user_type != "rdclient":
+            raise credentials_exception
+
+    except JWTError as e:
+        logger.error(f"JWT decode error for rdclient: {e}")
+        raise credentials_exception
+
+    # Fetch R&D client user from database
+    result = await db.execute(
+        select(RDClientUser).where(
+            and_(
+                RDClientUser.id == UUID(user_id),
+                RDClientUser.is_active == True
+            )
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+def create_rdclient_access_token(user: RDClientUser, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT access token for R&D client user"""
+    to_encode = {
+        "sub": str(user.id),
+        "email": user.email,
+        "user_type": "rdclient",
+        "study_id": str(user.study_id),
+        "firm_id": str(user.firm_id) if user.firm_id else None,
+        "role": user.role.value if hasattr(user.role, 'value') else str(user.role)
+    }
+
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRY_HOURS)
+
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "access"
+    })
+
+    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+@app.post("/rdclient/invite", response_model=RDClientInviteResponse, status_code=status.HTTP_201_CREATED)
+async def create_rdclient_invitation(
+    invite_data: RDClientInviteCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Create an invitation for a client to access the R&D Client Portal.
+    Called by CPA portal users to invite their clients.
+    """
+    import secrets
+    from sqlalchemy import text
+
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    # Check if user already exists
+    existing_user = await db.execute(
+        select(RDClientUser).where(RDClientUser.email == invite_data.email)
+    )
+    if existing_user.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email is already registered in the R&D Client Portal"
+        )
+
+    # Check if there's already a pending invitation for this email/study
+    existing_invite = await db.execute(
+        select(RDClientInvitation).where(
+            and_(
+                RDClientInvitation.email == invite_data.email,
+                RDClientInvitation.study_id == invite_data.study_id,
+                RDClientInvitation.accepted_at == None,
+                RDClientInvitation.is_expired == False
+            )
+        )
+    )
+    if existing_invite.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An invitation is already pending for this email"
+        )
+
+    # Get firm details
+    firm_result = await db.execute(
+        select(Organization).where(Organization.id == current_user.cpa_firm_id)
+    )
+    firm = firm_result.scalar_one_or_none()
+    firm_name = firm.firm_name if firm else "Your CPA Firm"
+
+    # Generate token
+    token = secrets.token_urlsafe(48)
+
+    # Create invitation
+    invitation = RDClientInvitation(
+        email=invite_data.email,
+        full_name=invite_data.full_name,
+        company_name=invite_data.company_name,
+        role=invite_data.role or "primary",
+        study_id=invite_data.study_id,
+        firm_id=current_user.cpa_firm_id,
+        invited_by_user_id=current_user.id,
+        token=token,
+        expires_at=datetime.utcnow() + timedelta(days=30),
+        is_expired=False
+    )
+
+    db.add(invitation)
+    await db.commit()
+    await db.refresh(invitation)
+
+    logger.info(f"R&D client invitation created for {invite_data.email} by {current_user.email}")
+
+    # Send invitation email
+    try:
+        from app.email_service import get_email_service
+        email_service = get_email_service()
+        await email_service.send_rdclient_invitation_email(
+            to_email=invite_data.email,
+            to_name=invite_data.full_name,
+            invitation_token=token,
+            firm_name=firm_name,
+            invited_by=current_user.full_name or current_user.email,
+            message=invite_data.message
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send invitation email: {e}")
+
+    return RDClientInviteResponse(
+        id=invitation.id,
+        email=invitation.email,
+        full_name=invitation.full_name,
+        company_name=invitation.company_name,
+        study_id=invitation.study_id,
+        firm_id=invitation.firm_id,
+        firm_name=firm_name,
+        role=invitation.role.value if hasattr(invitation.role, 'value') else str(invitation.role),
+        token=invitation.token,
+        expires_at=invitation.expires_at,
+        status="pending",
+        created_at=invitation.created_at
+    )
+
+
+@app.get("/rdclient/invitations/validate", response_model=RDClientInviteValidateResponse)
+async def validate_rdclient_invitation(
+    token: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Validate an R&D client invitation token.
+    Returns invitation details for the registration page.
+    """
+    from sqlalchemy import text
+
+    # Find invitation
+    result = await db.execute(
+        select(RDClientInvitation).where(RDClientInvitation.token == token)
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid invitation token"
+        )
+
+    if invitation.is_expired or invitation.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has expired"
+        )
+
+    if invitation.accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has already been accepted"
+        )
+
+    # Check if email is already registered
+    existing_user = await db.execute(
+        select(RDClientUser).where(RDClientUser.email == invitation.email)
+    )
+    already_registered = existing_user.scalar_one_or_none() is not None
+
+    # Get firm details
+    firm_name = "Your CPA Firm"
+    firm_logo = None
+    if invitation.firm_id:
+        firm_result = await db.execute(
+            select(Organization).where(Organization.id == invitation.firm_id)
+        )
+        firm = firm_result.scalar_one_or_none()
+        if firm:
+            firm_name = firm.firm_name
+            firm_logo = firm.logo_url
+
+    # Get study details from rd_studies table
+    study_name = "R&D Tax Credit Study"
+    company_name = invitation.company_name or "Your Company"
+    tax_year = datetime.utcnow().year
+
+    try:
+        study_query = text("""
+            SELECT study_name, company_name, tax_year
+            FROM atlas.rd_studies
+            WHERE id = :study_id
+        """)
+        study_result = await db.execute(study_query, {"study_id": invitation.study_id})
+        study_row = study_result.fetchone()
+        if study_row:
+            study_name = study_row.study_name or study_name
+            company_name = study_row.company_name or company_name
+            tax_year = study_row.tax_year or tax_year
+    except Exception as e:
+        logger.warning(f"Could not fetch study details: {e}")
+
+    return RDClientInviteValidateResponse(
+        valid=True,
+        study_id=str(invitation.study_id),
+        study_name=study_name,
+        company_name=company_name,
+        tax_year=tax_year,
+        firm_name=firm_name,
+        firm_logo=firm_logo,
+        email=invitation.email,
+        name=invitation.full_name,
+        expires_at=invitation.expires_at,
+        already_registered=already_registered
+    )
+
+
+@app.post("/rdclient/auth/register", response_model=RDClientTokenResponse)
+async def register_rdclient_user(
+    register_data: RDClientRegisterRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Register a new R&D client user using an invitation token.
+    """
+    # Find and validate invitation
+    result = await db.execute(
+        select(RDClientInvitation).where(RDClientInvitation.token == register_data.token)
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid invitation token"
+        )
+
+    if invitation.is_expired or invitation.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has expired"
+        )
+
+    if invitation.accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has already been used"
+        )
+
+    # Check if email matches invitation
+    if invitation.email.lower() != register_data.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email does not match invitation"
+        )
+
+    # Check if user already exists
+    existing_user = await db.execute(
+        select(RDClientUser).where(RDClientUser.email == register_data.email)
+    )
+    if existing_user.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email is already registered"
+        )
+
+    # Hash password
+    hashed_password = hash_password(register_data.password)
+
+    # Create user
+    new_user = RDClientUser(
+        email=register_data.email,
+        full_name=register_data.full_name,
+        company_name=invitation.company_name,
+        hashed_password=hashed_password,
+        role=invitation.role,
+        study_id=invitation.study_id,
+        firm_id=invitation.firm_id,
+        invited_by_user_id=invitation.invited_by_user_id,
+        invited_by_rd_client_id=invitation.invited_by_rd_client_id,
+        is_active=True,
+        is_email_verified=True  # Verified via invitation
+    )
+
+    db.add(new_user)
+
+    # Mark invitation as accepted
+    invitation.accepted_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(new_user)
+
+    logger.info(f"R&D client user registered: {new_user.email}")
+
+    # Create access token
+    access_token = create_rdclient_access_token(new_user)
+
+    return RDClientTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.JWT_EXPIRY_HOURS * 3600,
+        user=RDClientUserResponse(
+            id=new_user.id,
+            email=new_user.email,
+            full_name=new_user.full_name,
+            company_name=new_user.company_name,
+            role=new_user.role.value if hasattr(new_user.role, 'value') else str(new_user.role),
+            study_id=new_user.study_id,
+            firm_id=new_user.firm_id,
+            is_active=new_user.is_active,
+            is_email_verified=new_user.is_email_verified,
+            last_login_at=new_user.last_login_at,
+            created_at=new_user.created_at
+        )
+    )
+
+
+@app.post("/rdclient/auth/login", response_model=RDClientTokenResponse)
+async def login_rdclient_user(
+    credentials: RDClientLoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Authenticate R&D client user and return JWT token.
+    """
+    # Find user
+    result = await db.execute(
+        select(RDClientUser).where(RDClientUser.email == credentials.email)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive"
+        )
+
+    # Update last login
+    user.last_login_at = datetime.utcnow()
+    await db.commit()
+
+    logger.info(f"R&D client user logged in: {user.email}")
+
+    # Create access token
+    access_token = create_rdclient_access_token(user)
+
+    return RDClientTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.JWT_EXPIRY_HOURS * 3600,
+        user=RDClientUserResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            company_name=user.company_name,
+            role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+            study_id=user.study_id,
+            firm_id=user.firm_id,
+            is_active=user.is_active,
+            is_email_verified=user.is_email_verified,
+            last_login_at=user.last_login_at,
+            created_at=user.created_at
+        )
+    )
+
+
+@app.get("/rdclient/auth/me", response_model=RDClientUserResponse)
+async def get_rdclient_profile(
+    current_user: RDClientUser = Depends(get_current_rdclient_user)
+):
+    """Get current R&D client user profile."""
+    return RDClientUserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        company_name=current_user.company_name,
+        role=current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role),
+        study_id=current_user.study_id,
+        firm_id=current_user.firm_id,
+        is_active=current_user.is_active,
+        is_email_verified=current_user.is_email_verified,
+        last_login_at=current_user.last_login_at,
+        created_at=current_user.created_at
+    )
+
+
+@app.patch("/rdclient/auth/me", response_model=RDClientUserResponse)
+async def update_rdclient_profile(
+    update_data: RDClientProfileUpdateRequest,
+    current_user: RDClientUser = Depends(get_current_rdclient_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update R&D client user profile."""
+    update_fields = update_data.model_dump(exclude_unset=True)
+
+    for field, value in update_fields.items():
+        setattr(current_user, field, value)
+
+    current_user.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(current_user)
+
+    logger.info(f"R&D client profile updated: {current_user.email}")
+
+    return RDClientUserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        company_name=current_user.company_name,
+        role=current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role),
+        study_id=current_user.study_id,
+        firm_id=current_user.firm_id,
+        is_active=current_user.is_active,
+        is_email_verified=current_user.is_email_verified,
+        last_login_at=current_user.last_login_at,
+        created_at=current_user.created_at
+    )
+
+
+@app.post("/rdclient/auth/change-password")
+async def change_rdclient_password(
+    password_data: RDClientPasswordChangeRequest,
+    current_user: RDClientUser = Depends(get_current_rdclient_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Change R&D client user password."""
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    current_user.hashed_password = hash_password(password_data.new_password)
+    current_user.updated_at = datetime.utcnow()
+    await db.commit()
+
+    logger.info(f"R&D client password changed: {current_user.email}")
+
+    return {"message": "Password changed successfully"}
+
+
+@app.post("/rdclient/auth/logout")
+async def logout_rdclient_user():
+    """Logout R&D client user (client-side token invalidation)."""
+    return {"message": "Logged out successfully"}
+
+
+@app.post("/rdclient/auth/refresh", response_model=RDClientTokenResponse)
+async def refresh_rdclient_token(
+    current_user: RDClientUser = Depends(get_current_rdclient_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Refresh access token for R&D client user."""
+    access_token = create_rdclient_access_token(current_user)
+
+    return RDClientTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.JWT_EXPIRY_HOURS * 3600,
+        user=RDClientUserResponse(
+            id=current_user.id,
+            email=current_user.email,
+            full_name=current_user.full_name,
+            company_name=current_user.company_name,
+            role=current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role),
+            study_id=current_user.study_id,
+            firm_id=current_user.firm_id,
+            is_active=current_user.is_active,
+            is_email_verified=current_user.is_email_verified,
+            last_login_at=current_user.last_login_at,
+            created_at=current_user.created_at
+        )
+    )
+
+
+@app.post("/rdclient/auth/password-reset/request")
+async def request_rdclient_password_reset(
+    request: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Request password reset for R&D client user."""
+    import secrets
+
+    # Find user
+    result = await db.execute(
+        select(RDClientUser).where(RDClientUser.email == request.email)
+    )
+    user = result.scalar_one_or_none()
+
+    # Always return success to prevent email enumeration
+    if not user:
+        logger.warning(f"Password reset requested for non-existent R&D client email: {request.email}")
+        return {"message": "If the email exists, a password reset link will be sent"}
+
+    # Generate token (store in separate table or use existing password_reset_tokens)
+    # For now, we'll log the token
+    token = secrets.token_urlsafe(32)
+    logger.info(f"R&D client password reset token for {user.email}: {token}")
+
+    # TODO: Send email with reset link
+
+    return {"message": "If the email exists, a password reset link will be sent"}
+
+
+@app.post("/rdclient/auth/password-reset/confirm")
+async def confirm_rdclient_password_reset(
+    request: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db)
+):
+    """Confirm password reset for R&D client user."""
+    # TODO: Implement proper token validation
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Password reset confirmation not yet implemented"
+    )
+
+
+@app.get("/rdclient/invitations/{study_id}")
+async def list_rdclient_invitations(
+    study_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """List all R&D client invitations for a study (CPA portal endpoint)."""
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    result = await db.execute(
+        select(RDClientInvitation).where(
+            and_(
+                RDClientInvitation.study_id == study_id,
+                RDClientInvitation.firm_id == current_user.cpa_firm_id
+            )
+        ).order_by(RDClientInvitation.created_at.desc())
+    )
+    invitations = result.scalars().all()
+
+    return [
+        {
+            "id": str(inv.id),
+            "email": inv.email,
+            "full_name": inv.full_name,
+            "company_name": inv.company_name,
+            "role": inv.role.value if hasattr(inv.role, 'value') else str(inv.role),
+            "status": "accepted" if inv.accepted_at else ("expired" if inv.is_expired or inv.expires_at < datetime.utcnow() else "pending"),
+            "expires_at": inv.expires_at.isoformat(),
+            "accepted_at": inv.accepted_at.isoformat() if inv.accepted_at else None,
+            "created_at": inv.created_at.isoformat()
+        }
+        for inv in invitations
+    ]
+
+
+@app.post("/rdclient/invitations/{invitation_id}/resend")
+async def resend_rdclient_invitation(
+    invitation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Resend an R&D client invitation."""
+    import secrets
+
+    if not current_user.cpa_firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not associated with a CPA firm"
+        )
+
+    # Find invitation
+    result = await db.execute(
+        select(RDClientInvitation).where(
+            and_(
+                RDClientInvitation.id == invitation_id,
+                RDClientInvitation.firm_id == current_user.cpa_firm_id
+            )
+        )
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+
+    if invitation.accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has already been accepted"
+        )
+
+    # Generate new token and extend expiration
+    invitation.token = secrets.token_urlsafe(48)
+    invitation.expires_at = datetime.utcnow() + timedelta(days=30)
+    invitation.is_expired = False
+
+    await db.commit()
+
+    # Get firm name
+    firm_result = await db.execute(
+        select(Organization).where(Organization.id == current_user.cpa_firm_id)
+    )
+    firm = firm_result.scalar_one_or_none()
+    firm_name = firm.firm_name if firm else "Your CPA Firm"
+
+    # Send email
+    try:
+        from app.email_service import get_email_service
+        email_service = get_email_service()
+        await email_service.send_rdclient_invitation_email(
+            to_email=invitation.email,
+            to_name=invitation.full_name,
+            invitation_token=invitation.token,
+            firm_name=firm_name,
+            invited_by=current_user.full_name or current_user.email
+        )
+        logger.info(f"R&D client invitation resent to {invitation.email}")
+    except Exception as e:
+        logger.warning(f"Failed to resend invitation email: {e}")
+
+    return {"message": "Invitation resent successfully", "new_expires_at": invitation.expires_at.isoformat()}

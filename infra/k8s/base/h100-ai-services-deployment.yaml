@@ -1,0 +1,485 @@
+---
+# =============================================================================
+# H100 GPU AI SERVICES DEPLOYMENT
+# =============================================================================
+# Deployment configuration for R&D AI services on NCads H100 v5 GPU nodes
+# Optimized for high-performance AI inference and document processing
+#
+# Prerequisites:
+# - NCadsH100v5 node pool with quota enabled
+# - NVIDIA GPU operator installed
+# - GPU node pool labeled with: accelerator=nvidia-h100
+# =============================================================================
+
+# NodePool Configuration (for reference - apply via Azure CLI)
+# az aks nodepool add \
+#   --resource-group aura-audit-ai-prod \
+#   --cluster-name aura-aks-prod \
+#   --name h100pool \
+#   --node-count 1 \
+#   --node-vm-size Standard_NC40ads_H100_v5 \
+#   --node-taints sku=gpu:NoSchedule \
+#   --labels accelerator=nvidia-h100 workload=ai-inference
+
+---
+# R&D AI Document Processing Service - H100 GPU Optimized
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rd-ai-document-processor
+  namespace: aura-audit-ai
+  labels:
+    app: rd-ai-document-processor
+    tier: ai-inference
+    gpu-optimized: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rd-ai-document-processor
+  template:
+    metadata:
+      labels:
+        app: rd-ai-document-processor
+        tier: ai-inference
+        gpu-optimized: "true"
+    spec:
+      # Schedule on H100 GPU nodes
+      nodeSelector:
+        accelerator: nvidia-h100
+      tolerations:
+      - key: "sku"
+        operator: "Equal"
+        value: "gpu"
+        effect: "NoSchedule"
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+
+      containers:
+      - name: rd-ai-processor
+        image: auraauditaiprodacr.azurecr.io/aura/rd-ai-processor:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+
+        # GPU Resources
+        resources:
+          requests:
+            memory: "32Gi"
+            cpu: "8"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "64Gi"
+            cpu: "16"
+            nvidia.com/gpu: "1"
+
+        env:
+        # Database
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+
+        # JWT Authentication
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_ALGORITHM
+          value: "HS256"
+
+        # Azure Storage
+        - name: AZURE_STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: azure-storage
+              key: connection-string
+              optional: true
+
+        # Azure Document Intelligence (Form Recognizer)
+        - name: AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-document-intelligence
+              key: endpoint
+              optional: true
+        - name: AZURE_DOCUMENT_INTELLIGENCE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-document-intelligence
+              key: api-key
+              optional: true
+
+        # Azure OpenAI Configuration
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: aura-azure-openai
+              key: endpoint
+              optional: true
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-azure-openai
+              key: api-key
+              optional: true
+        - name: AZURE_OPENAI_DEPLOYMENT
+          value: "gpt-4-turbo"
+
+        # OpenAI Fallback
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-openai
+              key: api-key
+              optional: true
+        - name: OPENAI_CHAT_MODEL
+          value: "gpt-4-turbo-preview"
+
+        # GPU Optimization Settings
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: TF_FORCE_GPU_ALLOW_GROWTH
+          value: "true"
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: "max_split_size_mb:512"
+
+        # Service Settings
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: ENABLE_GPU_ACCELERATION
+          value: "true"
+        - name: OCR_BATCH_SIZE
+          value: "16"
+        - name: MAX_CONCURRENT_REQUESTS
+          value: "32"
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        volumeMounts:
+        - name: model-cache
+          mountPath: /app/model-cache
+        - name: temp-processing
+          mountPath: /tmp/processing
+
+      volumes:
+      - name: model-cache
+        emptyDir:
+          sizeLimit: 50Gi
+      - name: temp-processing
+        emptyDir:
+          sizeLimit: 20Gi
+
+---
+# Service for R&D AI Document Processor
+apiVersion: v1
+kind: Service
+metadata:
+  name: rd-ai-document-processor
+  namespace: aura-audit-ai
+  labels:
+    app: rd-ai-document-processor
+spec:
+  selector:
+    app: rd-ai-document-processor
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  type: ClusterIP
+
+---
+# =============================================================================
+# R&D Study Automation - H100 GPU Enhanced Deployment
+# =============================================================================
+# Enhanced version of rd-study-automation with GPU acceleration
+# for AI-powered document processing and analysis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rd-study-automation-gpu
+  namespace: aura-audit-ai
+  labels:
+    app: rd-study-automation-gpu
+    tier: ai-inference
+    gpu-optimized: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rd-study-automation-gpu
+  template:
+    metadata:
+      labels:
+        app: rd-study-automation-gpu
+        tier: ai-inference
+        gpu-optimized: "true"
+    spec:
+      nodeSelector:
+        accelerator: nvidia-h100
+      tolerations:
+      - key: "sku"
+        operator: "Equal"
+        value: "gpu"
+        effect: "NoSchedule"
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+
+      containers:
+      - name: rd-study-automation
+        image: auraauditaiprodacr.azurecr.io/aura/rd-study-automation:v2.0.0-gpu
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "4"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "32Gi"
+            cpu: "8"
+            nvidia.com/gpu: "1"
+
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aura-db-connection
+              key: connection-string
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: aura-secrets
+              key: jwt-secret
+        - name: JWT_ALGORITHM
+          value: "HS256"
+        - name: RLS_ENABLED
+          value: "false"
+        - name: AZURE_STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: azure-storage
+              key: connection-string
+              optional: true
+
+        # Document Intelligence for OCR
+        - name: AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-document-intelligence
+              key: endpoint
+              optional: true
+        - name: AZURE_DOCUMENT_INTELLIGENCE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-document-intelligence
+              key: api-key
+              optional: true
+
+        # Azure OpenAI
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: aura-azure-openai
+              key: endpoint
+              optional: true
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-azure-openai
+              key: api-key
+              optional: true
+        - name: AZURE_OPENAI_DEPLOYMENT
+          value: "gpt-4-turbo"
+
+        # OpenAI Fallback
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aura-openai
+              key: api-key
+              optional: true
+        - name: OPENAI_CHAT_MODEL
+          value: "gpt-4-turbo-preview"
+
+        # GPU Settings
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: ENABLE_GPU_ACCELERATION
+          value: "true"
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 45
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rd-study-automation-gpu
+  namespace: aura-audit-ai
+spec:
+  selector:
+    app: rd-study-automation-gpu
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+
+---
+# =============================================================================
+# HORIZONTAL POD AUTOSCALER FOR GPU SERVICES
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rd-ai-document-processor-hpa
+  namespace: aura-audit-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rd-ai-document-processor
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+
+---
+# =============================================================================
+# PRIORITY CLASS FOR GPU WORKLOADS
+# =============================================================================
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gpu-ai-workload
+value: 1000000
+globalDefault: false
+description: "Priority class for GPU-accelerated AI workloads"
+
+---
+# =============================================================================
+# GPU RESOURCE QUOTA
+# =============================================================================
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-resource-quota
+  namespace: aura-audit-ai
+spec:
+  hard:
+    requests.nvidia.com/gpu: "4"
+    limits.nvidia.com/gpu: "4"
+
+---
+# =============================================================================
+# SECRET TEMPLATE FOR AZURE DOCUMENT INTELLIGENCE
+# =============================================================================
+# Apply with actual values:
+# kubectl create secret generic azure-document-intelligence \
+#   --namespace aura-audit-ai \
+#   --from-literal=endpoint=https://your-form-recognizer.cognitiveservices.azure.com/ \
+#   --from-literal=api-key=your-api-key
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-document-intelligence
+  namespace: aura-audit-ai
+type: Opaque
+stringData:
+  endpoint: "https://your-form-recognizer.cognitiveservices.azure.com/"
+  api-key: "your-api-key-here"
+
+---
+# =============================================================================
+# NETWORK POLICY FOR GPU SERVICES
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gpu-ai-services-network-policy
+  namespace: aura-audit-ai
+spec:
+  podSelector:
+    matchLabels:
+      tier: ai-inference
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: aura-audit-ai
+    - podSelector:
+        matchLabels:
+          app: gateway
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 5432

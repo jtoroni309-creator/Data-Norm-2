@@ -466,3 +466,107 @@ class RDStudyClientDataSubmission(BaseModel):
     projects: Optional[list] = None
     documents: Optional[list] = None
     submission_notes: Optional[str] = None
+
+
+# ========================================
+# R&D Client Portal Schemas
+# ========================================
+
+class RDClientRoleEnum(str, Enum):
+    """R&D Client Portal user roles"""
+    PRIMARY = "primary"
+    TEAM_MEMBER = "team_member"
+
+
+class RDClientInviteCreate(BaseModel):
+    """Create invitation for R&D client portal user"""
+    email: EmailStr
+    full_name: str = Field(..., min_length=1, max_length=200)
+    company_name: Optional[str] = Field(None, max_length=200)
+    study_id: UUID
+    role: Optional[RDClientRoleEnum] = RDClientRoleEnum.PRIMARY
+    message: Optional[str] = Field(None, max_length=1000)
+
+
+class RDClientInviteResponse(BaseModel):
+    """R&D client invitation response"""
+    id: UUID
+    email: str
+    full_name: str
+    company_name: Optional[str] = None
+    study_id: UUID
+    firm_id: Optional[UUID] = None
+    firm_name: Optional[str] = None
+    role: str
+    token: str
+    expires_at: datetime
+    status: str  # pending, accepted, expired
+    created_at: datetime
+
+
+class RDClientInviteValidateResponse(BaseModel):
+    """Validate R&D client invitation - response for registration page"""
+    valid: bool
+    study_id: str
+    study_name: str
+    company_name: str
+    tax_year: int
+    firm_name: str
+    firm_logo: Optional[str] = None
+    email: str
+    name: str
+    expires_at: datetime
+    already_registered: bool
+
+
+class RDClientRegisterRequest(BaseModel):
+    """Register R&D client user from invitation"""
+    token: str
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=100)
+    full_name: str = Field(..., min_length=1, max_length=200)
+    phone: Optional[str] = Field(None, max_length=50)
+
+
+class RDClientLoginRequest(BaseModel):
+    """R&D client login request"""
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+
+class RDClientUserResponse(BaseModel):
+    """R&D client user response"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: str
+    full_name: str
+    company_name: Optional[str] = None
+    role: str
+    study_id: UUID
+    firm_id: Optional[UUID] = None
+    is_active: bool
+    is_email_verified: bool
+    last_login_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class RDClientTokenResponse(BaseModel):
+    """JWT token response for R&D client"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int = Field(..., description="Token expiry in seconds")
+    user: RDClientUserResponse
+
+
+class RDClientPasswordChangeRequest(BaseModel):
+    """Change password request"""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class RDClientProfileUpdateRequest(BaseModel):
+    """Update R&D client profile"""
+    full_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    phone: Optional[str] = Field(None, max_length=50)
+    company_name: Optional[str] = Field(None, max_length=200)

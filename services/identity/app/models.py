@@ -48,9 +48,12 @@ class SubscriptionStatusEnum(str, Enum):
 class ClientStatusEnum(str, Enum):
     """Client status values"""
     active = "active"
-    inactive = "inactive"
-    onboarding = "onboarding"
-    terminated = "terminated"
+
+
+class RDClientRoleEnum(str, Enum):
+    """R&D Client Portal user roles"""
+    PRIMARY = "primary"  # Main contact who was invited by CPA
+    TEAM_MEMBER = "team_member"  # Invited by primary user
 
 
 class ClientEntityTypeEnum(str, Enum):
@@ -104,6 +107,7 @@ class Organization(Base):
     # Relationships
     users = relationship("User", back_populates="organization")
     clients = relationship("Client", back_populates="cpa_firm")
+    rd_client_users = relationship("RDClientUser", back_populates="organization", foreign_keys="[RDClientUser.firm_id]")
 
 
 class Client(Base):
@@ -297,6 +301,67 @@ class UserInvitation(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     accepted_at = Column(DateTime(timezone=True))
     is_expired = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class RDClientUser(Base):
+    """R&D Client Portal Users - clients who provide documentation for R&D studies"""
+    __tablename__ = "rd_client_users"
+    __table_args__ = {"schema": "atlas"}
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    email = Column(String, nullable=False, unique=True, index=True)
+    full_name = Column(String, nullable=False)
+    company_name = Column(String, nullable=True)
+    hashed_password = Column(String, nullable=True)  # Nullable until they set password
+    role = Column(SQLEnum(RDClientRoleEnum, name="rd_client_role"), nullable=False, default=RDClientRoleEnum.PRIMARY)
+
+    # Link to the R&D study
+    study_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)
+    firm_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.cpa_firms.id"), nullable=True)
+
+    # Invitation tracking
+    invited_by_user_id = Column(PGUUID(as_uuid=True), nullable=True)  # CPA user who invited them
+    invited_by_rd_client_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.rd_client_users.id"), nullable=True)  # Primary user who invited team member
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_email_verified = Column(Boolean, default=False)
+    email_verified_at = Column(DateTime(timezone=True))
+    last_login_at = Column(DateTime(timezone=True))
+
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    organization = relationship("Organization", back_populates="rd_client_users", foreign_keys=[firm_id])
+
+
+class RDClientInvitation(Base):
+    """Invitations for R&D Client Portal access"""
+    __tablename__ = "rd_client_invitations"
+    __table_args__ = {"schema": "atlas"}
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    email = Column(String, nullable=False, index=True)
+    full_name = Column(String, nullable=False)
+    company_name = Column(String, nullable=True)
+    role = Column(SQLEnum(RDClientRoleEnum, name="rd_client_role"), nullable=False, default=RDClientRoleEnum.PRIMARY)
+
+    # Link to R&D study
+    study_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)
+    firm_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.cpa_firms.id"), nullable=True)
+
+    # Who sent the invitation
+    invited_by_user_id = Column(PGUUID(as_uuid=True), nullable=True)  # CPA user
+    invited_by_rd_client_id = Column(PGUUID(as_uuid=True), ForeignKey("atlas.rd_client_users.id"), nullable=True)  # Primary user inviting team
+
+    # Token for registration
+    token = Column(String, nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    accepted_at = Column(DateTime(timezone=True))
+    is_expired = Column(Boolean, default=False)
+
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
